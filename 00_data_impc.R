@@ -9,7 +9,8 @@ panelL = c("P1")
 centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
 ci = 1; panel = panelL[ci]; centre = centreL[ci]
 
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
+result_dir
+# result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
 data_dir = paste0("/mnt/f/Brinkman group/current/Alice/IMPC/data/", panelL, "/", centreL) #Sanger saves flowtype differently from all other centres
 
 
@@ -305,6 +306,9 @@ feat_file_cell_count <- feat_file_cell_count[rowIndex,colIndex]
 feat_file_cell_prop <- feat_file_cell_prop[rowIndex,colIndex]
 meta_cell <- meta_cell[colIndex,]
 meta_file <- meta_file[rowIndex,]
+
+#rename classes, so there is a control group
+meta_file$aml[meta_file$aml=="normal"] = "control"
 
 
 

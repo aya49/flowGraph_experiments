@@ -5,7 +5,9 @@
 root = "~/projects/flowCAP-II"
 setwd(root)
 
-result_dir = "result"; suppressWarnings(dir.create (result_dir))
+result_dir = "~/projects/flowtype_metrics/data/flowcap"; 
+# result_dir = "results"
+suppressWarnings(dir.create (result_dir, recursive=T))
 data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
 
 
@@ -114,6 +116,9 @@ rownames(feat_file_cell_count) = meta_file[,1] = ftFileNames
 colnames(feat_file_cell_count) = meta_cell$phenotype
 feat_file_cell_prop = feat_file_cell_count/feat_file_cell_count[,1]
 dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
+
+#rename classes, so there is a control group
+meta_file$aml[meta_file$aml=="normal"] = "control"
 
 
 
