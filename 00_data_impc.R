@@ -2,27 +2,24 @@
 # Reads in IMPC flowtype files and collates/save cell counts into matrix
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
 
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-ci = 1; panel = panelL[ci]; centre = centreL[ci]
+panel = c("panel1") # panel2 is sanger-spleen only
+centre = c("sanger-spleen")#,"sanger-mln","ciphe","tcp","harwell")
 
-result_dir
+result_dir = paste0(root, "/result/impc_",panel,"_",centre); suppressWarnings(dir.create (result_dir, recursive=T))
 # result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
-data_dir = paste0("/mnt/f/Brinkman group/current/Alice/IMPC/data/", panelL, "/", centreL) #Sanger saves flowtype differently from all other centres
-
+data_dir = paste0("/mnt/f/Brinkman group/current/Alice/IMPC/data/", panel, "/", centre) #Sanger saves flowtype differently from all other centres
 
 
 ## input directory
 ft_dir = paste0(data_dir, "/ft")
-csv_dir = paste0(data_dir, "/sampleMeta.csv") #differenct for each centre, columns aren't standardized yet either, fix after standardization
-if (centre=="TCP") csv_dirtcp = paste0(data_dir, "/date.code.spreadsheet.csv") #second meta spreadsheet for tcp...
+csv_dir = paste0(data_dir, "/sampleMeta.csv") #different for each centre, columns aren't standardized yet either, fix after standardization
+if (centre=="tcp") csv_dirtcp = paste0(data_dir, "/date.code.spreadsheet.csv") #second meta spreadsheet for tcp...
 
 
-
-## output directory
+## output directory (see last section, output split by panel)
 meta_dir = paste0(result_dir,"/meta"); dir.create(meta_dir, showWarnings=F)
 meta_cell_dir = paste(meta_dir, "/cell", sep="")
 meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -35,18 +32,12 @@ feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
 excludedGT_dir = paste(result_dir, "/excludedGT.Rdata", sep="") #IMPC ONLY
 
 
-
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
+source(paste0(root, "/source/_funcAlice.R"))
 # source("code/load_manual_results.R") # for CIPHE
-libr("Matrix")
-libr("stringr")
-libr("lubridate")
-libr("flowCore")
-libr("flowType")
-libr("foreach")
-libr("doMC")
-
+libr(c("Matrix", "stringr", "lubridate",
+     "flowCore", "flowType",
+     "foreach", "doMC"))
 
 
 ## cores
@@ -54,6 +45,7 @@ no_cores = detectCores() - 10
 registerDoMC(no_cores)
 
 ## options
+writecsv = F
 options(stringsAsFactors=F)
 options(device="cairo")
 countThres = 0 #delete columns/rows where all values equal or below countThres
@@ -63,18 +55,11 @@ IMPC_control = "[+]_[+]|[+]_Y"
 
 
 
-
-
-
-
-
-
-
 start = Sys.time()
 
 ## make file paths, markers, hardcode markers, fix after standardization --------------------------------
 ft_dirall = sort(list.files(ft_dir, pattern=".Rdata", all.files=TRUE, full.names=TRUE, recursive=TRUE) )
-if (grepl("Sanger", centre)) {
+if (grepl("sanger", centre)) {
   ftGT = folderNames(ft_dirall)
   ftFileNames = fileNames(ft_dirall, "Rdata")
   ft = get(load(ft_dirall[1]))
@@ -90,10 +75,9 @@ if (grepl("Sanger", centre)) {
 save(markers, file=paste0(markers_dir,".Rdata"))
 
 
-
 ## loading & compiling flowTypes --------------------------------
 excludedGT = NULL
-if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
+if (grepl("sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
   feat_file_cell_countList = foreach(i=1:length(ft_dirall)) %dopar% {
     ft = get(load(ft_dirall[i]))
     npheno = length(ft@CellFreqs)
@@ -166,11 +150,10 @@ colnames(feat_file_cell_count) <- colnames(feat_file_cell_prop) <- phenotype <- 
 meta_cell = getPhen(phenotype)
 
 
-
 ## make meta_file, hardcode column names of wanted columns, fix after standardization --------------------------------
 meta_file = NULL
 meta_fileList = NULL
-if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
+if (grepl("sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
   meta_fileTemp = data.frame(lapply(read.csv(csv_dir)[,c("Genotype","Assay.Date","Gender","Label.Barcode", "Colony.Prefix","Birth.Date","Coat.Colour")], as.character), stringsAsFactors=F)
   meta_fileTemp[,"Genotype"] = gsub("/","_",meta_fileTemp[,"Genotype"])
   barcodes <- str_extract(ftFileNames, "L[0-9]+")
@@ -180,7 +163,7 @@ if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
   }
   meta_file = rbind(meta_file, do.call(rbind, meta_fileList))
   meta_file = as.data.frame(meta_file, stringsAsFactors=F)
-  colnames(meta_file) = c("fileName", "gene", "date", "gender", "barcode", "colony", "birth_date", "fur")
+  colnames(meta_file) = c("id", "gene", "date", "gender", "barcode", "colony", "birth_date", "fur")
   meta_file$barcode = barcodes
   meta_file$date = dmy(meta_file$date)
   meta_file$birth_date = dmy(meta_file$birth_date)
@@ -230,7 +213,7 @@ if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
   gene[controlind] = meta_file$gene[controlind]
   meta_file$gene = gene
   
-} else if (grepl("CIPHE", centre)) {
+} else if (grepl("ciphe", centre)) {
   meta_fileTemp = data.frame(lapply(read.csv(csv_dir)[,c("Date","SEX..M.F.","Sample.N.")], as.character))
   meta_fileTempDate = dmy(meta_fileTemp[,"Date"])
   ftFileNamesSplit = lapply(c(1:length(ftFileNames)), function(x) {return(strsplit(ftFileNames[x],"[_]")[[1]])} )
@@ -242,7 +225,7 @@ if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
   }
   meta_file = rbind(meta_file, do.call(rbind, meta_fileList))
   meta_file = as.data.frame(meta_file, stringsAsFactors=F); rm(meta_fileTemp)
-  colnames(meta_file) = c("filename", "gene", "date", "gender", "sample")
+  colnames(meta_file) = c("id", "gene", "date", "gender", "sample")
   meta_file$date = dmy(meta_file$date)
   
 } else if (grepl("TCP", centre)) {
@@ -263,16 +246,16 @@ if (grepl("Sanger",centre)) { #Sanger TCell panel MLN & SPLEEN organ
     gender = append(gender, meta_fileTemp[row,"sex"])
   }
   meta_file = as.data.frame(cbind(ftFileNames, ftGT, date, gender, sample, strain), stringsAsFactors=F)
-  colnames(meta_file) = c("filename", "gene", "date", "gender", "sample", "strain")
+  colnames(meta_file) = c("id", "gene", "date", "gender", "sample", "strain")
   meta_file$date = date
   
-} else if (grepl("H", centre)) {
+} else if (grepl("harwell", centre)) {
   meta_fileTemp = data.frame(lapply(read.csv(csv_dir)[,c("Filename", "Date","Gender","IMPCSpecimenCode")], as.character))
   meta_fileTemp[,"Filename"] = gsub("[.]", "-", gsub(".fcs","", gsub("[-%]",".", meta_fileTemp[,"Filename"])))
   rows = match(ftFileNames, meta_fileTemp[,"Filename"])
   meta_file = cbind(meta_fileTemp[rows,"Filename"], ftGT, meta_fileTemp[rows,c("Date","Gender","IMPCSpecimenCode")])
   meta_file = as.data.frame(meta_file, stringsAsFactors=F); rm(meta_fileTemp)
-  colnames(meta_file) = c("filename", "gene", "date", "gender", "specimen")
+  colnames(meta_file) = c("id", "gene", "date", "gender", "specimen")
   meta_file$date = ymd(meta_file$date)
   
   # CIPHE Manula count import
@@ -295,7 +278,6 @@ g = rep(1,nrow(meta_file)); g[grep("F",meta_file$gender)] = 0; g[which(is.na(met
 meta_file$gender = g # Female=0; Male=1
 
 
-
 ## trim matrix/meta_cell ------------------------------
 rowIndex = apply(feat_file_cell_count, 1, function(x) any(x > countThres)) #delete rows of all 0 or too little count
 colIndex1 = apply(feat_file_cell_count, 2, function(x) any(x > countThres)) #delete cols of all 0 or too little count
@@ -308,24 +290,29 @@ meta_cell <- meta_cell[colIndex,]
 meta_file <- meta_file[rowIndex,]
 
 #rename classes, so there is a control group
-meta_file$aml[meta_file$aml=="normal"] = "control"
-
+meta_file$gene[grepl(IMPC_control,meta_file$gene)] = "control"
+meta_file$gene[grepl("wildtype",meta_file$gene, ignore.case=T)] = "control"
+colnames(meta_file)[colnames(meta_file)=="gene"] = "class"
+if (grepl("gender", colnames(meta_file))) { 
+  meta_file$gender = as.character(meta_file$gender)
+  meta_file$gender[meta_file$gender=="0"] = "control"
+  meta_file$gender[meta_file$gender=="1"] = "male"
+} 
 
 
 ## save ----------------------------------------------------
 save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
-write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"))
+if (writecsv) write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"))
 
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
-write.csv(meta_file, file=paste0(meta_file_dir,".csv"))
+if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"))
 
 save(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".Rdata"))
-write.csv(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+if (writecsv) write.csv(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
 save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+if (writecsv) write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
 if (!is.null(excludedGT)) save(excludedGT, file=excludedGT_dir)
 
 
-
-cat("\nTotal time used to load cell count for ", centre, ", panel ", panel, ": ", TimeOutput(start), "\n", sep="")
+time_output(start)
 

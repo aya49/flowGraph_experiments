@@ -5,9 +5,9 @@
 root = "~/projects/flowtype_metrics"
 setwd(root)
 
-result_dir = paste0(root, "/data/flowcap")
+result_dir = paste0(root, "/result/flowcap")
 # result_dir = "results"
-suppressWarnings(dir.create (result_dir, recursive=T))
+# suppressWarnings(dir.create (result_dir, recursive=T))
 data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
 
 
@@ -15,15 +15,7 @@ data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data dire
 ft_dir = paste0(data_dir,"/FT") #flowtype file directory
 csv_dir = paste0(data_dir,"/AML.csv") #meta file directory
 
-## output directories
-meta_dir = paste0(result_dir,"/meta"); dir.create(meta_dir, showWarnings=F)
-meta_cell_dir = paste(meta_dir, "/cell", sep="")
-meta_file_dir = paste(meta_dir, "/file", sep="")
-markers_dir = paste(meta_dir, "/cell_markers", sep="")
-
-feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
-feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+## output directories (see last section, output split by tube/panel)
 
 
 ## libraries
@@ -36,6 +28,7 @@ no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 ## options
+writecsv = F
 options(stringsAsFactors=F)
 options(device="cairo")
 countThres = 0 #delete columns/rows where all values equal or below countThres
@@ -52,12 +45,12 @@ ftFileNames = fileNames(ftFile_dir, "Rda")
 
 ## get meta data on files for meta_file
 meta_filetemp = data.frame(read.csv(csv_dir))
-colnames(meta_filetemp) = c("fileName", "tube", "specimen", "aml") #rename columns
+colnames(meta_filetemp) = c("id", "tube", "specimen", "class") #rename columns
 
 ## get meta data on phenotypes (cell populations) for meta_cell
 ft = get(load(ftFile_dir[1]))
 markers = ft@MarkerNames
-save(markers, file=paste0(markers_dir,".Rdata"))
+# save(markers, file=paste0(markers_dir,".Rdata"))
 
 meta_cell = getPhen(rownames(ft@MFIs))
 
@@ -97,7 +90,7 @@ rownames(feat_file_cell_count) = ftFileNames
 meta_file = as.data.frame(ftFileNames)
 meta_file$tube = unlist(sm[,2])
 meta_file$specimen = unlist(sm[,3])
-meta_file$aml = unlist(sm[,4])
+meta_file$class = unlist(sm[,4])
 colnames(meta_file) = colnames(meta_filetemp)
 
 rownames(feat_file_cell_count) = meta_file[,1] = ftFileNames
@@ -106,7 +99,8 @@ feat_file_cell_prop = feat_file_cell_count/feat_file_cell_count[,1]
 dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
 
 #rename classes, so there is a control group
-meta_file$aml[meta_file$aml=="normal"] = "control"
+meta_file$class[meta_file$class=="normal"] = "control"
+
 
 
 ## trim matrix/meta_cell ------------------------------
@@ -121,14 +115,38 @@ meta_cell <- meta_cell[colIndex,]
 meta_file <- meta_file[rowIndex,]
 
 
-#save
-save(meta_cell, file=paste0(meta_cell_dir,".Rdata")); write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"), row.names=F)
-save(meta_file, file=paste0(meta_file_dir,".Rdata")); write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=F)
-save(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".Rdata"))
-write.csv(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
-save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+## split data by tube/panel and save -------------------------
+for (tube in unique(meta_file$tube)) {
+  tubei = meta_file$tube==tube
+  
+  feat_file_cell_count_ = feat_file_cell_count[tubei,]
+  feat_file_cell_prop_ = feat_file_cell_prop[tubei,]
+  rownames(feat_file_cell_prop_) = rownames(feat_file_cell_count_) = as.numeric(gsub(paste0("FT|T",tube,"S"),"",rownames(feat_file_cell_count_)))
+  
+  tubeorder = order(rownames(feat_file_cell_count_))
+  feat_file_cell_count_ = feat_file_cell_count_[tubeorder,]
+  feat_file_cell_prop_ = feat_file_cell_prop_[tubeorder,]
+  
+  feat_dir = paste(result_dir, "_panel", tube, "/feat", sep=""); dir.create(feat_dir, showWarnings=F, recursive=T)
+  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
+  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+  save(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".Rdata"))
+  if (writecsv) write.csv(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+  save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+  if (writecsv) write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  
+  meta_file_ = meta_file[tubei,]
+  meta_file_ = meta_file_[tubeorder,c("id","class"), drop=F]
 
-TimeOutput(start)
+  meta_dir = gsub("feat","meta",feat_dir); dir.create(meta_dir, showWarnings=F, recursive=T)
+  meta_cell_dir = paste(meta_dir, "/cell", sep="")
+  meta_file_dir = paste(meta_dir, "/file", sep="")
+  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
+  if (writecsv) write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"), row.names=F)
+  save(meta_file_, file=paste0(meta_file_dir,".Rdata"))
+  if (writecsv) write.csv(meta_file_, file=paste0(meta_file_dir,".csv"), row.names=F)
+}
+
+time_output(start)
 
 

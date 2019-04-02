@@ -170,7 +170,7 @@ TimeOutput(start)
 
 
 
-TimeOutput(start) #21min parallel, 5 centres
+time_output(start) #21min parallel, 5 centres
 
 
 

@@ -28,6 +28,11 @@ time_output = function(start, message="", tz="GMT") {
   cat(message, ifelse(message=="","",": "), ft(start,tz=tz), "-", ft(end,tz=tz), ">", ft(time_elapsed,tz=tz), "\n")
 }
 
+## input: Sys.time() value
+## output: formatted time as string; used in time_output function
+ft = function(time, tz="GMT") return( format(.POSIXct(time,tz=tz), "%H:%M:%S") )
+
+
 ## unload all pkgs
 unloadpkg = function() 
   a = lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE)
