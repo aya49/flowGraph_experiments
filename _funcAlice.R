@@ -25,12 +25,12 @@ time_output = function(start, message="", tz="GMT") {
   start = as.POSIXct(start)
   end = Sys.time()
   time_elapsed = difftime(end, start, units="secs")
-  cat(message, ifelse(message=="","",": "), ft(start,tz=tz), "-", ft(end,tz=tz), ">", ft(time_elapsed,tz=tz), "\n")
+  cat(message, ifelse(message=="","",": "), ftime(start,tz=tz), "-", ftime(end,tz=tz), ">", ftime(time_elapsed,tz=tz), "\n")
 }
 
 ## input: Sys.time() value
 ## output: formatted time as string; used in time_output function
-ft = function(time, tz="GMT") return( format(.POSIXct(time,tz=tz), "%H:%M:%S") )
+ftime = function(time, tz="GMT") return( format(.POSIXct(time,tz=tz), "%H:%M:%S") )
 
 
 ## unload all pkgs
