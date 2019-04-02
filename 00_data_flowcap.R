@@ -2,14 +2,13 @@
 #aya43@sfu.ca 20161220
 
 ## root directory
-root = "~/projects/flowCAP-II"
+root = "~/projects/flowtype_metrics"
 setwd(root)
 
-result_dir = "~/projects/flowtype_metrics/data/flowcap"; 
+result_dir = paste0(root, "/data/flowcap")
 # result_dir = "results"
 suppressWarnings(dir.create (result_dir, recursive=T))
 data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
-
 
 
 ## input directories
@@ -27,13 +26,10 @@ feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
 feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
 
 
-
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-libr("flowCore")
-libr("flowType")
-libr("foreach")
-libr("doMC")
+source(paste0(root, "/source/_funcAlice.R"))
+libr(c("flowCore", "flowType",
+       "foreach", "doMC"))
 
 ## cores
 no_cores = detectCores()-1
@@ -44,14 +40,6 @@ options(stringsAsFactors=F)
 options(device="cairo")
 countThres = 0 #delete columns/rows where all values equal or below countThres
 levelThres = 8 #Inf if delete no layers; >levelcutoff are deleted
-
-
-
-
-
-
-
-
 
 
 
@@ -121,7 +109,6 @@ dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
 meta_file$aml[meta_file$aml=="normal"] = "control"
 
 
-
 ## trim matrix/meta_cell ------------------------------
 rowIndex = apply(feat_file_cell_count, 1, function(x) any(x > countThres)) #delete rows of all 0 or too little count
 colIndex1 = apply(feat_file_cell_count, 2, function(x) any(x > countThres)) #delete cols of all 0 or too little count
@@ -134,7 +121,6 @@ meta_cell <- meta_cell[colIndex,]
 meta_file <- meta_file[rowIndex,]
 
 
-
 #save
 save(meta_cell, file=paste0(meta_cell_dir,".Rdata")); write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"), row.names=F)
 save(meta_file, file=paste0(meta_file_dir,".Rdata")); write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=F)
@@ -144,9 +130,5 @@ save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".Rdata"))
 write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
 
 TimeOutput(start)
-
-
-
-
 
 

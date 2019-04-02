@@ -3,26 +3,35 @@
 
 #Note: All parameters are case sensative!
 
-# Prints out the time since start_time. Used for optimizing code.
-TimeOutput <- function(start_time) {
-  start_time <- as.POSIXct(start_time)
-  dt <- difftime(Sys.time(), start_time, units="secs")
-  # Since you only want the H:M:S, we can ignore the date...
-  # but you have to be careful about time-zone issues
-  cat(format(.POSIXct(dt,tz="GMT"), "%H:%M:%S"))
-}
+
+## generic functions ------------------------------
 
 ## input: list of package names to load
 ## output: none; load/install package
 libr <- function(pkgs) {
-  for (p in pkgs) {
-    if (!is.element(p, installed.packages()[,1])) {
-      source("http://bioconductor.org/biocLite.R")
-      biocLite(p, ask=F)
-    }
-    require(p, character.only = TRUE)
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) 
+    install.packages(setdiff(pkgs, rownames(installed.packages())), verbose=F)
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) {
+    if (!requireNamespace("BiocManager", quietly=T)) install.packages("BiocManager")
+    BiocManager::install(setdiff(pkgs, rownames(installed.packages())), ask=F)
   }
+  sapply(pkgs, require, character.only=T)
 }
+
+
+## input: Sys.time() value
+## output: time elapsed since input
+time_output = function(start, message="", tz="GMT") {
+  start = as.POSIXct(start)
+  end = Sys.time()
+  time_elapsed = difftime(end, start, units="secs")
+  cat(message, ifelse(message=="","",": "), ft(start,tz=tz), "-", ft(end,tz=tz), ">", ft(time_elapsed,tz=tz), "\n")
+}
+
+## unload all pkgs
+unloadpkg = function() 
+  a = lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE)
+
 
 # combines two vectors in every combination
 pastevector <- function(x,y,collapse="") apply(expand.grid(x, y), 1, paste, collapse=collapse)
