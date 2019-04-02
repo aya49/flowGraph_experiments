@@ -76,14 +76,6 @@ for (feat_type in feat_types) {
   g = getGTindex(meta_file[,target_col], control, good_sample, meta_file[,id_col])
   ftGT = g$attlist; ftWTIndex = g$controlIndex; ftKOGT = g$exp; ftKOIndex = g$expIndex; ftKOgoodGTIndex = g$goodexpIndex; rm(g)  #Index of unique KO genotypes that has 3+ samples available ftKOIndex(ftKOGTIndexIndex)
   
-  #split by tubes
-  # rowcombos = NULL
-  # for (i in length(ftKOIndex):1) {
-  #   kotube = meta_file[ftKOIndex[[i]],split_col]
-  #   wttube = meta_file[ftWTIndex,split_col]
-  #   rowcombos[[i]][[1]] = ftWTIndex[wttube==kotube]
-  #   rowcombos[[i]][[2]] = ftKOIndex[[i]] 
-  # }
   
   rowcombos = NULL
   for (i in nrow(m):1) {

@@ -2,21 +2,13 @@
 # aya43@sfu.ca 20151228
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-controlL = c("+_+|+_Y","+_+|+_Y","WildType","WildType","WildType") #control value in target_col column
-ci = 1; panel = panelL; centre = centreL
-
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
+result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
 meta_file_dir = paste(meta_dir, "/file", sep="")
-meta_cell_parent_dir = paste(result_dir, "/phenoParent.Rdata",sep="")
-meta_cell_parent_ind_dir = paste(result_dir, "/phenoParent_ind.Rdata",sep="")
 feat_dir = paste(result_dir, "/feat", sep="")
 
 ## output directories
@@ -26,17 +18,14 @@ feat_file_cell_countAdjMax_dir = paste(feat_dir, "/file-cell-countAdjMax",sep=""
 feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKO",sep="")
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
-libr("stringr")
-libr("foreach")
-libr("doMC")
-libr("lubridate")
-libr("Matrix")
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "lubridate", "Matrix",
+     "foreach", "doMC"))
 
 
 ## cores
-no_cores = 15#detectCores() - 2
+no_cores = detectCores() - 2
 registerDoMC(no_cores)
 
 
@@ -46,7 +35,7 @@ options(stringsAsFactors=FALSE)
 # options(device="cairo")
 options(na.rm=T)
 
-writecsv = T
+writecsv = F
 
 adjust = c("","BY","BH","bonferroni") #pvalue adjustment
 #test = "wilcox" #pvalue test
@@ -55,14 +44,17 @@ pval_thres = .025 #delete phenotypes/rows without any significant changes from t
 good_sample = 3 #only compare if >=3 samples available
 good_sample_wt = 15 #min 70 wt used to compare with KO
 
-control = str_split(controlL,"[|]")[[1]]
+control = "control"
 
-id_col = "fileName"
-target_col = "gene"
-time_col = "date"
+id_col = "id"
+target_col = "class"
 split_col = "gender"
+split_date = NULL
+# split_col = "group"
+# split_date = "date" # null if no date col associated with split_col groups
+max_control = 70 # set to null if don't require a max amount of controls samples to compare other samples to, only needed when split_date!=NULL
 
-feat_types = c("file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")#,"file-cell-countAdj")
+feat_types = c("file-cell-countAdj") #, "file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")
 
 
 
@@ -81,38 +73,37 @@ for (feat_type in feat_types) {
   
   #wildtypes
   g = getGTindex(meta_file[,target_col], control, good_sample, meta_file[,id_col])
-  ftGT = g$attlist; ftWTIndex = g$controlIndex; ftKOGT = g$exp; ftKOIndex = g$expIndex; ftKOgoodGTIndex = g$goodexpIndex; rm(g)  #Index of unique KO genotypes that has 3+ samples available ftKOIndex(ftKOGTIndexIndex)
+  ftGT = g$attlist; controli = g$controlIndex; ftKOGT = g$exp; ftKOIndex = g$expIndex; ftKOgoodGTIndex = g$goodexpIndex; rm(g)  #Index of unique KO genotypes that has 3+ samples available ftKOIndex(ftKOGTIndexIndex)
   
   #split days up based on mean of wt; pvalues will only be calculated with WT samples that were made on similar days as the ko in question
+  controli = grep(control, meta_file[,target_col])
   rowcombos = NULL
-  for (i in nrow(meta_file):1) {
-    kodate_group = meta_file$group[i]
-    wtdates = meta_file[ftWTIndex,time_col]
-    wtdates_group = meta_file$group[ftWTIndex]
-    wtind = ftWTIndex[wtdates_group==kodate_group]
-    # wtind = ftKOIndex[[i]] #use above if care about date groups, else, comment out above and use this line
-    datediff = abs(ymd(meta_file[wtind,time_col])-ymd(meta_file[i,time_col]))
-    wtindchosen = NULL
-    for (j in 1:length(datediff)) {
-      wtindchosen = append(wtindchosen,wtind[datediff==min(datediff)])
-      datediff[datediff==min(datediff)] = Inf
-      if (length(wtindchosen)>=70) break
-    }
-    #wtfn = meta_file$fileName[wtind[order(datediff)]]
-    #rowcombos[[i]][[1]] = match(wtfn[1:(min(good_sample_wt,length(wtdates)))], meta_file$fileName) #should be max(good_sample_wt,length(wtdates)) assuming that wtdates should have >70 samples
-    wtindchoseng = wtindchosen[meta_file[wtindchosen,split_col]==meta_file[i,split_col]]
-    if (length(wtindchoseng)<min(good_sample_wt,length(wtindchosen))) wtindchoseng = wtindchosen
-    rowcombos[[i]][[1]] = wtindchoseng
+  for (i in nrow(m):1) {
+    rowcombos[[i]] = list()
+    rowcombos[[i]][[1]] = controli
     rowcombos[[i]][[2]] = i
+  } 
+  if (!is.null(split_col)) {
+    for (i in nrow(m):1) {
+      i_group = meta_file[i,split_col]
+      control_group = meta_file[controli,split_col]
+      rowcombos[[i]][[1]] = wtind = controli[control_group==i_group]
+      if (!is.null(split_date)) {
+        control_date = meta_file[controli, split_date]
+        datediff = abs(ymd(meta_file[wtind,split_date])-ymd(meta_file[i,split_date]))
+        rowcombos[[i]][[1]] = wtind[order(datediff)[1:ifelse(!is.null(max_control),max_control,length(datediff))]]
+      } 
+    }
   }
-  
-  # for (i in length(ftKOIndex):1) {
-  #   kodate_group = meta_file$group[ftKOIndex[[i]]]
+  # #split days up based on mean of wt; pvalues will only be calculated with WT samples that were made on similar days as the ko in question
+  # rowcombos = NULL
+  # for (i in nrow(meta_file):1) {
+  #   kodate_group = meta_file$group[i]
   #   wtdates = meta_file[ftWTIndex,time_col]
   #   wtdates_group = meta_file$group[ftWTIndex]
   #   wtind = ftWTIndex[wtdates_group==kodate_group]
   #   # wtind = ftKOIndex[[i]] #use above if care about date groups, else, comment out above and use this line
-  #   datediff = abs(ymd(meta_file[wtind,time_col])-ymd(meta_file[ftKOIndex[[i]],time_col]))
+  #   datediff = abs(ymd(meta_file[wtind,time_col])-ymd(meta_file[i,time_col]))
   #   wtindchosen = NULL
   #   for (j in 1:length(datediff)) {
   #     wtindchosen = append(wtindchosen,wtind[datediff==min(datediff)])
@@ -121,10 +112,10 @@ for (feat_type in feat_types) {
   #   }
   #   #wtfn = meta_file$fileName[wtind[order(datediff)]]
   #   #rowcombos[[i]][[1]] = match(wtfn[1:(min(good_sample_wt,length(wtdates)))], meta_file$fileName) #should be max(good_sample_wt,length(wtdates)) assuming that wtdates should have >70 samples
-  #   wtindchoseng = wtindchosen[meta_file[wtindchosen,split_col]==meta_file[ftKOIndex[[i]],split_col]]
+  #   wtindchoseng = wtindchosen[meta_file[wtindchosen,split_col]==meta_file[i,split_col]]
   #   if (length(wtindchoseng)<min(good_sample_wt,length(wtindchosen))) wtindchoseng = wtindchosen
   #   rowcombos[[i]][[1]] = wtindchoseng
-  #   rowcombos[[i]][[2]] = ftKOIndex[[i]] 
+  #   rowcombos[[i]][[2]] = i
   # }
   
   cat(paste("getting pValues of ", ncol(m), " possible cell populations for ", length(rowcombos), " genotypes ", sep="")) #3iTCell specific
@@ -241,13 +232,10 @@ for (feat_type in feat_types) {
     
   }
   
-  TimeOutput(start1)
-  
-  
-  cat("\n feat_type", feat_type,": ",TimeOutput(start1), "\n", sep="") #IMPC Sanger P1 ~3h
+  cat("\n feat_type", feat_type,": ",time_output(start1), "\n", sep="") #IMPC Sanger P1 ~3h
 }
 
-cat("\nTime taken to calculate p values & barcode matrices is: ",TimeOutput(start), "\n", sep="") #3iTcell ~40min
+cat("\nTime taken to calculate p values & barcode matrices is: ",time_output(start), "\n", sep="") #3iTcell ~40min
 
 
 

@@ -22,8 +22,8 @@ norm_factor_dir = paste(norm_dir, "/norm_factor", sep=""); dir.create(norm_facto
 norm_factor_diff_dir = paste(norm_dir, "/norm_factor_diff", sep="")
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
 libr(c("stringr", "pracma",
        "foreach","doMC"))
 # libr(flowDensity)
@@ -35,11 +35,10 @@ registerDoMC(no_cores)
 
 
 ## options
+writecsv = F
 options(stringsAsFactors=FALSE)
 # options(device="cairo")
 options(na.rm=T)
-
-writecsv = F
 
 id_col = "id"
 target_col = "class" #column with control/experiment

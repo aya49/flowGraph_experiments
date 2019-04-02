@@ -2,26 +2,26 @@
 # creates list of children for each non-leaf node and creates children/parent list[[matrices]] (-/+ are only for phenotypes where both -,+ data exists)
 
 ## root directory
-root = "~/projects/flowCAP-II"
-result_dir = "result"; suppressWarnings(dir.create (result_dir))
+root = "~/projects/flowtype_metrics"
 setwd(root)
+result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
-meta_cell_dir = paste(meta_dir, "/cell", sep="")
-meta_cell_child_dir = paste(meta_dir, "/cell_child",sep="") #specifies a phenotypes children
-meta_cell_child_names_dir = paste(meta_dir, "/cell_child_names",sep="") #specifies a phenotypes children
-meta_cell_child_ind_dir = paste(meta_dir, "/cell_child_ind",sep="")
-meta_cell_childpn_dir = paste(meta_dir, "/cell_childpn",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
+# meta_cell_dir = paste(meta_dir, "/cell", sep="")
+# meta_cell_child_dir = paste(meta_dir, "/cell_child",sep="") #specifies a phenotypes children
+# meta_cell_child_names_dir = paste(meta_dir, "/cell_child_names",sep="") #specifies a phenotypes children
+# meta_cell_child_ind_dir = paste(meta_dir, "/cell_child_ind",sep="")
+# meta_cell_childpn_dir = paste(meta_dir, "/cell_childpn",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
 meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
-meta_cell_childpn_ind_dir = paste(meta_dir, "/cell_childpn_ind",sep="")
-meta_cell_parent_dir = paste(meta_dir, "/cell_parent",sep="") #specifies a phenotypes parents
+# meta_cell_childpn_ind_dir = paste(meta_dir, "/cell_childpn_ind",sep="")
+# meta_cell_parent_dir = paste(meta_dir, "/cell_parent",sep="") #specifies a phenotypes parents
 meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
-meta_cell_parent_ind_dir = paste(meta_dir, "/cell_parent_ind",sep="")
-meta_cell_parentpn_dir = paste(meta_dir, "/cell_parentpn",sep="") #specifies a phenotypes parents and splits them into +/- (only for when both -/+ exists)
-meta_cell_parentpn_names_dir = paste(meta_dir, "/cell_parentpn_names",sep="")
-meta_cell_parentpn_ind_dir = paste(meta_dir, "/cell_parentpn_ind",sep="")
+# meta_cell_parent_ind_dir = paste(meta_dir, "/cell_parent_ind",sep="")
+# meta_cell_parentpn_dir = paste(meta_dir, "/cell_parentpn",sep="") #specifies a phenotypes parents and splits them into +/- (only for when both -/+ exists)
+# meta_cell_parentpn_names_dir = paste(meta_dir, "/cell_parentpn_names",sep="")
+# meta_cell_parentpn_ind_dir = paste(meta_dir, "/cell_parentpn_ind",sep="")
 
 feat_count = "file-cell-countAdj"
 
@@ -95,17 +95,17 @@ feat_file_cell_countAdjKO = get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdat
 
 
 
-meta_cell_child = get(load(paste0(meta_cell_child_dir,".Rdata")))
-meta_cell_child_names = get(load(paste0(meta_cell_child_names_dir,".Rdata")))
-meta_cell_child_ind = get(load(paste0(meta_cell_child_ind_dir,".Rdata")))
+# meta_cell_child = get(load(paste0(meta_cell_child_dir,".Rdata")))
+# meta_cell_child_names = get(load(paste0(meta_cell_child_names_dir,".Rdata")))
+# meta_cell_child_ind = get(load(paste0(meta_cell_child_ind_dir,".Rdata")))
 
-meta_cell_childpn = get(load(paste0(meta_cell_childpn_dir, ".Rdata")))
+# meta_cell_childpn = get(load(paste0(meta_cell_childpn_dir, ".Rdata")))
 meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-meta_cell_childpn_ind = get(load(paste0(meta_cell_childpn_ind_dir, ".Rdata")))
+# meta_cell_childpn_ind = get(load(paste0(meta_cell_childpn_ind_dir, ".Rdata")))
 
-meta_cell_parent = get(load(paste0(meta_cell_parent_dir, ".Rdata")))
+# meta_cell_parent = get(load(paste0(meta_cell_parent_dir, ".Rdata")))
 meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
-meta_cell_parent_ind = get(load(paste0(meta_cell_parent_ind_dir, ".Rdata")))
+# meta_cell_parent_ind = get(load(paste0(meta_cell_parent_ind_dir, ".Rdata")))
 
 
 

@@ -1,16 +1,11 @@
-# use countadj to add a group column to meta_file; to group samples by date
+# use countadj to add a group column to meta/file; to group samples by date (convert this continous variable into a categorical one!)
+# only for data sets where there is a date col in meta/file
 # aya43@sfu.ca 20161220
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-controlL = c("+_+|+_Y","+_+|+_Y","WildType","WildType","WildType") #control value in target_col column
-ci = 1; panel = panelL[ci]; centre = centreL[ci]
-
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
+result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
@@ -24,23 +19,17 @@ single_dir = paste(stat_dir, "/singlephen", sep=""); dir.create(single_dir, show
 
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
-libr("stringr")
-libr("colorspace")
-libr("changepoint") # libr("proxy")
-libr("FKF")
-libr("fastcluster")
-libr("dendextend")
-libr("circlize")
-libr("scater")
-libr("foreach")
-libr("lubridate") #if there are date variables
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "lubridate", "colorspace",
+       "changepoint", "FKF", # "proxy"
+       "fastcluster", "dendextend", "circlize", "scater",
+       "foreach")) #if there are date variables
 
 
 
 ## cores
-no_cores = 8#detectCores() - 1
+no_cores = detectCores() - 1
 registerDoMC(no_cores)
 
 
@@ -56,27 +45,19 @@ countThres = 2000 #columns/rows must have at least goodCount number of elements 
 good_count = 3
 good_sample = 3 #need more than good_sample samples per class for class to be included
 
-target_col = "gene" #column with control/experiment
-id_col = "fileName"
+target_col = "class" #column with control/experiment
+id_col = "id"
 split_col = NULL #NULL if split by nothing
 time_col = "date"
 order_cols = c("barcode","sample","specimen","date")
 
-control = str_split(controlL[ci],"[|]")[[1]]
+control = "control"
 
 methods = c("AMOC") #changepoint analysis; AMOC at most one change, PELT is poisson (quick exact), BinSeg (quick, approx), SegNeigh (slow, exact)
 usemethod="AMOC" #changepoint analysis; use this method to determine changepoints for pvalue calculation
 
 feat_type = c("file-cell-countAdj")
 feat_count = c("file-cell-countAdj")
-
-
-
-
-
-
-
-
 
 
 
@@ -88,7 +69,7 @@ m0 = get(load(paste0(feat_dir,"/",feat_type,".Rdata")))
 mc = get(load(paste0(feat_dir,"/",feat_count,".Rdata")))
 
 mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, countThres=countThres)
-if (is.null(mm)) next
+# if (is.null(mm)) next
 m_ordered = mm$m
 meta_file_ordered = mm$sm
 
@@ -154,8 +135,7 @@ if (feat_type==feat_count & nrow(sm)==nrow(meta_file)) {
 }
 
 
-cat("\n centre ", centre, " ",TimeOutput(start)," \n",sep="")
-
+time_output(start)
 
 
 

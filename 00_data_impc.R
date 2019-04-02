@@ -33,7 +33,7 @@ excludedGT_dir = paste(result_dir, "/excludedGT.Rdata", sep="") #IMPC ONLY
 
 
 ## libraries
-source(paste0(root, "/source/_funcAlice.R"))
+source("source/_funcAlice.R")
 # source("code/load_manual_results.R") # for CIPHE
 libr(c("Matrix", "stringr", "lubridate",
      "flowCore", "flowType",

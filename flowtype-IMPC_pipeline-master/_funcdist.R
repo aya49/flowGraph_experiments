@@ -39,16 +39,18 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="fileNa
   
   #get to-delete high no of marker phenotypes
   colIndexL = rep(T,length(m0cn))
-  if (!is.null(k) & k != 0) {
-    if (k<max(colsplitlen)) {
-      if (konly) {
-        colIndexL = colsplitlen == k
-      } else {
-        colIndexL = colsplitlen <= k
-      }
-    } 
+  if (!is.null(k)) {
+    if (k != 0) {
+      if (k<max(colsplitlen)) {
+        if (konly) {
+          colIndexL = colsplitlen == k
+        } else {
+          colIndexL = colsplitlen <= k
+        }
+      } 
+    }
   }
-    
+  
       
   
   #trim matrix based on cell count and layer
