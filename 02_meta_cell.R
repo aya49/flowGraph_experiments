@@ -4,7 +4,8 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
-result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 
 ## input directories
@@ -71,29 +72,31 @@ pcpp0 = foreach (ptii = loop.ind) %dopar% {
     pt = phenotype_split[[pti]]
     pc = pp = "NA"
     
-    if (pl==0) {
-      pc = meta_cell$phenotype[phenolevel_ind[[as.character(1)]]]
-    } else {
-      if (pl!=maxl) {
-        pc_cand = meta_cell$phenotype[phenolevel_ind[[as.character(pl+1)]]]
-        pc_cand_s = phenotype_split[ phenolevel_ind[[as.character(pl+1)]] ]
-        pc_ind = Reduce("&",lapply(pt, function(x) grepl(x,pc_cand)))
-        pc_ = pc_cand[pc_ind]
-        pc_s = pc_cand_s[pc_ind]
-        pc_pos_ind = sapply(pc_s, function(x) grepl("[+]",x[!x%in%pt]) )
-        pc_neg = pc_[!pc_pos_ind]
-        pc_pos = pc_[pc_pos_ind]
-        pc = list(neg=pc_neg, pos=pc_pos)
-      }
-      if (pl==1) {
-        pp = ""
-      } else if (pl!=minl) {
-        pp_cand = meta_cell$phenotype[ phenolevel_ind[[as.character(pl-1)]] ]
-        pp_cand_s = phenotype_split[ phenolevel_ind[[as.character(pl-1)]] ]
-        pc_ind = sapply(pp_cand_s, function(x) all(x%in%pt))
-        pp = pp_cand[pc_ind]
-      }
-    } 
+    if (pl!=maxl) {
+      pc_cand = meta_cell$phenotype[phenolevel_ind[[as.character(pl+1)]]]
+      pc_cand_s = phenotype_split[ phenolevel_ind[[as.character(pl+1)]] ]
+      pc_ind = Reduce("&",lapply(pt, function(x) grepl(x,pc_cand)))
+      pc_ = pc_cand[pc_ind]
+      pc_s = pc_cand_s[pc_ind]
+      pc_pos_ind = sapply(pc_s, function(x) grepl("[+]",x[!x%in%pt]) )
+      pc_neg = pc_[!pc_pos_ind]
+      pc_pos = pc_[pc_pos_ind]
+      pc = list(neg=pc_neg, pos=pc_pos)
+      #order
+      pc_inter = intersect(gsub("[-]","+",pc_neg), pc_pos)
+      pc_neg = append(gsub("[+]","-",pc_inter), pc_neg[!gsub("[-]","+",pc_neg)%in%pc_inter])
+      pc_pos = append(pc_inter, pc_pos[!pc_pos%in%pc_inter])
+    }
+    
+    if (pl==1) {
+      pp = ""
+    } else if (pl!=minl) {
+      pp_cand = meta_cell$phenotype[ phenolevel_ind[[as.character(pl-1)]] ]
+      pp_cand_s = phenotype_split[ phenolevel_ind[[as.character(pl-1)]] ]
+      pc_ind = sapply(pp_cand_s, function(x) all(x%in%pt))
+      pp = pp_cand[pc_ind]
+    }
+    
     pclist[[length(pclist)+1]] = pc
     pplist[[length(pplist)+1]] = pp
   }
@@ -123,7 +126,7 @@ save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
 save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
 
 time_output(start)
-
+}
 
 
 

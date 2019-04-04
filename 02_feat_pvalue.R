@@ -4,7 +4,8 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
-result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
@@ -83,7 +84,7 @@ for (feat_type in feat_types) {
     rowcombos[[i]][[1]] = controli
     rowcombos[[i]][[2]] = i
   } 
-  if (!is.null(split_col)) {
+  if (!is.null(split_col) & split_col%in%colnames(meta_file)) {
     for (i in nrow(m):1) {
       i_group = meta_file[i,split_col]
       control_group = meta_file[controli,split_col]
@@ -191,6 +192,7 @@ for (feat_type in feat_types) {
     feat_file_cell_pvalFULL = -log(feat_file_cell_pvalFULL0)
     feat_file_cell_pvalFULL[is.na(feat_file_cell_pvalFULL)] = 0
     feat_file_cell_pvalFULL[feat_file_cell_pvalFULL==Inf] = 10^(ceiling(log(max(feat_file_cell_pvalFULL[feat_file_cell_pvalFULL!=Inf]),10)))
+    feat_file_cell_pvalFULL = Matrix(feat_file_cell_pvalFULL, sparse=T)
     save(feat_file_cell_pvalFULL, file=paste0(feat_file_cell_pval_dir, adj, "FULL.", feat_type,".Rdata"))
     
     trimRowIndex <- apply(feat_file_cell_pvalFULL0[,-1], 1, function(x) all(x<=(pval_thres)))
@@ -208,19 +210,19 @@ for (feat_type in feat_types) {
     save(feat_file_cell_pvalTRIM, file=paste0(feat_file_cell_pval_dir, adj, ".", feat_type,".TRIM.Rdata"))
     
     mt = m
-    mt[trimIndex] = 0
+    mt[as.matrix(trimIndex)] = 0
     if (writecsv) write.csv(mt, file=paste0(feat_dir,"/",feat_type, adj, ".", feat_type,".TRIM.csv"), row.names=T)
     mt = Matrix(mt, sparse=T, dimnames=dimnames(m))
     save(mt, file=paste0(feat_dir,"/",feat_type, adj, ".", feat_type,".TRIM.Rdata"))
     
     if (adj=="") { #don't need to trim others with adjusted p values, too much space taken up lol
-      save(feat_file_cell_logfoldFULL, file=paste0(feat_file_cell_logfold_dir, ".", feat_type,".FULL.Rdata"))
+      save(feat_file_cell_logfoldFULL, file=paste0(feat_file_cell_logfold_dir, "FULL.", feat_type,".Rdata"))
       
       feat_file_cell_logfold = feat_file_cell_logfoldTRIM = feat_file_cell_logfoldFULL[!trimRowIndex,!trimColIndex]
       save(feat_file_cell_logfold, file=paste0(feat_file_cell_logfold_dir, ".", feat_type,".Rdata"))
       if (writecsv) write.csv(feat_file_cell_logfold, file=paste0(feat_file_cell_logfold_dir, ".", feat_type,".csv"))
       
-      feat_file_cell_logfoldTRIM[trimIndex] = 0
+      feat_file_cell_logfoldTRIM[as.matrix(trimIndex)] = 0
       if (writecsv) write.csv(feat_file_cell_logfoldTRIM, file=paste0(feat_file_cell_logfold_dir, ".", feat_type,".TRIM.csv"), row.names=T)
       feat_file_cell_logfoldTRIM = Matrix(feat_file_cell_logfoldTRIM, sparse=T, dimnames=dimnames(feat_file_cell_logfoldTRIM))
       save(feat_file_cell_logfoldTRIM, file=paste0(feat_file_cell_logfold_dir, ".", feat_type,".TRIM.Rdata"))
@@ -236,7 +238,7 @@ for (feat_type in feat_types) {
 }
 
 cat("\nTime taken to calculate p values & barcode matrices is: ",time_output(start), "\n", sep="") #3iTcell ~40min
-
+}
 
 
 

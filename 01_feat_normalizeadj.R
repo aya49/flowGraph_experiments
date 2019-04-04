@@ -4,8 +4,10 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
-result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+# result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  if (grepl("artificial",result_dir)) next
+  
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
@@ -16,7 +18,6 @@ feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
 
 ## output directories
 feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
-feat_file_cell_countAdjLog_dir = paste(feat_dir, "/file-cell-countAdjLog", sep="")
 norm_dir = paste(result_dir, "/cell_count_norm",sep=""); dir.create(norm_dir,showWarnings=F)
 norm_factor_dir = paste(norm_dir, "/norm_factor", sep=""); dir.create(norm_factor_dir,showWarnings=F) #plot of norm factor for each file
 norm_factor_diff_dir = paste(norm_dir, "/norm_factor_diff", sep="")
@@ -104,7 +105,7 @@ save(fdiff0, file=paste0(norm_factor_diff_dir,".Rdata"))
 if (writecsv) write.csv(fdiff0, file=paste0(norm_factor_diff_dir,".csv"), row.names=T)
 
 time_output(start)
-
+}
 
 
 
