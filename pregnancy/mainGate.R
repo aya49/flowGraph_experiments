@@ -1126,11 +1126,7 @@ props.events.gates <- llply(1:nrow(file.names), function(i){
     
     ## End Plots-----
     
-  },error = function(err) {
-
-    return(0)
-  }
-  ) # end of tryCatch
+  },error = function(err) { return(NULL) } ) # end of tryCatch
 
   #list(x$FCS.files,all.props, all.events, all.gthres, Filters.list)
   list(x$FCS.files,all.props, all.events, all.gthres, all.freqFeatures)
