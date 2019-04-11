@@ -2,16 +2,11 @@
 # aya43@sfu.ca 20161220
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-controlL = c("+_+|+_Y","+_+|+_Y","WildType","WildType","WildType") #control value in target_col column
-ci = 1; panel = panelL[ci]; centre = centreL[ci]
-
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 ## input directories
 feat_dir = paste(result_dir, "/feat", sep="")
 
@@ -20,11 +15,10 @@ stat_dir = paste(result_dir, "/stats", sep=""); dir.create(stat_dir, showWarning
 png_dir = paste(stat_dir, "/stats_count.png", sep="")
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-libr("stringr")
-libr("foreach")
-libr("doMC")
-libr("colorspace")
+source("source/_funcAlice.R")
+libr(c("stringr",
+       "foreach","doMC",
+       "colorspace"))
 
 ## cores
 no_cores = detectCores()-1
@@ -102,7 +96,7 @@ graphics.off()
 
 TimeOutput(start)
 
-
+}
 
 
 

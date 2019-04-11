@@ -1,27 +1,25 @@
 # Count Stats: significant cell population stats
 # aya43@sfu.ca 20161220
 
-#Directory
-root = "~/projects/IMPC"
-result_dir = "result"; suppressWarnings(dir.create (result_dir))
+## root directory
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 #Options
 options(stringsAsFactors=FALSE)
 # options(device="cairo")
 options(na.rm=T)
 
 #Input
-phenoMeta_dir = paste(result_dir, "/", panelL, "/", centreL, "/phenoMeta.Rdata", sep="")
-sampleMeta_dir = paste(result_dir, "/", panelL, "/", centreL, "/sampleMeta.Rdata", sep="")
-matrixPvalTRIM_dir = paste(result_dir, "/", panelL, "/", centreL, "/matrixPvalTRIM_CountAdj.Rdata",sep="")
-rchy_dir = paste(result_dir, "/", panelL, "/", centreL, "/rchy", sep="")
+phenoMeta_dir = paste(result_dir, "/phenoMeta.Rdata", sep="")
+sampleMeta_dir = paste(result_dir, "/sampleMeta.Rdata", sep="")
+matrixPvalTRIM_dir = paste(result_dir, "/matrixPvalTRIM_CountAdj.Rdata",sep="")
+rchy_dir = paste(result_dir, "/rchy", sep="")
 
 #Output
-stats_dir = paste(result_dir, "/", panelL, "/", centreL, "/stats", sep=""); for (ri in 1:length(stats_dir)) { suppressWarnings(dir.create(stats_dir[ri])) }
+stats_dir = paste(result_dir, "/stats", sep=""); for (ri in 1:length(stats_dir)) { suppressWarnings(dir.create(stats_dir[ri])) }
 sigGene_dir = paste(stats_dir, "/sigGene", sep="") #sig nodes in common per gene
 perFile_dir = paste(stats_dir, "/perFile", sep="") #sig nodes & layers per file
 sigFile_dir = paste(stats_dir, "/sigFile", sep="") #sig nodes in common per file
@@ -32,7 +30,7 @@ rchyNodesFile_dir = paste(stats_dir, "/rchyNodesFile", sep="") #should be max of
 rchyEdgesFileDiff_dir = paste(stats_dir, "/rchyEdgesFileDiff", sep="") #should be max of all included
 rchyNodesFileDiff_dir = paste(stats_dir, "/rchyNodesFileDiff", sep="") #should be max of all included
 
-source("~/projects/IMPC/code/_funcAlice.R")
+source("source/_funcAlice.R")
 libr("foreach")
 libr("doMC")
 libr("RchyOptimyx")
@@ -260,3 +258,4 @@ for (ci in 1:length(paste0(panelL,centreL))) {
 
 
 TimeOutput(start)
+}

@@ -2,16 +2,11 @@
 # aya43@sfu.ca 20161220
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-controlL = c("+_+|+_Y","+_+|+_Y","WildType","WildType","WildType") #control value in target_col column
-ci = 1; panel = panelL[ci]; centre = centreL[ci]
-
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
 meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -24,27 +19,21 @@ single_dir = paste(stat_dir, "/singlephen", sep=""); dir.create(single_dir, show
 
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
-libr("stringr")
-libr("colorspace")
-libr("changepoint") # libr(proxy)
-libr("FKF")
-libr("fastcluster")
-libr("dendextend")
-libr("circlize")
-libr("Rtsne")
-libr("MASS")
-libr("RDRToolbox")
-libr("scater")
-libr("foreach")
-libr("doMC")
-libr("lubridate") #if there are date variables
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr","colorspace",
+     "changepoint", # libr(proxy)
+     "FKF",
+     "fastcluster","dendextend","circlize",
+     "Rtsne",
+     "MASS","RDRToolbox","scater",
+     "foreach","doMC",
+     "lubridate")) #if there are date variables
 
 
 
 ## cores
-no_cores = 8#detectCores() - 1
+no_cores = detectCores() - 1
 registerDoMC(no_cores)
 
 
@@ -60,15 +49,15 @@ countThres = 2000 #columns/rows must have at least goodCount number of elements 
 good_count = 3
 good_sample = 3 #need more than good_sample samples per class for class to be included
 
-interested_cols = c("gene", "gender", "date", "colony", "strain", "fur", "birth_date", "specimen", "sample") #sampleMeta columns to plot
+interested_cols = c("class", "gender", "date", "colony", "strain", "fur", "birth_date", "specimen", "sample") #sampleMeta columns to plot
 interested_cont_cols = c("date","birth_date") #continuous variables
-target_col = "gene" #column with control/experiment
-id_col = "fileName"
+target_col = "class" #column with control/experiment
+id_col = "id"
 split_col = NULL #NULL if split by nothing
 time_col = "date"
 order_cols = c("barcode","sample","specimen","date")
 
-control = str_split(controlL[ci],"[|]")[[1]]
+control = "control"
 
 dofullPCA = F #do PCA for all cell popoulations not just first level
 plotpc = 5 #number of pca pc to plot
@@ -346,12 +335,12 @@ a = foreach (feat_type=feat_types) %dopar% { cat("\n  ", feat_type, ": ")
     
   }
   
-  cat("\n centre ", centre, " ",TimeOutput(start2)," \n",sep="")
+  TimeOutput(start2)
 }
 
 TimeOutput(start)
 
-
+}
 
 
 

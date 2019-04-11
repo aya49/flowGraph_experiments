@@ -40,7 +40,7 @@ writecsv = F
 
 adjust = c("","BY","BH","bonferroni") #pvalue adjustment
 #test = "wilcox" #pvalue test
-cellCountThres = 200 #insignificant if count under
+cellCountThres = 1000 #insignificant if count under
 pval_thres = .025 #delete phenotypes/rows without any significant changes from the pVal matrix
 good_sample = 3 #only compare if >=3 samples available
 good_sample_wt = 15 #min 70 wt used to compare with KO

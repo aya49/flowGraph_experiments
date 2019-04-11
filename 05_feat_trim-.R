@@ -2,10 +2,11 @@
 # aya43@sfu.ca 20180405
 
 ## root directory
-root = "~/projects/flowCAP-II"
-result_dir = "result"; suppressWarnings(dir.create (result_dir))
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
@@ -18,10 +19,8 @@ feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings
 
 ## libraries
 source("~/projects/IMPC/code/_funcAlice.R")
-libr("stringr")
-libr("entropy")
-libr("foreach")
-libr("doMC")
+libr(c("stringr","entropy",
+     "foreach","doMC"))
 
 
 
@@ -108,7 +107,7 @@ a = foreach (feat_path = feat_paths) %dopar% {
 
 TimeOutput(start)
 
-
+}
 
 
 
