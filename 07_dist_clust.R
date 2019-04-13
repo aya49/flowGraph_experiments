@@ -16,7 +16,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_train_dir = paste0("attachments/AMLTraining.csv") #which FCM files are testing/training files for flowCAP data set
   
   ## output directories
-  clust_dir = paste0(result_dir,"/dist_clust")
+  clust_dir = paste0(result_dir,"/clust/dist_clust")
   clust_plot_dir = paste(clust_dir, "/plot", sep=""); 
   dir.create(clust_plot_dir, showWarnings=F, recursive=T)
   
@@ -218,6 +218,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             legend("topleft", legend=levels(factor(class)), pch=16, col=unique(factor(class)))
             points(tsned, cex=2, col=factor(clt))
             
+            names(clt) = rownames(d)
             clusts[[paste0(cmethod,".",par)]] = list()
             clusts[[paste0(cmethod,".",par)]][["x"]] = clt
             

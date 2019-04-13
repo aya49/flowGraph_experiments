@@ -1,42 +1,28 @@
-## Input: bicluster --> Output: bicluster scores
+## Input: bi/cluster --> Output: bi/cluster scores for samples
 # aya43@sfu.ca 20180328
 
 ## root directory
-root = "~/projects/IMPC"
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
-panelL = c("P1")
-centreL = c("Sanger_SPLEEN")#,"Sanger_MLN","CIPHE","TCP","H")
-controlL = c("+_+|+_Y","+_+|+_Y","WildType","WildType","WildType") #control value in target_col column
-ci = 1; panel = panelL[ci]; centre = centreL[ci]
-
-result_dir = paste0("result/", panelL, "/", centreL); suppressWarnings(dir.create (result_dir))
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
 meta_file_dir = paste(meta_dir, "/file", sep="")
-feat_dir = paste(result_dir, "/feat", sep="")
-dist_dir = paste(result_dir, "/dist", sep="")
-network_dir = "~/projects/network/innatedb/result/dist_DSD"
+clust_dir = paste(result_dir,  "/clust", sep="")
 
 ## output directories
-clust_dir = paste(result_dir,  "/clust", sep=""); dir.create (clust_dir,showWarnings=F)
-clust_source_dir = paste(clust_dir,  "/clust_source", sep=""); dir.create (clust_source_dir,showWarnings=F)
-biclust_source_dir = paste(clust_dir,  "/biclust_source", sep=""); dir.create (biclust_source_dir,showWarnings=F)
-biclust_plot_dir = paste(clust_dir,  "/biclust_plot", sep=""); dir.create (biclust_plot_dir,showWarnings=F)
-clust_score_dir = paste(clust_dir,  "/score", sep=""); dir.create (clust_score_dir,showWarnings=F)
+score_dir = paste(result_dir, "/score_clust", sep="")
 
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
-libr("biclust")
-libr("clues")
-libr("NMF")
-libr("pheatmap")
-libr("foreach")
-libr("doMC")
-libr("stringr")
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("biclust","NMF","pheatmap",
+       "clues",
+       "foreach","doMC",
+       "stringr"))
 
 #Setup Cores
 no_cores = 10#detectCores()-3
@@ -50,26 +36,16 @@ registerDoMC(no_cores)
 
 
 ## options for script
-overwrite = F
 readcsv = F
-network_socre = T #for IMPC / gene clusters
+overwrite = T
+target_cols = c("aml")
 
-attributes = c("aml")
-
-gene_col = "gene"
-split_col = NULL
-
-control = str_split(controlL,"[|]")[[1]]
-control2 = "[+]_[+]|[+]_Y"
-time_col = "date"
+control = "normal" #control value in target_col column for each centre
 id_col = "fileName"
-target_col = "gene"
-order_cols = c("barcode","sample","specimen","date")
+target_col = "aml"
+split_col = "tube"
 
 cmethodclass = "knn"
-
-nocontrol = T #don't include control in evaluation
-good_sample = 3 # > this much files per class need to be available
 
 # bcmethods = c("plaid","CC","bimax","BB-binary","nmf-nsNMF","nmf-lee","nmf-brunet","CC")
 # onlysigBB = T #only evaluate significant BB-binary clusters
@@ -96,23 +72,14 @@ dist_types = list.files(dist_dir, recursive=F, full.names=F, pattern=".Rdata")
 dist_types = gsub(".Rdata","",dist_types)
 
 
-dist_paths = lapply(dist_types, function(x) {
-  cp = clust_paths[grepl(paste0("/",x,"_"),clust_paths)]
-  if (length(cp)==0) return("NA")
-  return(cp)
+dist_paths = lapply(dist_types, function(dist_type) {
+  ca = clust_paths[grepl(paste0("/",dist_type,"_"),clust_paths)]
+  if (length(ca)>0) return(ca)
+  return("NA")
 })
 names(dist_paths) = dist_types
 clust_paths_rest = clust_paths[!clust_paths%in%unlist(dist_paths)]
 if (length(clust_paths_rest)>0) dist_paths[["NA"]] = clust_paths_rest
-
-
-
-
-netdist_paths = list.files(path=network_dir, full.names=T, recursive=T)#, pattern="dist_")
-
-
-
-
 
 
 
@@ -126,7 +93,7 @@ netdist_paths = list.files(path=network_dir, full.names=T, recursive=T)#, patter
 
 start = Sys.time()
 
-#get meta file
+
 if (readcsv) {
   # mc = read.csv(paste0(feat_dir,"/", feat_count,".csv"),row.names=1, check.names=F)
   meta_file = read.csv(paste0(meta_file_dir,".csv"),check.names=F)
@@ -134,20 +101,6 @@ if (readcsv) {
   # mc = get(load(paste0(feat_dir,"/", feat_count,".Rdata")))
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
 }
-
-#get network file
-netdists = list()
-for (netdist_path in netdist_paths) {
-  netdist = netdist0 = read.table(netdist_path,  check.names=F, sep="\t")
-  netdist = netdist0[-1,-1]
-  netgenes = netdist0[-1,1]
-  if (all(str_sub(netgenes,1,1)==str_sub(netgenes[1],1,1))) netgenes = str_sub(netgenes,2,-1)
-  rownames(netdist) = colnames(netdist) = netgenes
-  netdists[[fileNames(netdist_path)]] = apply(as.matrix(netdist), 2, as.numeric)
-}
-
-scorelength = 5 + 1 + length(netdist_paths)*3 #total score length = f measure + network x 3 nca, silhouette, number of genes tested
-
 
 score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
   tryCatch ({
@@ -165,45 +118,35 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
       if (!rownames(d0)[1]%in%meta_file[,id_col]) {
         cat("\nskipped: ",dist_type,", matrix rownames must match fileName column in meta_file","\n", sep="")
       } else {
+        score = NULL
+        
         rowlabel = meta_file[match(rownames(d0),meta_file[,id_col]),target_col]
         names(rowlabel) = rownames(d0)
         
-        keepind = rowlabel%in%names(table(rowlabel)>=good_sample)
-        if (grepl("IMPC",root) & nocontrol) {
-          keepind = keepind & !rowlabel%in%control2
-        }
-        rowlabel = rowlabel[keepind]
-        d0 = d0[keepind,keepind]
+        rowlabel_df = model.matrix(~ factor(rowlabel) - 1)
+        colnames(rowlabel_df) = laname = sort(unique(rowlabel))
+        rownames(rowlabel_df) = names(rowlabel)
         
-        if (length(unique(rowlabel))>1) {
-          score = c(length(rowlabel),length(unique(rowlabel)))
-          names(score) = c("n_samples", "classes")
-          
-          
-          rowlabel_df = model.matrix(~ factor(rowlabel) - 1)
-          colnames(rowlabel_df) = laname = sort(unique(rowlabel))
-          rownames(rowlabel_df) = names(rowlabel)
-          
-          
-          ## internal validation NCA (distance)
-          # if (dist_type!="NA") {
-          # cl = la0
-          # if (!"NCA"%in%names(fm[[colnam]][[dindname]][[cltype]][[par]]) | overwritef) {
-          # if (length(unique(cl))==1) { nca = NA
-          # } else { 
-          nca = NCA_score(as.matrix(d0), rowlabel)$p
-          names(nca) = "nca"
-          score = append(score, nca)
-          # }
-          # fm[[colnam]][[dindname]][[cltype]][[par]]["NCA"] = nca
-          # }
-          # }
-          score = unlist(score)
-          scores[[dist_type]] = score
-          
-          save(score,file=paste0(clust_score_dir, "/", dist_type, ".Rdata"))
-        }
+        
+        ## internal validation NCA (distance)
+        # if (dist_type!="NA") {
+        # cl = la0
+        # if (!"NCA"%in%names(fm[[colnam]][[dindname]][[cltype]][[par]]) | overwritef) {
+        # if (length(unique(cl))==1) { nca = NA
+        # } else { 
+        nca = NCA_score(as.matrix(d0), rowlabel)$p
+        names(nca) = "nca"
+        score = append(score, nca)
+        # }
+        # fm[[colnam]][[dindname]][[cltype]][[par]]["NCA"] = nca
+        # }
+        # }
+        score = unlist(score)
+        scores[[dist_type]] = score
+        
+        save(score,file=paste0(clust_score_dir, "/", dist_type, ".Rdata"))
       }
+      
       
     }
     
@@ -217,7 +160,8 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
       start2 = Sys.time()
       
       cmethod = sub(".*?clust-(.*?)_.*", "\\1", clust_path)
-
+      score = NULL
+      
       
       
       
@@ -228,9 +172,10 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
       rowclust0 = read.csv(clust_path, row.names=1)
       rowclust = rowclust0[,1]
       names(rowclust) = rownames(rowclust0)
-      if (cmethod%in%cmethodclass) rowclust = rowclust[rowclust!=0]
+      if (cmethod%in%cmethodclass) {
+        rowclust = rowclust[rowclust!=0]
+      }
       rowlabel = meta_file[match(names(rowclust),meta_file[,id_col]),target_col]
-      if (all(is.na(rowlabel))) next()
       names(rowlabel) = names(rowclust)
       
       
@@ -289,17 +234,9 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
       
       
       
-      keepind = rowlabel%in%names(table(rowlabel)>=good_sample)
-      if (grepl("IMPC",root) & nocontrol) keepind = keepind & !rowlabel%in%control2
-      rowlabel = rowlabel[keepind]
-      rowclust = rowclust[keepind]
       
       
       if (length(unique(rowclust[rowclust>0]))<2) next()
-      
-      
-      score = c(length(rowlabel),length(unique(rowlabel)))
-      names(score) = c("n_samples", "classes")
       
       rowclust_df = matrix(rep(1,length(rowclust)),ncol=1)
       rownames(rowclust_df) = names(rowclust)
@@ -445,7 +382,7 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
       scores[[clust_path]] = score
       
       save(score,file=paste0(clust_score_dir, "/", clust_path_, ".Rdata"))
-      TimeOutput(start2)
+      time_output(start2)
       
     }
     return(scores)
@@ -456,7 +393,7 @@ score_list0 = foreach(dist_type=names(dist_paths)) %dopar% {
 # score_list = unlist(score_list0, recursive=F)
 # save(score_list, file = paste0(clust_score_dir,".Rdata"))
 
-TimeOutput(start)
+time_output(start)
 
 
 
@@ -469,9 +406,9 @@ TimeOutput(start)
 
 
 
-clust_file_paths = list.files(clust_score_dir,full.names=T)
-score_list = lapply(clust_file_paths, function(x) get(load(x)))
-names(score_list) = gsub(".Rdata","",fileNames(clust_file_paths))
+score_files = list.files(clust_score_dir,full.names=T)
+score_list = lapply(score_files, function(x) get(load(x)))
+names(score_list) = score_files
 
 ## put scores into a table
 error_ind = is.na(score_list)
@@ -507,4 +444,10 @@ clust_files_table_final = cbind(clust_files_table, score_table)
 write.csv(clust_files_table_final, file = paste0(clust_score_dir,".csv"))
 
 
-TimeOutput(start)
+time_output(start)
+
+
+
+
+
+

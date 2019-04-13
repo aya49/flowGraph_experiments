@@ -301,7 +301,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   cellis = meta_cell$phenotype[meta_cell$phenolevel>2]
   cellis = cellis[cellis%in%names(meta_cell_parent_names)]
   mpe = mp
-  mpe[mpe!=0] = min(mp[mp!=0])
+  mpe[mpe==0] = min(mp[mp!=0])
   lnpropexpect = foreach(i=cellis, .combine="cbind") %dopar% {
     pnames = meta_cell_parent_names[[i]]
     parent = mpe[,colnames(mpe)%in%pnames,drop=F]
@@ -312,7 +312,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     denmtr = apply(grprnt, 1, prod)
     
     expect = (numrtr/denmtr)^(1/ncol(grprnt))
-    childr = feat_file_cell_logfold[,i]
+    childr = mpe[,i]
     lnpropexpecti = log(childr/expect)
     
     return(lnpropexpecti)

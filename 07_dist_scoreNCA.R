@@ -17,8 +17,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   dist_dir = paste(result_dir, "/dist", sep="")
   
   #Output
-  dist_score_dir = paste(dist_dir, "/dist_score", sep="")
-  # dist_score_result_dir = paste0(dist_score_dir,"/score_nac_list.Rdata")
+  score_dir = paste(result_dir, "/score_dist", sep="")
+  # dist_score_result_dir = paste0(score_dir,"/score_nac_list.Rdata")
   
   source("source/_funcAlice.R")
   source("source/_funcdist.R")
@@ -53,7 +53,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_train = read.csv(meta_train_dir)
   
   ## for each feature
-  ncasl = llply(dist_types, function(dist_type) { 
+  scoresl = llply(dist_types, function(dist_type) { 
     tryCatch({ cat("\n", dist_type, " ",sep="")
       start2 = Sys.time()
       
@@ -61,24 +61,24 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       d0 = as.matrix(get(load(paste0(dist_dir,"/", dist_type,".Rdata"))))
       sm0 = meta_file[match(rownames(d0),meta_file[,id_col]),]
       
-      ncas = list()
+      scores = list()
       for (split_col in split_cols) {
         if (split_col=="none") {
           dl = list(none=d0)
           sml = list(none=sm0)
-        } else if (!split_col%in%colnames(meta_file)) { next
+        } else if (!split_col%in%colnames(sm0)) { next
         } else {
-          inds = llply(unique(meta_file[,split_col]), function(x) meta_file[,split_col]==x)
+          inds = llply(unique(sm0[,split_col]), function(x) sm0[,split_col]==x)
           dl = llply(inds, function(xi) d0[xi,xi])
           sml = llply(inds, function(xi) sm0[xi,xi])
         }
         
-        ncas[[split_col]] = list()
+        scores[[split_col]] = list()
         for (split_i in names(dl)) {
           d = dl[[split_i]]
           sm = sml[[split_i]]
           
-          ncas[[split_col]][[paste0(split_i,".",nrow(sm))]] = list()
+          scores[[split_col]][[paste0(split_i,".",nrow(sm))]] = list()
           for (target_col in target_cols) {
             if (!target_col%in%colnames(sm)) next
             
@@ -91,32 +91,34 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             dirname = paste0(target_col, ".",
                              ifelse(length(class_unique)<10, 
                                     paste0(paste0(class_unique, "-",sapply(class_unique, function(x) sum(sm[,target_col]==x))), collapse="/"), length(class_unique)))
-            # dist_score_dir1 = paste0(dist_score_dir,"/",dirname,"/splitby_",split_col,"-",split_i,".",nrow(sm)); dir.create(dist_score_dir1, showWarnings=F, recursive=T)
+            # score_dir1 = paste0(score_dir,"/",dirname,"/splitby_",split_col,"-",split_i,".",nrow(sm)); dir.create(score_dir1, showWarnings=F, recursive=T)
             
-            # dcname1 = paste0(dist_score_dir1, "/", dist_type)
+            # dcname1 = paste0(score_dir1, "/", dist_type)
             # #to do or not to do
             # if (file.exists(dcname1) & !overwrite) next
             
-            ncas[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = NCA_score(d, class, doUnderflow=doUnderflow)$p #2min, 21s
+            scores[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list(nca=NCA_score(d, class, doUnderflow=doUnderflow)$p) #2min, 21s
           }# target col
         }# split_i
       }# split_col
-      return(ncas)
+      return(scores)
       # }, error = function(e) {
       #   cat(paste("ERROR:  ",e)); return(T)
     })
   }, .parallel=T)
-  names(ncasl) = dist_types
+  names(scoresl) = paste0(dist_types,"/")
   
   # save
-  ncaslul = unlist(ncasl)
-  ncasna = str_split(names(ncaslul),"[.]")
-  dists = sapply(ncasna, function(x) paste0(x[1:(length(x)-4)],sep="."))
-  splitcols = sapply(ncasna, function(x) x[length(x)-3])
-  splitis = sapply(ncasna, function(x) x[length(x)-2])
-  targcols = sapply(ncasna, function(x) paste0(x[(length(x)-1):length(x)],": "))
-  scores = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, class=targcols, NCA_score=scores)
-  write.csv(scores, paste0(dist_score_dir, ".csv"))
+  scoreslul = unlist(scoresl)
+  dists = sapply(str_split(names(scoreslul),"/"), function(x) x[1])
+  scoresluln = sapply(str_split(names(scoreslul),"/"), function(x) gsub("^[.]","",x[2]))
+  scoresna = str_split(scoresluln,"[.]")
+  splitcols = sapply(scoresna, function(x) x[1])
+  splitis = sapply(scoresna, function(x) x[2])
+  targcols = sapply(scoresna, function(x) paste0(x[3:(length(x)-1)],": "))
+  score_types = sapply(scoresna, function(x) paste0(x[length(x)],": "))
+  score_table = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, class=targcols, score_type=score_types, score=scoreslul)
+  write.csv(score_table, paste0(score_dir, ".csv"))
   
   time_output(start)
   

@@ -72,6 +72,8 @@ cluster_v2m = function(x) {
   for (i in 1:length(x)) {
     xx[i,ncoll==x[i]]
   }
+  colnames(xx) = ncoll
+  rownames(xx) = names(x)
   return(xx)
 }
 
