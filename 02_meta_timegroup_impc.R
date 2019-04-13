@@ -5,7 +5,9 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
-result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  if (!grepl("impc",result_dir,ignore.case=T)) next
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
@@ -137,6 +139,6 @@ if (feat_type==feat_count & nrow(sm)==nrow(meta_file)) {
 
 time_output(start)
 
-
+}
 
 
