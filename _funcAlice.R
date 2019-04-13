@@ -64,6 +64,27 @@ loopInd <- function(x,n) {
   return(split(x, ceiling(seq_along(x)/ceiling(length(x)/n))))
 }
 
+# INPUT: clustering index vector (numerical)
+# OUTPUT: clustering index matrix
+cluster_v2m = function(x) {
+  ncoll = unique(x)
+  xx = Matrix(0, ncol=length(ncoll), nrow=length(x), sparse=T)
+  for (i in 1:length(x)) {
+    xx[i,ncoll==x[i]]
+  }
+  return(xx)
+}
+
+# INPUT: clustering index matrix
+# OUTPUT: clustering index vector (numerical)
+cluster_m2v = function(xx) {
+  x = NULL
+  for (i in 1:nrow(xx)) {
+    x[i] = which(xx[i,]>0)
+  }
+  return(x)
+}
+
 # INPUT: val=vector of values; group=whether these values are in different groups
 # OUTPUT: density histogram plot; saves as html
 dens_plot <- function(val,group=NULL,filename=NULL,title="Density with Histogram overlay",binwidth=(max(val,na.rm=T)-min(val,na.rm=T))/50,fillh="#FF7C8E",filld="#CAE2D0",multipleoverlay="stack", hist=T) {

@@ -238,6 +238,12 @@ for (feat_type in feat_types) {
 }
 
 cat("\nTime taken to calculate p values & barcode matrices is: ",time_output(start), "\n", sep="") #3iTcell ~40min
+
+# change "normal" to "control", normal is just used to do p value in flowcap
+if (grepl("flowcap", result_dir)) {
+  meta_file$class[meta_file$class=="normal"] = "control"
+  save(meta_file,file=paste0(meta_file_dir,".Rdata"))
+}
 }
 
 

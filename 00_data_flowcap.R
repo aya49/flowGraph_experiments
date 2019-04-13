@@ -8,14 +8,14 @@ setwd(root)
 result_dir = paste0(root, "/result/flowcap"); dir.create(result_dir, showWarnings=F, recursive=T)
 # result_dir = "results"
 # suppressWarnings(dir.create (result_dir, recursive=T))
-data_dir = "/mnt/f/FCS data/Immune_Clock_Human_Pregnancy/Results/FR-FCM-ZY3Q" #main data directory 
-data_dir = "/mnt/f/FCS data/Immune_Clock_Human_Pregnancy/Results/FR-FCM-ZY3R" #main data directory 
+data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
 
 
 
 ## input directories
 ft_dir = paste0(data_dir,"/FT") #flowtype file directory
 csv_dir = paste0(data_dir,"/AML.csv") #meta file directory
+csv_dir2 = paste0(data_dir,"/AMLTraining.csv") #meta file directory
 
 ## output directories (see last section, output split by tube/panel)
 
@@ -94,6 +94,7 @@ meta_file$tube = unlist(sm[,2])
 meta_file$specimen = unlist(sm[,3])
 meta_file$class = unlist(sm[,4])
 colnames(meta_file) = colnames(meta_filetemp)
+meta_file_trt = read.csv(csv_dir2) # meta file with training/testing, not used.
 
 rownames(feat_file_cell_count) = meta_file[,1] = ftFileNames
 colnames(feat_file_cell_count) = meta_cell$phenotype

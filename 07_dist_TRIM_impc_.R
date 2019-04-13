@@ -56,6 +56,7 @@ dis = c("euclidean", "manhattan", "canberra", "mahalanobis") #
 disnoavg = c("euclidean", "manhattan", "canberra", "bray", "kulczynski", "morisita", "horn", "binomial")  #dis measures that don't average over number of features
 disindist = c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski") #use dist function when possible, instead of vegdist
 
+k=4
 
 no_cores = 5#detectCores()-1
 registerDoMC(no_cores)

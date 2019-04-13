@@ -2,10 +2,11 @@
 # aya43@sfu.ca 20180526
 
 ## root directory
-root = "~/projects/flowCAP-II"
-result_dir = "result"; suppressWarnings(dir.create (result_dir))
+root = "~/projects/flowtype_metrics"
 setwd(root)
-
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
 ## input directories
 meta_dir = paste0(result_dir,"/meta")
 meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -18,8 +19,8 @@ clust_dir = paste(result_dir, "/clust", sep=""); dir.create(clust_dir, showWarni
 clust_source_dir = paste0(clust_dir,"/clust_source"); dir.create(clust_source_dir, showWarnings=F)
 
 ## libraries
-source("~/projects/IMPC/code/_funcAlice.R")
-source("~/projects/IMPC/code/_funcdist.R")
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
 libr("FastKNN")
 libr("cluster")
 libr("mclust")
@@ -242,7 +243,7 @@ a = foreach(feat_type=feat_types) %dopar% {
   })
 }
 
-TimeOutput(start)
+time_output(start)
 
 
 
@@ -269,4 +270,4 @@ TimeOutput(start)
 # feat_types[!feat_types%in%unique(mattype)[mattype2]] #not done
 # 
 
-
+}
