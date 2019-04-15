@@ -293,7 +293,7 @@ meta_file <- meta_file[rowIndex,]
 meta_file$gene[grepl(IMPC_control,meta_file$gene)] = "control"
 meta_file$gene[grepl("wildtype",meta_file$gene, ignore.case=T)] = "control"
 colnames(meta_file)[colnames(meta_file)=="gene"] = "class"
-if (grepl("gender", colnames(meta_file))) { 
+if ("gender" %in% colnames(meta_file)) { 
   meta_file$gender = as.character(meta_file$gender)
   meta_file$gender[meta_file$gender=="0"] = "control"
   meta_file$gender[meta_file$gender=="1"] = "male"

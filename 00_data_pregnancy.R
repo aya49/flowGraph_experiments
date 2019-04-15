@@ -14,7 +14,7 @@ gthres_dir = paste0(input_dir, "/gthres.Rdata")
 filters_dir = paste0(input_dir, "/filters.Rdata")
 
 ## ouput
-result_dir = paste0(root, "/result/pregnancy"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/pregnancy")#; dir.create(result_dir, showWarnings=F, recursive=T)
 
 
 
@@ -44,7 +44,7 @@ start = Sys.time()
 gs = load_gs(gs_dir)
 
 
-fslist = as(fs,Class="list")
+fslist = as(getData(gs),Class="list")
 markers = c(# "CD11b", "CD11c", 
   "CD123", "CD14", "CD16", 
   # "CD19", 

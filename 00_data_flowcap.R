@@ -5,7 +5,7 @@
 root = "~/projects/flowtype_metrics"
 setwd(root)
 
-result_dir = paste0(root, "/result/flowcap"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/flowcap") #; dir.create(result_dir, showWarnings=F, recursive=T)
 # result_dir = "results"
 # suppressWarnings(dir.create (result_dir, recursive=T))
 data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory

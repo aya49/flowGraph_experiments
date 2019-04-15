@@ -28,7 +28,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_count = "file-cell-countAdj"
   
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
-  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
+  feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKOFULL.",feat_count,"",sep="")
   feat_file_cell_logfold_dir = paste(feat_dir, "/file-cell-logfoldFULL.",feat_count, sep="")
@@ -74,7 +74,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #get list of children for each non-leaf node & save
   cat("\ncreating child matrix")
   
-  m = get(load(paste0(feat_file_cell_count_dir,".Rdata")))
+  m = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   mp = get(load(paste0(feat_file_cell_prop_dir,".Rdata")))
   

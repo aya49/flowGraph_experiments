@@ -1,4 +1,4 @@
-## Input: count adjusted matrix --> Output: add a third category of samples such that it is a mix of normals and aml
+## Input: count adjusted matrix --> Output: add a third category of samples such that it is a mix of normals and aml (must run 00_data_flowcap.R before running this, every time)
 #aya43@sfu.ca 20151228
 
 ## root directory
@@ -12,14 +12,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")
+  meta_cell_dir = paste(meta_dir, "/cell", sep="")
   feat_dir = paste(result_dir, "/feat", sep="")
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
   
   ## output directories
   meta_dir_ = paste0(result_dir,".artificial/meta"); dir.create(meta_dir_, recursive=T)
   meta_file_dir_ = paste(meta_dir_, "/file", sep="")
+  meta_cell_dir_ = paste(meta_dir_, "/cell", sep="")
   feat_dir_ = paste(result_dir, ".artificial/feat", sep=""); dir.create(feat_dir_, recursive=T)
   feat_file_cell_countAdj_dir_ = paste(feat_dir_, "/file-cell-countAdj", sep="")
+  feat_file_cell_prop_dir_ = paste(feat_dir_, "/file-cell-prop", sep="")
   
   
   ## libraries
@@ -53,6 +56,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   #Prepare data
+  meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   feat_file_cell_countAdj0 = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
   
@@ -82,8 +86,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_file_cell_countAdj = rbind(feat_file_cell_countAdj0,feat_file_cell_countAdj2)
   meta_file = rbind(meta_file0, data.frame(id=max(meta_file0$id)+c(1:length(randomind)), class=rep("frankenstein", length(randomind))))
   
+  feat_file_cell_prop = feat_file_cell_countAdj/feat_file_cell_countAdj[,1]
+  
+  save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir_,".Rdata"))
   save(feat_file_cell_countAdj, file=paste0(feat_file_cell_countAdj_dir_,".Rdata"))
   save(meta_file, file=paste0(meta_file_dir_,".Rdata"))
+  save(meta_cell, file=paste0(meta_cell_dir_,".Rdata"))
   
   time_output(start)
 }

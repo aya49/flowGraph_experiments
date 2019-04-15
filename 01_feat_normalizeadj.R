@@ -4,6 +4,34 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+## libraries
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "pracma",
+       "foreach","doMC"))
+# libr(flowDensity)
+
+## cores
+no_cores = detectCores()-1
+registerDoMC(no_cores)
+
+
+
+## options
+writecsv = F
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+id_col = "id"
+target_col = "class" #column with control/experiment
+control = "control" #control value in target_col column
+
+cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
+layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
+cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   if (grepl("artificial",result_dir)) next
@@ -21,34 +49,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   norm_dir = paste(result_dir, "/cell_count_norm",sep=""); dir.create(norm_dir,showWarnings=F)
   norm_factor_dir = paste(norm_dir, "/norm_factor", sep=""); dir.create(norm_factor_dir,showWarnings=F) #plot of norm factor for each file
   norm_factor_diff_dir = paste(norm_dir, "/norm_factor_diff", sep="")
-  
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr", "pracma",
-         "foreach","doMC"))
-  # libr(flowDensity)
-  
-  ## cores
-  no_cores = detectCores()-1
-  registerDoMC(no_cores)
-  
-  
-  
-  ## options
-  writecsv = F
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  id_col = "id"
-  target_col = "class" #column with control/experiment
-  control = "control" #control value in target_col column
-  
-  cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
-  layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
-  cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
-  
   
   
   #Prepare data
