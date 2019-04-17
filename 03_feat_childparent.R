@@ -5,6 +5,29 @@
 root = "~/projects/flowtype_metrics"
 setwd(root)
 
+## libraries
+source("source/_funcAlice.R")
+libr(c("stringr", "Matrix", "entropy",
+       "foreach", "doMC"))
+
+
+## cores
+no_cores = 10#detectCores() - 1
+registerDoMC(no_cores)
+
+
+## options
+options(stringsAsFactors=FALSE)
+options(device="cairo")
+options(na.rm=T)
+
+create_child_entropy = T
+create_parent_entropy = T
+
+writecsv = F
+
+feat_count = "file-cell-countAdj"
+
 start = Sys.time()
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
@@ -25,7 +48,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_cell_parentpn_names_dir = paste(meta_dir, "/cell_parentpn_names",sep="")
   # meta_cell_parentpn_ind_dir = paste(meta_dir, "/cell_parentpn_ind",sep="")
   
-  feat_count = "file-cell-countAdj"
   
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
@@ -43,30 +65,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_file_edge_contrib_dir = paste(feat_dir, "/file-edge-contrib-",feat_count,sep="")
   feat_file_edge_effort_dir = paste(feat_dir, "/file-edge-effort-",feat_count,sep="")
   
-  ## libraries
-  source("source/_funcAlice.R")
-  libr(c("stringr", "entropy",
-         "foreach", "doMC"))
-  
-  
-  ## cores
-  no_cores = 8#detectCores() - 1
-  registerDoMC(no_cores)
-  
-  
-  ## options
-  options(stringsAsFactors=FALSE)
-  options(device="cairo")
-  options(na.rm=T)
-  
-  create_child_entropy = T
-  create_parent_entropy = T
-  
-  writecsv = F
-  
-  
-  
-  
   
   
   start1 = Sys.time()
@@ -74,12 +72,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #get list of children for each non-leaf node & save
   cat("\ncreating child matrix")
   
-  m = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
+  m = Matrix(get(load(paste0(feat_file_cell_countAdj_dir,".Rdata"))))
+
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
-  mp = get(load(paste0(feat_file_cell_prop_dir,".Rdata")))
+  mp = Matrix(get(load(paste0(feat_file_cell_prop_dir,".Rdata"))))
   
-  feat_file_cell_logfold = get(load(paste0(feat_file_cell_logfold_dir,".Rdata")))
-  feat_file_cell_countAdjKO = get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdata")))
+  feat_file_cell_logfold = Matrix(get(load(paste0(feat_file_cell_logfold_dir,".Rdata"))))
+  feat_file_cell_countAdjKO = Matrix(get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdata"))))
   
   # meta_cell_child = get(load(paste0(meta_cell_child_dir,".Rdata")))
   # meta_cell_child_names = get(load(paste0(meta_cell_child_names_dir,".Rdata")))
@@ -106,10 +105,16 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     pnames = names(meta_cell_childpn_names)[i]
     parent = m[,colnames(m)%in%pnames]
     cnames = unlist(meta_cell_childpn_names[[i]])
-    childr = m[,cnames,drop=F]
+    childr = m[,cnames,drosp=F]
     childr[childr<1] = parent[parent<1] = 1
     
+    # tryCatch({
     childprop = exp(childr/parent)
+    # }, error = function(err) { 
+    #   parent = unlist(parent)
+    #   childprop = childr
+    #   for (j in 1:ncol(childr)) childprop[,j] = exp(unlist(childr[,j])/parent)
+    # })
     colnames(childprop) = paste0(pnames, "_", cnames)
     return(childprop)
   }
@@ -205,9 +210,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   cat(", parententropy")
   
   meta_cell_parent_names_ = meta_cell_parent_names
-  for (i in 1:length(meta_cell_parent_names)) {
+  for (i in 1:length(meta_cell_parent_names))
     if (length(meta_cell_parent_names[[i]])<2) meta_cell_parent_names_[[i]] = NULL
-  }
   feat_file_cell_entropyparent = foreach(i = 1:length(meta_cell_parent_names_), .combine='cbind') %dopar% { #for each phenotype
     # Entropy matrix
     en = rep(0,nrow(m))

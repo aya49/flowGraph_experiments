@@ -21,7 +21,7 @@ libr(c("stringr",
        "colorspace"))
 
 ## cores
-no_cores = detectCores()-1
+no_cores = 10# detectCores()-1
 registerDoMC(no_cores)
 
 

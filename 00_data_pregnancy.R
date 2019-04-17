@@ -79,6 +79,10 @@ ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) 
 colnames(ft) = colnames(ftp) = ftcell
 rownames(ft) = rownames(ftp) = meta_file$id
 
+# make a control for meta_file class
+
+meta_file$class[meta_file$class==1] = "control"
+
 writecsv = F
 for (typed in unique(meta_file$type)) {
   typei = meta_file$type==typed

@@ -4,13 +4,30 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+options(stringsAsFactors=FALSE)
+#options(device="cairo")
+options(na.rm=T)
+
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "plyr", "Matrix",
+       "foreach","doMC",
+       "clues", "PerfMeas")) #if there are date variables
+
+#Setup Cores
+no_cores = 10#detectCores()-3
+registerDoMC(no_cores)
+
+overwrite = F #redo and overwrite all past scores
+
+id_col = "id"
+target_cols = c("class","gender","group") #meta_file columns to plot
+split_cols = c("gender", "group","none")
+
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
-  options(stringsAsFactors=FALSE)
-  #options(device="cairo")
-  options(na.rm=T)
-  
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -18,22 +35,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   ## output directories
   score_dir = paste(result_dir, "/score_clust", sep="")
-  
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr", "plyr",
-         "foreach","doMC",
-         "clues", "PerfMeas")) #if there are date variables
-  
-  overwrite = F #redo and overwrite all past scores
-  
-  id_col = "id"
-  target_cols = c("class","gender","group") #meta_file columns to plot
-  split_cols = c("gender", "group","none")
-  
-  
-  
-  
   
   
   
@@ -222,7 +223,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             
             
             ## internal validation silmed (distance & clustering)
-            if (!cmethod%in%cmethodclass & dist_type!="NA") {
+            # if (!cmethod%in%cmethodclass & dist_type!="NA") {
               # if (!"silmed"%in%names(fm[[colnam]][[dindname]][[cltype]][[par]]) | overwritef) {
               # if (length(unique(c))==1) { 
               #   sil = NA
@@ -232,7 +233,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # }
               # fm[[colnam]][[dindname]][[cltype]][[par]]["silmed"] = sil
               score = append(score, sil)
-            }
+            # }
             
             # if (length(unique(cl))==1) {
             #   score = rep(NA,9)

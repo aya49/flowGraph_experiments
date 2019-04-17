@@ -4,13 +4,75 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+
+## libraries
+source("source/_funcAlice.R")
+source("source/_bayesianbiclustering.R")
+libr(c("biclust", "NMF","fabia","GrNMF", #library(devtools); install_github("jstjohn/GrNMF")
+       "pheatmap",
+       "foreach","doMC",
+       "stringr", "Matrix"))
+
+## setup Cores for parallel processing (parallelized for each feature)
+no_cores = 11#detectCores()-3
+registerDoMC(no_cores)
+
+
+
+
+
+
+
+
+## options for script
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+plotsize = 500
+
+overwrite = T #overwrite biclust?
+# writecsv = F
+
+good_count = 1 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
+good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
+
+k = 6 # until what layer of cells to use
+countThres = 1000 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
+target_cols = c("class","gender") #the interested column in meta_file
+control = "control" #control value in target_col column
+id_col = "id" #the column in meta_file matching rownames in feature matrices
+order_cols = NULL #if matrix rows should be ordered by a certain column
+# split_col = "tube" # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
+
+# bcmethods = c("plaid","CC","bimax","BBbinary","nmf-nsNMF","nmf-lee","nmf-brunet","CC","GrNMF-0","GrNMF-1","GrNMF-5","GrNMF-10","fabia") #biclustering methods; GrNMF-<weight of graph regularization>
+bmethodspar = list(#knn=c(1:6), 
+  plaid=NA,
+  CC=NA,
+  bimax=NA,
+  BBbinary=NA,
+  nmf=c("nsNMF","lee","brunet"),
+  GrNMF=c(0,1,5,10),
+  fabia=NA)
+
+#,"quest", "CC", "spectral", "Xmotifs", have to change this manually in function...
+onlysigBB = T #only extract significant or all biclusters from BB-binary B2PS biclustering?
+pval_thres = .05
+Kr = 6; Kc = 20 #number of row and column biclusters for binary bayesian biclustering
+pthres = .01 #pthreshold for choosing biclusters out of all bayesian biclusters
+min_iter = 100 #BB-binary
+sig_biclust_thres = .025 # * max contribution: threshold at whifeature matrices
+qthres = .15 # quantile of nmf type methods factors; how large does factor effect need to be for bicluster to be significant
+
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta") # meta files directory
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
-  meta_cell_child_names_dir = paste(meta_dir, "/cell_child_names", sep="") #lists children cell population of each cell population; only used for graph regularized non matrix factorization
+  meta_cell_child_names_dir = paste(meta_dir, "/cell_childpn_names", sep="") #lists children cell population of each cell population; only used for graph regularized non matrix factorization
   meta_cell_dir = paste(meta_dir, "/cell", sep="")
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
@@ -18,65 +80,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   biclust_dir = paste(result_dir,  "/clust/feat", sep="") # path to save biclusterings: row clusterings, row labels, column colusterings
   biclust_plot_dir = paste(biclust_dir,  "/plot", sep="")
   dir.create (biclust_plot_dir,showWarnings=F, recursive=T)
-  
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_bayesianbiclustering.R")
-  libr(c("biclust", "NMF","fabia","GrNMF", #library(devtools); install_github("jstjohn/GrNMF")
-         "pheatmap",
-         "foreach","doMC",
-         "stringr", "Matrix"))
-  
-  ## setup Cores for parallel processing (parallelized for each feature)
-  no_cores = 15#detectCores()-3
-  registerDoMC(no_cores)
-  
-  
-  
-  
-  
-  
-  
-  
-  ## options for script
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  plotsize = 500
-  
-  overwrite = T #overwrite biclust?
-  # writecsv = F
-  
-  good_count = 1 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
-  good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
-  
-  k = 6 # until what layer of cells to use
-  countThres = 1000 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
-  target_cols = c("class","gender") #the interested column in meta_file
-  control = "control" #control value in target_col column
-  id_col = "id" #the column in meta_file matching rownames in feature matrices
-  order_cols = NULL #if matrix rows should be ordered by a certain column
-  # split_col = "tube" # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
-  
-  # bcmethods = c("plaid","CC","bimax","BBbinary","nmf-nsNMF","nmf-lee","nmf-brunet","CC","GrNMF-0","GrNMF-1","GrNMF-5","GrNMF-10","fabia") #biclustering methods; GrNMF-<weight of graph regularization>
-  bmethodspar = list(#knn=c(1:6), 
-    plaid=NA,
-    CC=NA,
-    bimax=NA,
-    BBbinary=NA,
-    nmf=c("nsNMF","lee","brunet"),
-    GrNMF=c(0,1,5,10),
-    fabia=NA)
-  
-  #,"quest", "CC", "spectral", "Xmotifs", have to change this manually in function...
-  onlysigBB = T #only extract significant or all biclusters from BB-binary B2PS biclustering?
-  pval_thres = .05
-  Kr = 6; Kc = 20 #number of row and column biclusters for binary bayesian biclustering
-  pthres = .01 #pthreshold for choosing biclusters out of all bayesian biclusters
-  min_iter = 100 #BB-binary
-  sig_biclust_thres = .025 # * max contribution: threshold at whifeature matrices
-  qthres = .15 # quantile of nmf type methods factors; how large does factor effect need to be for bicluster to be significant
   
   
   #feature matrix paths
@@ -87,23 +90,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   start = Sys.time()
   
   # read meta_file and count matrix (count matrix only to trim feature matrix of small cell populations -- only for matrices that have cell populations as column names)
-  mc = get(load(paste0(feat_dir,"/", feat_count,".Rdata")))
+  mc = Matrix(get(load(paste0(feat_dir,"/", feat_count,".Rdata"))))
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
   # make adjacency matrix ccm
@@ -123,7 +113,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       start2 = Sys.time()
       
       ## upload and prep feature matrix
-      m = mbinary = m0 = as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
+      m = mbinary = m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
       mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
       # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
       sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
@@ -190,13 +180,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           # bicluster
           # if (overwrite | !file.exists(paste0(bcname,".Rdata"))) {
-          #   if (bcmethod == "plaid") bc = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
-          #   if (bcmethod == "CC") bc = biclust(as.matrix(m), method=BCCC(), number=Kr)
-          #   if (bcmethod == "Xmotifs") bc = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
-          #   if (bcmethod == "spectral") bc = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
-          #   if (bcmethod == "bimax") bc = biclust(as.matrix(m), method=BCBimax(),number=Kr)
-          #   if (bcmethod == "quest") bc = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
-          #   if (bc@Number==0) next
+            if (bcmethod == "plaid") bc = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
+            if (bcmethod == "CC") bc = biclust(as.matrix(m), method=BCCC(), number=Kr)
+            if (bcmethod == "Xmotifs") bc = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
+            if (bcmethod == "spectral") bc = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
+            if (bcmethod == "bimax") bc = biclust(as.matrix(m), method=BCBimax(),number=Kr)
+            if (bcmethod == "quest") bc = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
+            if (bc@Number==0) next
           
           bcb = NULL
           if (bcmethod=="GrNMF" & colhascell) {

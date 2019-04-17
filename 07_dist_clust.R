@@ -4,6 +4,59 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+
+## libraries
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("FastKNN","cluster","mclust","kernlab", "igraph", 
+       "tsne",
+       "densitycut", #devtools::install_bitbucket("jerry00/densitycut_dev")
+       "foreach","doMC",
+       "stringr"))
+
+#Setup Cores
+no_cores = 10#detectCores()-3
+registerDoMC(no_cores)
+
+
+
+
+## options for script
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+readcsv = F
+
+
+overwrite = T #overwrite clustering?
+
+plotsize = 300
+
+# countThres = c(1000) #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
+# good_count = 3 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
+# good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
+# feat_count = "file-cell-countAdj" # cell count features used to trim matrix, not used
+
+target_cols = c("class","gender") #the interested column in meta_file
+# control = "control" #control value in target_col column
+id_col = "id" #the column in meta_file matching rownames in feature matrices
+order_cols = NULL #if matrix rows should be ordered by a certain column
+split_col = NULL # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
+
+# cmethods = c("distmatrix","knn","kmed", "kmeans","lv","spec","spec1","hc") #rw1 #clustering methods
+# cmethodsclass = c("knn") # classification
+# # clustering/classification parameters
+cmethodspar = list(#knn=c(1:6), 
+  kmed=NA,
+  kmeans=NA,
+  lv=c(0,.05,.1,.2), 
+  # spec=list(methods=c("rbf"), kpar="automatic",tries=1), 
+  spec1=NA, 
+  hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
+
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
@@ -19,58 +72,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   clust_dir = paste0(result_dir,"/clust/dist_clust")
   clust_plot_dir = paste(clust_dir, "/plot", sep=""); 
   dir.create(clust_plot_dir, showWarnings=F, recursive=T)
-  
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("FastKNN","cluster","mclust","kernlab", "igraph", 
-         "tsne",
-         "densitycut", #devtools::install_bitbucket("jerry00/densitycut_dev")
-         "foreach","doMC",
-         "stringr"))
-  
-  #Setup Cores
-  no_cores = 10#detectCores()-3
-  registerDoMC(no_cores)
-  
-  
-  
-  
-  ## options for script
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  readcsv = F
-  
-  
-  overwrite = T #overwrite clustering?
-  
-  plotsize = 300
-  
-  # countThres = c(1000) #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
-  # good_count = 3 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
-  # good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
-  # feat_count = "file-cell-countAdj" # cell count features used to trim matrix, not used
-  
-  target_cols = c("class","gender") #the interested column in meta_file
-  # control = "control" #control value in target_col column
-  id_col = "id" #the column in meta_file matching rownames in feature matrices
-  order_cols = NULL #if matrix rows should be ordered by a certain column
-  split_col = NULL # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
-  
-  # cmethods = c("distmatrix","knn","kmed", "kmeans","lv","spec","spec1","hc") #rw1 #clustering methods
-  # cmethodsclass = c("knn") # classification
-  # # clustering/classification parameters
-  cmethodspar = list(#knn=c(1:6), 
-    kmed=NA,
-    kmeans=NA,
-    lv=c(0,.05,.1,.2), 
-    # spec=list(methods=c("rbf"), kpar="automatic",tries=1), 
-    spec1=NA, 
-    hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
-  
-  
   
   
   start = Sys.time()

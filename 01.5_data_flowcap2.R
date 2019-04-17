@@ -83,6 +83,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     frankenstein = weight*colSums(feat_file_cell_countAdj0[append(ni,ai),])
     return(frankenstein)
   }
+  rownames(feat_file_cell_countAdj2) = c((1+nrow(feat_file_cell_countAdj0)):(nrow(feat_file_cell_countAdj2)+nrow(feat_file_cell_countAdj0)))
   feat_file_cell_countAdj = rbind(feat_file_cell_countAdj0,feat_file_cell_countAdj2)
   meta_file = rbind(meta_file0, data.frame(id=max(meta_file0$id)+c(1:length(randomind)), class=rep("frankenstein", length(randomind))))
   

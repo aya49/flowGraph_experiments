@@ -4,12 +4,34 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+options(stringsAsFactors=FALSE)
+#options(device="cairo")
+options(na.rm=T)
+
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "plyr",
+       "foreach","doMC",
+       "Brobdingnag","lubridate")) #if there are date variables
+
+#Setup Cores
+no_cores = 10#detectCores()-3
+registerDoMC(no_cores)
+
+doUnderflow = T #if numbers used to calculate scores --> 0, do work-around (slow)
+nocontrol = F #delete all WT samples
+adjustD = T #divide by a number if the numbers are too big e.g. manhattan
+overwrite = F #redo and overwrite all past scores
+
+id_col = "id"
+target_cols = c("class","gender","group") #meta_file columns to plot
+split_cols = c("gender", "group","none")
+
+
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
-  options(stringsAsFactors=FALSE)
-  #options(device="cairo")
-  options(na.rm=T)
   
   #Input
   meta_dir = paste0(result_dir,"/meta")
@@ -19,22 +41,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #Output
   score_dir = paste(result_dir, "/score_dist", sep="")
   # dist_score_result_dir = paste0(score_dir,"/score_nac_list.Rdata")
-  
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr", "plyr",
-         "foreach","doMC",
-         "Brobdingnag","lubridate")) #if there are date variables
-  
-  doUnderflow = T #if numbers used to calculate scores --> 0, do work-around (slow)
-  nocontrol = F #delete all WT samples
-  adjustD = T #divide by a number if the numbers are too big e.g. manhattan
-  overwrite = F #redo and overwrite all past scores
-  
-  id_col = "id"
-  target_cols = c("class","gender","group") #meta_file columns to plot
-  split_cols = c("gender", "group","none")
-  
   
   
   

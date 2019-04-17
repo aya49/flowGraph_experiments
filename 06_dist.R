@@ -4,6 +4,57 @@
 ## root directory
 root = "~/projects/flowtype_metrics"
 setwd(root)
+
+## libraries
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr","colorspace", "Matrix",
+       "vegan", # libr(proxy)
+       "foreach","doMC",
+       "lubridate", #if there are date variables
+       "kernlab"))
+
+
+
+#Setup Cores
+no_cores = detectCores()-5
+registerDoMC(no_cores)
+
+
+
+## options for script
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+overwrite = T #overwrite distances?
+writecsv = F
+
+readcsv = F
+
+good_count = 3
+good_sample = 3
+countThres = 1000 #insignificant if count under
+
+id_col = "id"
+target_col = "class"
+order_cols = NULL
+
+control = "control"
+
+dis = c("manhattan", "euclidean") #distances metrics to use #, "binomial", "cao", "jaccard","mahalanobis", "gower","altGower","morisita","horn", "manhattan", "maximum", "binary", "minkowski", "raup", "mountford"
+# disnoavg = c("euclidean", "manhattan", "canberra", "bray", "kulczynski", "morisita", "horn", "binomial")  #dis measures that don't average over number of features
+disindist = c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski") #use dist function when possible, instead of vegdist
+disnoneg = c("canberra") #dis measures that can't handle negative values
+# disinkernel = c("rbf","poly","vanilla","tanh","laplace","bessel","anova","spline") #kernels
+
+# normalize = c("none","cellpop", "layer") # by none (for child matrices only), cell pop, layer
+
+
+
+feat_count = c("file-cell-countAdj") #(needed if sample x cell pop matrices are used) count matrix, to get rid of low cell count cells
+
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
@@ -17,57 +68,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   dist_dir = paste0(result_dir,"/dist"); suppressWarnings(dir.create (dist_dir))
   
   
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr","colorspace",
-         "vegan", # libr(proxy)
-         "foreach","doMC",
-         "lubridate", #if there are date variables
-         "kernlab"))
-  
-  
-  
-  #Setup Cores
-  no_cores = detectCores()-5
-  registerDoMC(no_cores)
-  
-  
-  
-  
-  
-  
-  
-  
-  ## options for script
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  overwrite = T #overwrite distances?
-  writecsv = F
-  
-  readcsv = F
-  
-  good_count = 3
-  good_sample = 3
-  countThres = 1000 #insignificant if count under
-  
-  id_col = "id"
-  target_col = "class"
-  order_cols = NULL
-  
-  control = "control"
-  
-  dis = c("manhattan", "euclidean") #distances metrics to use #, "binomial", "cao", "jaccard","mahalanobis", "gower","altGower","morisita","horn", "manhattan", "maximum", "binary", "minkowski", "raup", "mountford"
-  # disnoavg = c("euclidean", "manhattan", "canberra", "bray", "kulczynski", "morisita", "horn", "binomial")  #dis measures that don't average over number of features
-  disindist = c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski") #use dist function when possible, instead of vegdist
-  disnoneg = c("canberra") #dis measures that can't handle negative values
-  # disinkernel = c("rbf","poly","vanilla","tanh","laplace","bessel","anova","spline") #kernels
-  
-  # normalize = c("none","cellpop", "layer") # by none (for child matrices only), cell pop, layer
-  
-  
   
   #data paths
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
@@ -75,9 +75,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_types = gsub(".Rdata","",feat_types)
   feat_types = feat_types[!grepl("KO|Max",feat_types)]
   # feat_types = feat_types[!grepl("Freqp_orig",feat_types)]
-  
-  feat_count = c("file-cell-countAdj") #(needed if sample x cell pop matrices are used) count matrix, to get rid of low cell count cells
-  
   
   
   
@@ -91,7 +88,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # write.table(gsub("~/","/home/ayue/",gsub(".Rdata",".csv",m_paths)),file=paste0(result_dir,"/featlist.csv"),sep=",",row.names=F,col.names=F)
   
   
-  mc = get(load(paste0(feat_dir,"/", feat_count,".Rdata")))
+  mc = Matrix(get(load(paste0(feat_dir,"/", feat_count,".Rdata"))))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
@@ -121,7 +118,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       doneAll = F
       
       ## upload and prep feature matrix
-      m0 = as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
+      m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
       
       ## does feature matrix have cell populations on column names?
       # layers = 0
@@ -241,7 +238,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }
   
-  TimeOutput(start)
+  time_output(start)
   
   
   
