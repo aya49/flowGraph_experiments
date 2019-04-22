@@ -16,7 +16,7 @@ libr(c("stringr", "plyr",
        "Brobdingnag","lubridate")) #if there are date variables
 
 #Setup Cores
-no_cores = 10#detectCores()-3
+no_cores = 5#detectCores()-3
 registerDoMC(no_cores)
 
 doUnderflow = T #if numbers used to calculate scores --> 0, do work-around (slow)
@@ -76,15 +76,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         } else {
           inds = llply(unique(sm0[,split_col]), function(x) sm0[,split_col]==x)
           dl = llply(inds, function(xi) d0[xi,xi])
-          sml = llply(inds, function(xi) sm0[xi,xi])
+          sml = llply(inds, function(xi) sm0[xi,])
         }
         
-        scores[[split_col]] = list()
+        # scores[[split_col]] = list()
         for (split_i in names(dl)) {
           d = dl[[split_i]]
           sm = sml[[split_i]]
           
-          scores[[split_col]][[paste0(split_i,".",nrow(sm))]] = list()
+          # scores[[split_col]][[paste0(split_i,".",nrow(sm))]] = list()
           for (target_col in target_cols) {
             if (!target_col%in%colnames(sm)) next
             
@@ -112,18 +112,19 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       #   cat(paste("ERROR:  ",e)); return(T)
     })
   }, .parallel=T)
-  names(scoresl) = paste0(dist_types,"/")
+  names(scoresl) = paste0(dist_types,"\\")
   
   # save
   scoreslul = unlist(scoresl)
-  dists = sapply(str_split(names(scoreslul),"/"), function(x) x[1])
-  scoresluln = sapply(str_split(names(scoreslul),"/"), function(x) gsub("^[.]","",x[2]))
-  scoresna = str_split(scoresluln,"[.]")
+  temp = str_split(names(scoreslul),"\\\\")
+  dists = sapply(temp, function(x) x[1])
+  other = sapply(temp, function(x) gsub("^[.]","",paste0(x[-1], collapse="/")))
+  scoresna = str_split(other,"[.]")
   splitcols = sapply(scoresna, function(x) x[1])
   splitis = sapply(scoresna, function(x) x[2])
   targcols = sapply(scoresna, function(x) paste0(x[3:(length(x)-1)],": "))
-  score_types = sapply(scoresna, function(x) paste0(x[length(x)],": "))
-  score_table = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, class=targcols, score_type=score_types, score=scoreslul)
+  score_types = sapply(scoresna, function(x) x[length(x)])
+  score_table = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=scoreslul)
   write.csv(score_table, paste0(score_dir, ".csv"))
   
   time_output(start)

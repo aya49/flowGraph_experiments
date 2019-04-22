@@ -16,7 +16,7 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "stringr"))
 
 #Setup Cores
-no_cores = 10#detectCores()-3
+no_cores = 6#detectCores()-3
 registerDoMC(no_cores)
 
 

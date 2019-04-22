@@ -15,7 +15,7 @@ libr(c("biclust", "NMF","fabia","GrNMF", #library(devtools); install_github("jst
        "stringr", "Matrix"))
 
 ## setup Cores for parallel processing (parallelized for each feature)
-no_cores = 11#detectCores()-3
+no_cores = 6#detectCores()-3
 registerDoMC(no_cores)
 
 
@@ -118,7 +118,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
       sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
       
-      colhascell = ifelse(!grepl("_",colnames(m0)[1]),T,F)
+      colhascell = !grepl("_",colnames(m0)[1])
       
       # for (target_col in target_cols) {
       #   if (!target_col%in%colnames(meta_file)) next

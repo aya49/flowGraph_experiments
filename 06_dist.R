@@ -8,7 +8,7 @@ setwd(root)
 ## libraries
 source("source/_funcAlice.R")
 source("source/_funcdist.R")
-libr(c("stringr","colorspace", "Matrix",
+libr(c("stringr","colorspace", "Matrix", "plyr",
        "vegan", # libr(proxy)
        "foreach","doMC",
        "lubridate", #if there are date variables
@@ -17,7 +17,7 @@ libr(c("stringr","colorspace", "Matrix",
 
 
 #Setup Cores
-no_cores = detectCores()-5
+no_cores = 5 # detectCores()-5
 registerDoMC(no_cores)
 
 
@@ -108,14 +108,14 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #load different features matrix and calculate distance matrix
   # for (feat_type in feat_types_) {
-  a = foreach(feat_type=feat_types) %dopar% {
+  a = llply(feat_types, function(feat_type) {
     tryCatch({
       cat("\n", feat_type, " ",sep="")
       start2 = Sys.time()
       
       #start a list of phenotypes included in each distance matrix calculation such that none are repeated
-      leavePhenotype = list()
-      doneAll = F
+      # leavePhenotype = list()
+      # doneAll = F
       
       ## upload and prep feature matrix
       m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
@@ -123,7 +123,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       ## does feature matrix have cell populations on column names?
       # layers = 0
       # countThres = 0
-      colhascell = ifelse(!grepl("_",colnames(m0)),T,F)
+      # colhascell = !grepl("_",colnames(m0)[1])
       # if (colhascell) {
       #   layers = c(1,2,4,max(unique(sapply(unlist(str_split(colnames(m0),"_")), function(x) str_count(x,"[+-]")))))
       #   countThres = cellCountThres
@@ -234,9 +234,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # } #countThres
       
       return(F)
-      TimeOutput(start2)
+      time_output(start2, feat_type)
     }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
-  }
+  }, .parallel=T)
   
   time_output(start)
   

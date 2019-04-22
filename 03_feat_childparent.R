@@ -7,7 +7,7 @@ setwd(root)
 
 ## libraries
 source("source/_funcAlice.R")
-libr(c("stringr", "Matrix", "entropy",
+libr(c("stringr", "Matrix", "entropy", "plyr",
        "foreach", "doMC"))
 
 
@@ -246,7 +246,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     return(feat_file_cell_countAdjKO[,i]/exp(feat_file_cell_logfold[,i])) 
   }
   colnames(feat_file_cell_countAdjWT) = colnames(feat_file_cell_countAdjKO)
-  contrib0 = foreach(i = 1:length(meta_cell_parent_names)) %dopar% { #for each phenotype
+  contrib0 = llply(1:length(meta_cell_parent_names), function(i) { #for each phenotype
     cnames = names(meta_cell_parent_names)[i]
     change = feat_file_cell_countAdjKO[,colnames(feat_file_cell_countAdjKO)%in%cnames] - feat_file_cell_countAdjWT[,colnames(feat_file_cell_countAdjWT)%in%cnames]
     
@@ -262,7 +262,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     rownames(contrib) = rownames(feat_file_cell_countAdjKO)
     colnames(contrib) = paste0(pnames,"_",cnames)
     return(contrib)
-  }
+  }, .parallel=T)
   contrib = Reduce("cbind",contrib0)
   save(contrib, file=paste0(feat_file_edge_contrib_dir,".Rdata"))
   if (writecsv) write.csv(contrib, file=paste0(feat_file_edge_contrib_dir,".csv"))
@@ -276,7 +276,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   start1 = Sys.time()
   cat(", parenteffort")
   
-  effort0 = foreach(i = 1:length(meta_cell_parent_names)) %dopar% {
+  effort0 = llply(1:length(meta_cell_parent_names), function(i) {
     pnames = meta_cell_parent_names[[i]]
     parent = feat_file_cell_logfold[,colnames(m)%in%pnames,drop=F] 
     cnames = names(meta_cell_parent_names)[i]
@@ -287,7 +287,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     rownames(effort1) = rownames(feat_file_cell_logfold)
     colnames(effort1) = paste0(pnames,"_",cnames)
     return(effort1)
-  }
+  }, .parallel=T)
   
   effort = Reduce("cbind",effort0)
   save(effort, file=paste0(feat_file_edge_effort_dir,".Rdata"))
