@@ -10,7 +10,8 @@ input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy"
 meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
 gs_dir = paste0(input_dir, "/gs")
 channelsind_dir = paste0(input_dir, "/channels_ind.Rdata")
-gthres_dir = paste0(input_dir, "/gthres.Rdata")
+# gthres_dir = paste0(input_dir, "/gthres.Rdata")
+gthres_dir = paste0(input_dir, "/gates_flowLearn.Rdata")
 filters_dir = paste0(input_dir, "/filters.Rdata")
 
 ## ouput
@@ -70,7 +71,7 @@ ftl = llply(1:length(fslist), function(i) {
            PropMarkers=channels.ind[markers], MarkerNames=markers, 
            MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
            Thresholds=as.list(gthres[[i]][gthresm]), 
-           verbose=F, MemLimit=400)
+           verbose=F, MemLimit=60)
 }, .parallel=F)
 ft = ldply(ftl, function(ft) ft@CellFreqs)
 ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
