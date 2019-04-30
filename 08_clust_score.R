@@ -268,9 +268,41 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   splitcols = sapply(ncasna, function(x) x[1])
   splitis = sapply(ncasna, function(x) x[2])
   targcols = sapply(ncasna, function(x) paste0(x[3:(length(x)-1)], collapse="; "))
+  targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
+  targcols_col = sapply(strsplit(targcols,"[:]"), function(x) x[1])
   score_types = sapply(ncasna, function(x) x[5])
   score_table = data.frame(clustMethod=clusts, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=ncaslul)
   write.csv(score_table, paste0(score_dir, ".csv"), row.names=F)
+  
+  feat = sapply(str_split(clusts, "_layer"), function(x) x[1])
+  layer = as.numeric(gsub("layer-","",str_extract(clusts, "layer-[0-9]+")))
+  dist = gsub("dist-","",str_extract(clusts, "dist-[a-zA-Z]+"))
+  
+  # plot
+  dir.create(score_dir, showWarnings=F)
+  for (targ in unique(targcols_col)) {
+    ti = targcols_col==targ
+    for (split in unique(splitcols)) {
+      si = splitcols==split
+      for (lay in unique(layer)) {
+        li = layer==lay
+        for (dis in unique(clusts)) {
+          di = clusts==dis
+          for (sco in unique(score_types)) {
+            sci = score_types==sco
+            
+            score_temp = score_table[ti&si&li&di&sci,]
+            score_temp$feat = feat[ti&si&li&di&sci]
+            
+            png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"))
+            barchart(score~feat,data=score_temp,groups=score_type, 
+                     scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and cluster method ", dis))
+            graphics.off()
+          }
+        }
+      }
+    }
+  }
   
   time_output(start)
   

@@ -13,7 +13,7 @@ source("source/_funcAlice.R")
 source("source/_funcdist.R")
 libr(c("stringr", "plyr",
        "foreach","doMC",
-       "Brobdingnag","lubridate")) #if there are date variables
+       "Brobdingnag","lubridate", "clValid", "lattice")) #if there are date variables
 
 #Setup Cores
 no_cores = 5#detectCores()-3
@@ -103,7 +103,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             # #to do or not to do
             # if (file.exists(dcname1) & !overwrite) next
             
-            scores[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list(nca=NCA_score(d, class, doUnderflow=doUnderflow)$p) #2min, 21s
+            # NCA
+            nca_score = NCA_score(d, class, doUnderflow=doUnderflow)$p
+            
+            # dunn
+            dunn_score = dunn(as.dist(d), as.numeric(factor(class)))
+            
+            scores[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list(nca=nca_score,dunn=dunn_score) #2min, 21s
           }# target col
         }# split_i
       }# split_col
@@ -123,9 +129,41 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   splitcols = sapply(scoresna, function(x) x[1])
   splitis = sapply(scoresna, function(x) x[2])
   targcols = sapply(scoresna, function(x) paste0(x[3:(length(x)-1)],": "))
+  targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
+  targcols_col = sapply(strsplit(targcols,"[:]"), function(x) x[1])
   score_types = sapply(scoresna, function(x) x[length(x)])
   score_table = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=scoreslul)
   write.csv(score_table, paste0(score_dir, ".csv"))
+  
+  feat = sapply(str_split(dists, "_layer"), function(x) x[1])
+  layer = as.numeric(gsub("layer-","",str_extract(dists, "layer-[0-9]+")))
+  dist = gsub("dist-","",str_extract(dists, "dist-[a-zA-Z]+"))
+  
+  # plot
+  dir.create(score_dir, showWarnings=F)
+  for (targ in unique(targcols_col)) {
+    ti = targcols_col==targ
+    for (split in unique(splitcols)) {
+      si = splitcols==split
+      for (lay in unique(layer)) {
+        li = layer==lay
+        for (dis in unique(dist)) {
+          di = dist==dis
+          for (sco in unique(score_types)) {
+            sci = score_types==sco
+          
+          score_temp = score_table[ti&si&li&di&sci,]
+          score_temp$feat = feat[ti&si&li&di&sci]
+          
+          png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_dist-",dis, "scoretype-",sco, ".png"))
+          barchart(score~feat,data=score_temp,groups=score_type, 
+                   scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and distance ", dis))
+          graphics.off()
+          }
+        }
+      }
+    }
+  }
   
   time_output(start)
   
