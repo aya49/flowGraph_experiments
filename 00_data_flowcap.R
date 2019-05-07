@@ -154,8 +154,12 @@ for (tube in unique(meta_file$tube)) {
   feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
   feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+  
+  feat_file_cell_count_ = as.matrix(feat_file_cell_count_)
   save(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".Rdata"))
   if (writecsv) write.csv(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+  
+  feat_file_cell_prop_ = as.matrix(feat_file_cell_prop_)
   save(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
   if (writecsv) write.csv(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
 }

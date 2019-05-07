@@ -307,8 +307,11 @@ if (writecsv) write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"))
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
 if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"))
 
+feat_file_cell_count = as.matrix(feat_file_cell_count)
 save(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".Rdata"))
 if (writecsv) write.csv(feat_file_cell_count, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+
+feat_file_cell_prop = as.matrix(feat_file_cell_prop)
 save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".Rdata"))
 if (writecsv) write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
 if (!is.null(excludedGT)) save(excludedGT, file=excludedGT_dir)

@@ -100,8 +100,12 @@ for (typed in unique(meta_file$type)) {
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   ft_ = ft[typei,]
   ftp_ = ftp[typei,]
+  
+  ft_ = as.matrix(ft_)
   save(ft_, file=paste0(feat_file_cell_count_dir,".Rdata"))
   if (writecsv) write.csv(ft_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+  
+  ftp_ = as.matrix(ftp_)
   save(ftp_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
   if (writecsv) write.csv(ftp_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
 }
