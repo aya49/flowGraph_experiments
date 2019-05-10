@@ -2,7 +2,7 @@
 # aya43@sfu.ca 20170116
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 
 options(stringsAsFactors=FALSE)
@@ -30,7 +30,7 @@ split_cols = c("gender", "group","none")
 
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-15]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   #Input
@@ -39,7 +39,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   dist_dir = paste(result_dir, "/dist", sep="")
   
   #Output
-  score_dir = paste(result_dir, "/score_dist", sep="")
+  score_dir = paste(result_dir, "/score_dist", sep=""); dir.create(score_dir, showWarnings=F)
   # dist_score_result_dir = paste0(score_dir,"/score_nac_list.Rdata")
   
   
@@ -59,13 +59,28 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_train = read.csv(meta_train_dir)
   
   ## for each feature
-  scoresl = llply(dist_types, function(dist_type) { 
+  scoresl = llply(dist_types, function(dist_type) {
     tryCatch({ cat("\n", dist_type, " ",sep="")
       start2 = Sys.time()
       
       ## upload and prep feature matrix
       d0 = as.matrix(get(load(paste0(dist_dir,"/", dist_type,".Rdata"))))
       sm0 = meta_file[match(rownames(d0),meta_file[,id_col]),]
+      
+      if (grepl("pregnancy",result_dir) & !grepl("TRIM",dist_type)) { try({
+        mfri = ceiling(sqrt(length(unique(sm0$patient))))
+        png(paste0(score_dir,"/", dist_type, "_intrapatient.png"), width=mfri*300, height=mfri*200)
+        par(mfrow=c(mfri,mfri))
+        cl = length(unique(sm0$class))
+        for (pi in unique(sm0$patient)) {
+          pind = sm0$patient==pi
+          pind2 = pind & sm0$class=="control"
+          if (sum(pind)<cl | sum(pind2)==0) next
+          datas = d0[pind2,pind]
+          plot(datas, xlab="class (weeks into pregnancy)", ylab="distance from control (1st week)", main=paste0("patient ", pi))
+        }
+        graphics.off()
+      }) }
       
       scores = list()
       for (split_col in split_cols) {

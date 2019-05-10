@@ -2,7 +2,7 @@
 # Reads in IMPC flowtype files and collates/save cell counts into matrix
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 
 panel = c("panel1") # panel2 is sanger-spleen only

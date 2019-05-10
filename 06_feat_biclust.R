@@ -13,7 +13,7 @@ source("source/_bayesianbiclustering.R")
 libr(c("biclust", "NMF","fabia","GrNMF", #devtools::install_github("jstjohn/GrNMF")
        "pheatmap",
        "foreach","doMC",
-       "stringr", "Matrix",
+       "stringr", "Matrix", "plyr",
        "tcltk"))
 
 ## setup Cores for parallel processing (parallelized for each feature)
@@ -117,7 +117,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       start2 = Sys.time()
       
       ## upload and prep feature matrix
-      m = mbinary = m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
+      m = mbinary = m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
       mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
       # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
       m = m[apply(m, 1, function(x) any(x>0)), apply(m, 2, function(x) any(x>0))]
@@ -175,7 +175,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       clusts = list()
       for (bcmethod in names(bmethodspar)) { #requires binary matrix
         for (par in bmethodspar[[bcmethod]]) {
-          bcb = NULL
+          bcb = bc = NULL
           cat("\n ",bcmethod," ",par, " ",sep="")
           start2 = Sys.time()
           if (bcmethod=="BBbinary" & !grepl("pval[A-z]*TRIM",feat_type)) next
@@ -186,13 +186,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           # bicluster
           # if (overwrite | !file.exists(paste0(bcname,".Rdata"))) {
-          if (bcmethod == "plaid") bcb = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
+          if (bcmethod == "plaid") bc = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
           if (bcmethod == "CC") bc = biclust(as.matrix(m), method=BCCC(), number=Kr)
-          if (bcmethod == "Xmotifs") bcb = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
-          if (bcmethod == "spectral") bcb = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
-          if (bcmethod == "bimax") bcb = biclust(as.matrix(m), method=BCBimax(),number=Kr)
-          if (bcmethod == "quest") bcb = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
-          if (!is.null(bcb)) if (bcb@Number==0) next
+          if (bcmethod == "Xmotifs") bc = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
+          if (bcmethod == "spectral") bc = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
+          if (bcmethod == "bimax") bc = biclust(as.matrix(m), method=BCBimax(),number=Kr)
+          if (bcmethod == "quest") bc = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
+          if (!is.null(bc)) if (bc@Number==0) next
           
           bcb = NULL
           if (bcmethod=="GrNMF" & colhascell) {
@@ -222,13 +222,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             plot(bcb0)
           }
           
-          tryCatch({ if (grepl("nmf",bcmethod)) {
+          if (grepl("nmf",bcmethod)) { tryCatch({ 
             bcb = nmf(abs(as.matrix(m)), rank=Kr, method=par)#, nrun=10, method=list("lee", "brunet", "nsNMF"))
             if (is.null(bcb)) next
             
             bcb$rowxfactor = basis(bcb)
             bcb$factorxcol = coef(bcb)
-          } }, error = function(err) { cat(paste("nmf error:  ",err)); bcb = NULL })
+          }, error = function(err) { cat(paste("nmf error:  ",err)); bcb = NULL }) }
           
           # adjust format of biclustering to match output of biclust()
           if (grepl("nmf|GrNMF|fabia",bcmethod)) {
@@ -253,7 +253,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             } 
             
             ## plot x 4: factor heatplot + contribution of row/col
-            bcname3 = paste0(biclust_plot_dir, "/", feat_type,"_", bcmethod, ifelse(!is.null(par),paste0("-", par),""), "_factors.png")
+            bcname3 = paste0(biclust_plot_dir, "/", feat_type,"_", bcmethod, ifelse(!is.na(par),paste0("-", par),""), "_factors.png")
             png(bcname3, width=plotsize, height=plotsize)
             par(mfrow=c(2,2))
             
@@ -400,7 +400,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # biclust_dir1 = paste0(biclust_dir,"/",dirname); dir.create(biclust_dir1, showWarnings=F)
               biclust_plot_dir1 = paste0(biclust_plot_dir,"/",dirname); dir.create(biclust_plot_dir1, showWarnings=F)
               # bcname1 = paste0(biclust_dir, "/", feat_type)
-              bcname2 = paste0(biclust_plot_dir1, "/", feat_type, "_", bcmethod, ifelse(!is.null(par),paste0("-", par),""))
+              bcname2 = paste0(biclust_plot_dir1, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
               
               
               # prep data
@@ -466,7 +466,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               if (all(colnames(target_col_valuesM)==colnames(target_col_valuesM)[1])) target_col_valuesM = t(target_col_valuesM)
               colnames(target_col_valuesM) = target_col_topics
               rownames(target_col_valuesM) = c(1:nrow(target_col_valuesM))
-              avm = target_col_valuesM/20
+              # avm = target_col_valuesM/20
               
               png(paste0(bcname2, "_vs.png", sep=""), height=500, width=500)
               par(mar=c(10,5,5,8), xpd=TRUE)
@@ -512,7 +512,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           ## plot heatmaps
           tryCatch ({
-            bcname2 = paste0(biclust_plot_dir, "/", feat_type, "_", bcmethod, ifelse(!is.null(par),paste0("-", par),""))
+            bcname2 = paste0(biclust_plot_dir, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
             
             png(paste0(bcname2,"_heatmap0.png"), height=plot_size_bar[1], width=plot_size_bar[2])
             par(mar=c(5,3,6,5))

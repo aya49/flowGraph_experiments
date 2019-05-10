@@ -2,7 +2,7 @@
 # aya43@sfu.ca 20180526
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 
 

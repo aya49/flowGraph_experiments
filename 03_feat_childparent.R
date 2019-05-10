@@ -2,7 +2,7 @@
 # creates list of children for each non-leaf node and creates children/parent list[[matrices]] (-/+ are only for phenotypes where both -,+ data exists)
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 
 ## libraries
@@ -12,7 +12,7 @@ libr(c("stringr", "Matrix", "entropy", "plyr",
 
 
 ## cores
-no_cores = 6#detectCores() - 1
+no_cores = 5#detectCores() - 1
 registerDoMC(no_cores)
 
 

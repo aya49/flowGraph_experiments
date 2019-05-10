@@ -2,7 +2,7 @@
 # aya43@sfu.ca 20161220
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen

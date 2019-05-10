@@ -2,7 +2,7 @@
 # aya43@sfu.ca 20170116
 
 ## root directory
-root = "~/projects/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
 
 options(stringsAsFactors=FALSE)
@@ -34,7 +34,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   clust_dir = paste(result_dir,  "/clust", sep="")
   
   ## output directories
-  score_dir = paste(result_dir, "/score_clust", sep="")
+  score_dir = paste(result_dir, "/score_clust", sep=""); dir.create(score_dir, showWarnings=F)
   
   
   
