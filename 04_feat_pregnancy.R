@@ -1,5 +1,11 @@
-## Input: original features --> Output: random walk features (edge matrix + paths -- paths need to be saved one at a time, memory will overload otherwise)
-# aya43@sfu.ca 20161220
+## input: features + meta_file
+## output: features normalized for patient; 
+## process: for each feature,
+## - note: each patient has 4 classes or is sampled at 4 time points throughout pregnancy, we use the first time point as our control to calculate p values in the previous p value script
+## - take each patient and calculate the mean feature vector of her 4 fcm files
+## - get the difference between her 4 fcm files and the mean; save this as her new fcm file features
+## - output features marked with "-paired"
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

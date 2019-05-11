@@ -1,5 +1,9 @@
-# aya43@sfu.ca 20151228 -- still need to standardize, don't use for now...
-# Reads in IMPC flowtype files and collates/save cell counts into matrix
+## input: flowtype file,  meta data paths
+## output: feat_file_cell_count, meta_file, meta_cell
+## process: 
+## - takes flowtype output files and compiles them together to create cell count matrix
+## - reformats meta file (meta info for fcm files)
+## - creates cell meta file (meta info for fcm cell populations)
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

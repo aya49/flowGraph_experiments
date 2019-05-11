@@ -1,5 +1,5 @@
-## Input: dist --> Output: clusters; no classifications, removed
-# aya43@sfu.ca 20180526
+## input: distance matrices
+## output: clusters (if number of clusters/k required, the number of ground truth classes were provided)
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

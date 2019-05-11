@@ -1,5 +1,8 @@
-## Input: count adjusted matrix --> Output: add a third category of samples such that it is a mix of normals and aml (must run 00_data_flowcap.R before running this, every time)
-#aya43@sfu.ca 20151228
+## input: count adjusted matrix (flowcap data set only) (must run 00_data_flowcap.R before running this, every time)
+## output: count adjusted matrix + frankenstein samples
+## process: 
+## - add a 3rd category of samples as a linear combination (weight = 1/(2*matchsamples)) of randomly sampled matchsamples (5) control & (5) aml samples -- sampling done once, combinations same for all flowcap panels
+## - one frankenstein sample for every control sample is made
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

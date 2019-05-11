@@ -1,5 +1,6 @@
-## Input: original features --> Output: biclusters
-# aya43@sfu.ca 20161220
+## input: features 
+## output: biclusters + some nice plots (if number of clusters/k required, the number of ground truth classes were provided)
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

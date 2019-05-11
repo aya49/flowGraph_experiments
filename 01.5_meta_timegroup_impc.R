@@ -1,6 +1,9 @@
-# use countadj to add a group column to meta/file; to group samples by date (convert this continous variable into a categorical one!)
-# only for data sets where there is a date col in meta/file
-# aya43@sfu.ca 20161220
+## input: impc data set feature countadj + meta_file
+## output: kalman filter plots + meta_file with an added group column that groups dates together as a discrete variable (for calculating p values, we only compare the experiment files with control files made within the same dat range as the experiment file)
+## process:
+## - take the total count from all files
+## - create kalman filter over date
+## - find changepoints on this kalman filter to split dates into chunks
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

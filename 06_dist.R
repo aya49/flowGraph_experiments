@@ -1,5 +1,6 @@
-## Input: features --> distance
-# aya43@sfu.ca 20180527
+## input: features 
+## output: distance matrices; see k to know how many layers of the cell hierarchy was used (4 for now)
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
@@ -95,13 +96,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # layers = c(1,4,max(meta_cell$phenolevel)) # how many markers to consider i.e. k=max(phenolevel) only
   
   k = 4
-  
-  
-  
-  
-  
-  
-  
   
   
   start = Sys.time()

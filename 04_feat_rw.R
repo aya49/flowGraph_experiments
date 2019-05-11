@@ -1,5 +1,13 @@
-## Input: original features --> Output: random walk features (edge matrix + paths -- paths need to be saved one at a time, memory will overload otherwise)
-# aya43@sfu.ca 20161220
+## input: features 
+## output: random walk edge features (i think paths need to be saved one at a time, memory will overload otherwise, if not then the computer's good)
+## process:
+## - for each node or edge, depending on feature type, weigh them  using integere-ed feature value normalized between 1 and 100
+## - run random walk (adjust parameters below)
+##   min_steps = 100
+##   times_steps = 50 # x number of edges = number of random walks to do
+##   min_walks = 5 #each path should have at least 5 walks, if not, set to 0; helps reduce run time
+## - compile into an edge feature that indicates number of tmes each edge was walked over
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

@@ -1,5 +1,6 @@
-# Calculate PValues; must run 02_timegroup.R before this script
-# aya43@sfu.ca 20151228
+## input: a specified feature matrix with control and experiment fcm files (must run 01.5_meta_timegroup.R before this script for impc)
+## output: p value feature and their adjustments for experiment files (we split up the control in flowcap, and label some of them as simply healthy files and treat them as experiment as well)
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

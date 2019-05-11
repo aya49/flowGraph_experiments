@@ -1,5 +1,10 @@
-## extract albina's results and flowtype
-#aya43@sfu.ca 20161220
+## input: gates + fcm files,  meta data paths
+## output: feat_file_cell_count, meta_file, meta_cell
+## process: 
+## - takes gates + fcm files, outputs flowtype vectors 
+## - compiles flowtype vectors together to create cell count matrix
+## - reformats meta file (meta info for fcm files)
+## - creates cell meta file (meta info for fcm cell populations)
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
@@ -32,6 +37,8 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
 no_cores = 8#detectCores()-1
 registerDoMC(no_cores)
 
+
+writecsv = F
 
 meta_file = get(load(meta_file_dir))
 gthres = get(load(gthres_dir))
@@ -80,11 +87,12 @@ ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) 
 colnames(ft) = colnames(ftp) = ftcell
 rownames(ft) = rownames(ftp) = meta_file$id
 
-# make a control for meta_file class
+
+# compile ---------------------------
+# make a control class (1st week) for meta_file class
 
 meta_file$class[meta_file$class==1] = "control"
 
-writecsv = F
 for (typed in unique(meta_file$type)) {
   typei = meta_file$type==typed
   

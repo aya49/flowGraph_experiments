@@ -1,5 +1,5 @@
-# Evaluate all clusters (sample x axis only)
-# aya43@sfu.ca 20170116
+## input: bi/clusters
+## output: table of scores + bar plots based on how well clustering did according to known classes
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

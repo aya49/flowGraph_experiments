@@ -1,5 +1,11 @@
-# aya43@sfu.ca 20170131
-# creates list of children for each non-leaf node and creates children/parent list[[matrices]] (-/+ are only for phenotypes where both -,+ data exists)
+## input: meta_cell & base features e.g. countadj, props (each cell population's counts as a percentage of the total count), p values (for if we want to delete rows/columns with no significant values)
+## output: features
+## - child_prop (proportion of child count over parent count)
+## - child_pnratio (ratio of positive over negative child e.g. a+b+/a+b-)
+## - child/parent_entropy (entropy of values of a cell population's children/parents)
+## - parent_contrib (ratio of the difference between the avg control fcm file's and experiment fcm file's child population over that of the parent)
+## - parent_effort (same as above except instead of difference, use log fold, and instead of ratio use different as values are in log scale)
+## - lnpropexpect (product of parent props over product of grandparent props -- both normalized via an exponent 1/(number of parents/grandparents))
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

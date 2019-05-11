@@ -1,5 +1,6 @@
-## Input: original normalized count matrix --> Output: count statistic plots
-# aya43@sfu.ca 20161220
+## input: countadj
+## output: some useful plots; change/add if want
+
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

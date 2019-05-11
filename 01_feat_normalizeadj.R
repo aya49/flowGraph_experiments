@@ -1,5 +1,10 @@
-## Input: original count matrix --> Output: normalized count matrix
-#aya43@sfu.ca 20151228
+## input: original count feature matrix 
+## output: normalized countadj feature matrix
+## process:
+## - normalize count using TMM trimmed mean normalization
+## - reference fcm file is the one with median total count amongst the control files
+## - plots for each fcm file, the kernel density estimate of its counts ratio over the reference file's counts
+## - if the normalization factor is too far from peak ratio, directly use peak ratio, see output plots for which is used
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

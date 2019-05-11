@@ -1,5 +1,5 @@
-## Input: phenotype list --> Output: lists of children/parent for each non-leaf/root node
-#aya43@sfu.ca 20170131
+## input: meta_cell e.g. a+b+, a+b- ...
+## output: cell_childpn_names & cell_parent_names; lists labelled with each cell population, the content of which are their cildren/parent (for children, they're split into positive and negative e.g. a+ --> a+b+ a+c+, a+b- a+c-)
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"

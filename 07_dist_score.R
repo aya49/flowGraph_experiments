@@ -1,5 +1,5 @@
-# Evaluate all distance metrics
-# aya43@sfu.ca 20170116
+## input: distance matrices
+## output: nca & dunn (didn't work well lol) table of scores + bar plots based on how well distance matrix aligns with known classes
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
