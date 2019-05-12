@@ -18,7 +18,7 @@ libr(c("biclust", "NMF","fabia","GrNMF", #devtools::install_github("jstjohn/GrNM
        "tcltk"))
 
 ## setup Cores for parallel processing (parallelized for each feature)
-no_cores = 6#detectCores()-3
+no_cores = 1#detectCores()-3
 registerDoMC(no_cores)
 
 
@@ -42,7 +42,7 @@ good_count = 1 #trim matrix; only keep col/rows that meet criteria for more than
 good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
 
 k = 6 # until what layer of cells to use
-countThres = 1000 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
+countThres = 400 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
 target_cols = c("class","gender") #the interested column in meta_file
 control = "control" #control value in target_col column
 id_col = "id" #the column in meta_file matching rownames in feature matrices
@@ -55,9 +55,9 @@ bmethodspar = list(#knn=c(1:6),
   CC=NA,
   bimax=NA,
   BBbinary=NA,
-  nmf=c("nsNMF","lee","brunet"),
-  GrNMF=c(0,1,5,10),
-  fabia=NA)
+  fabia=NA,
+  GrNMF=c(0,1,5,10))
+  # nmf=c("lee","brunet")) # "nsNMF",
 
 #,"quest", "CC", "spectral", "Xmotifs", have to change this manually in function...
 onlysigBB = T #only extract significant or all biclusters from BB-binary B2PS biclustering?
@@ -71,7 +71,7 @@ qthres = .15 # quantile of nmf type methods factors; how large does factor effec
 plot_size_bar = c(700,700)
 plot_size = c(300,300)
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[c(17:1)[-15]]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -121,7 +121,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       m = mbinary = m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
       mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
       # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
-      m = m[apply(m, 1, function(x) any(x>0)), apply(m, 2, function(x) any(x>0))]
+      m = m[apply(m, 1, function(x) any(x>0)), apply(m, 2, function(x) any(x>countThres))]
       sm = meta_file[match(rownames(m),meta_file[,id_col]),]
       
       colhascell = !grepl("_",colnames(m)[1])

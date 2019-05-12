@@ -13,7 +13,8 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "tsne",
        "densitycut", #devtools::install_bitbucket("jerry00/densitycut_dev")
        "foreach","doMC",
-       "stringr"))
+       "stringr",
+       "tcltk"))
 
 #Setup Cores
 no_cores = detectCores()-3
@@ -34,7 +35,7 @@ overwrite = T #overwrite clustering?
 
 plotsize = 300
 
-# countThres = c(1000) #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
+# countThres = 400 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
 # good_count = 3 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
 # good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
 # feat_count = "file-cell-countAdj" # cell count features used to trim matrix, not used
