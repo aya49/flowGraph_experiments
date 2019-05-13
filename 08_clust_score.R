@@ -13,10 +13,10 @@ source("source/_funcAlice.R")
 source("source/_funcdist.R")
 libr(c("stringr", "plyr", "Matrix",
        "foreach","doMC",
-       "clues", "PerfMeas")) #if there are date variables
+       "clues", "PerfMeas", "cluster")) #if there are date variables
 
 #Setup Cores
-no_cores = 5#detectCores()-3
+no_cores = 1#detectCores()-3
 registerDoMC(no_cores)
 
 overwrite = F #redo and overwrite all past scores

@@ -13,12 +13,12 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "tsne",
        "densitycut", #devtools::install_bitbucket("jerry00/densitycut_dev")
        "foreach","doMC",
-       "stringr",
+       "stringr", "plyr",
        "tcltk"))
 
 #Setup Cores
 no_cores = detectCores()-3
-registerDoMC(no_cores)
+setup_parallel(no_cores)
 
 
 
@@ -44,7 +44,7 @@ target_cols = c("class","gender") #the interested column in meta_file
 # control = "control" #control value in target_col column
 id_col = "id" #the column in meta_file matching rownames in feature matrices
 order_cols = NULL #if matrix rows should be ordered by a certain column
-split_col = NULL # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
+# split_col = NULL # if certain rows in matrices should be analyzed in isolation, split matrix by this column in meta_file
 
 # cmethods = c("distmatrix","knn","kmed", "kmeans","lv","spec","spec1","hc") #rw1 #clustering methods
 # cmethodsclass = c("knn") # classification
@@ -58,7 +58,7 @@ cmethodspar = list(#knn=c(1:6),
   hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-15]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -70,7 +70,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_train_dir = paste0("attachments/AMLTraining.csv") #which FCM files are testing/training files for flowCAP data set
   
   ## output directories
-  clust_dir = paste0(result_dir,"/clust/dist_clust")
+  clust_dir = paste0(result_dir,"/clust/dist")
   clust_plot_dir = paste(clust_dir, "/plot", sep=""); 
   dir.create(clust_plot_dir, showWarnings=F, recursive=T)
   

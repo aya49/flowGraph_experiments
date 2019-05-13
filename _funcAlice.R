@@ -70,7 +70,7 @@ cluster_v2m = function(x) {
   ncoll = unique(x)
   xx = Matrix(0, ncol=length(ncoll), nrow=length(x), sparse=T)
   for (i in 1:length(x)) {
-    xx[i,ncoll==x[i]]
+    xx[i,ncoll==x[i]] = 1
   }
   colnames(xx) = ncoll
   rownames(xx) = names(x)

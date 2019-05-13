@@ -42,7 +42,7 @@ good_count = 1 #trim matrix; only keep col/rows that meet criteria for more than
 good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
 
 k = 6 # until what layer of cells to use
-countThres = 400 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
+countThres = 1000 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
 target_cols = c("class","gender") #the interested column in meta_file
 control = "control" #control value in target_col column
 id_col = "id" #the column in meta_file matching rownames in feature matrices
@@ -57,12 +57,11 @@ bmethodspar = list(#knn=c(1:6),
   BBbinary=NA,
   fabia=NA,
   GrNMF=c(0,1,5,10))
-  # nmf=c("lee","brunet")) # "nsNMF",
+# nmf=c("lee","brunet")) # "nsNMF",
 
 #,"quest", "CC", "spectral", "Xmotifs", have to change this manually in function...
 onlysigBB = T #only extract significant or all biclusters from BB-binary B2PS biclustering?
 pval_thres = .05
-Kr = 6; Kc = 20 #number of row and column biclusters for binary bayesian biclustering
 pthres = .01 #pthreshold for choosing biclusters out of all bayesian biclusters
 min_iter = 100 #BB-binary
 sig_biclust_thres = .025 # * max contribution: threshold at whifeature matrices
@@ -82,7 +81,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
   ## output directories
-  biclust_dir = paste(result_dir,  "/clust/feat", sep="") # path to save biclusterings: row clusterings, row labels, column colusterings
+  biclust_dir = paste(result_dir,  "/clust/feat_biclust", sep="") # path to save biclusterings: row clusterings, row labels, column colusterings
   biclust_plot_dir = paste(biclust_dir,  "/plot", sep="")
   dir.create (biclust_plot_dir,showWarnings=F, recursive=T)
   
@@ -112,7 +111,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   }
   
   ## for each feature
-  a = llply(feat_types, function(feat_type) {
+  # a = llply(feat_types, function(feat_type) {
+  for (feat_type in feat_types) {  
     tryCatch({
       cat("\n", feat_type, " ",sep="")
       start2 = Sys.time()
@@ -147,7 +147,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # biclust_dir1 = paste0(biclust_dir,"/",dirname); dir.create(biclust_dir1, showWarnings=F)
       # biclust_plot_dir1 = paste0(biclust_plot_dir,"/",dirname); dir.create(biclust_plot_dir1, showWarnings=F)
       
-      bcname1 = paste0(biclust_dir, "/", feat_type)
+      # bcname1 = paste0(biclust_dir, "/", feat_type)
       # bcname2 = paste0(biclust_plot_dir1, "/", feat_type)
       
       # ## split up analysis of feature matrix rows by split_col
@@ -173,7 +173,25 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # png(bcname2, width=plotn2*plotsize, height=plotn2*plotsize)
       # par(mfrow=c(plotn2,plotn2))
       
+      for (target_col in target_cols) {
+        
+        if (!target_col%in%colnames(sm)) next
+        
+        #list out class labels
+        class = sm[,target_col];
+        class_unique = unique(class)
+        if (length(class_unique)<2) next
+        Kr = length(class_unique); Kc = min(20, length(class_unique)*2) #number of row and column biclusters
+        
+        dirname = paste0(target_col, "_",
+                         ifelse(length(class_unique)<10,
+                                paste0(paste0(class_unique, ".",sapply(class_unique, function(x) sum(sm[,target_col]==x))), collapse="-"), length(class_unique)))
+        
+        bcname20 = paste0(biclust_plot_dir, "/", dirname); dir.create(bcname20, recursive=T, showWarnings=F)
+        bcname10 = paste0(biclust_dir, "/", dirname); dir.create(bcname10, showWarnings=F, recursive=T)
+        
       clusts = list()
+      
       for (bcmethod in names(bmethodspar)) { #requires binary matrix
         for (par in bmethodspar[[bcmethod]]) {
           bcb = bc = NULL
@@ -181,227 +199,223 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           start2 = Sys.time()
           if (bcmethod=="BBbinary" & !grepl("pval[A-z]*TRIM",feat_type)) next
           
-          # # where to save biclustering
-          # bcname0 = paste("/",bcmethod, "_", feat_type, "_splitby-",split_col,".", tube, "_layer", str_pad(k, 2, pad = "0"), "_countThres-", countThres, sep = "")
-          # bcname = paste0(biclust_dir, bcname0)
-          
-          # bicluster
-          # if (overwrite | !file.exists(paste0(bcname,".Rdata"))) {
-          if (bcmethod == "plaid") bc = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
-          if (bcmethod == "CC") bc = biclust(as.matrix(m), method=BCCC(), number=Kr)
-          if (bcmethod == "Xmotifs") bc = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
-          if (bcmethod == "spectral") bc = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
-          if (bcmethod == "bimax") bc = biclust(as.matrix(m), method=BCBimax(),number=Kr)
-          if (bcmethod == "quest") bc = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
-          if (!is.null(bc)) if (bc@Number==0) next
-          
-          bcb = NULL
-          if (bcmethod=="GrNMF" & colhascell) {
-            #build binary relation graph between features
-            cpind = match(colnames(m),colnames(ccm))
-            medge = ccm[cpind,cpind]
-            # bicluster
-            grnmfm = t(as.matrix(m-min(m)))
-            grnmfe = as.matrix(medge)
-            bcb = grnmf(grnmfm, grnmfe, k=Kr, lambda_multiple=par, n_iter=max(ncol(m),1000), converge=1e-06, dynamic_lambda=T)
-            
-            if (is.null(bcb)) next
-            bcb$rowxfactor = bcb$V
-            bcb$factorxcol = t(bcb$U)
-            if (all(is.na(bcb$rowxfactor))) next
-          }
-          
-          # unused
-          if (bcmethod=="fabia") {
-            bcb0 = fabia(as.matrix(abs(m)), p=Kr,alpha=0.01,cyc=max(ncol(m),1000),spl=0,spz=0.5,non_negative=0,random=1.0,center=2,norm=1,scale=0.0,lap=1.0,nL=0,lL=0,bL=0)
-            if (is.null(bcb0)) next
-            
-            bcb = list(source=bcb0)
-            bcb$rowxfactor = bcb0@L; if(all(bcb$rowxfactor==0)) next
-            bcb$factorxcol = bcb0@Z
-            
-            plot(bcb0)
-          }
-          
-          if (grepl("nmf",bcmethod)) { tryCatch({ 
-            bcb = nmf(abs(as.matrix(m)), rank=Kr, method=par)#, nrun=10, method=list("lee", "brunet", "nsNMF"))
-            if (is.null(bcb)) next
-            
-            bcb$rowxfactor = basis(bcb)
-            bcb$factorxcol = coef(bcb)
-          }, error = function(err) { cat(paste("nmf error:  ",err)); bcb = NULL }) }
-          
-          # adjust format of biclustering to match output of biclust()
-          if (grepl("nmf|GrNMF|fabia",bcmethod)) {
-            # threshold to determine significant bicluster
-            rthres = quantile(bcb$rowxfactor,qthres)
-            cthres = quantile(bcb$factorxcol,qthres)
-            
-            # get the framework of biclust output to put nmf output into
-            bc = biclust(array(0,dim=c(2,2)), method=BCPlaid()) #get the framwork
-            bc@RowxNumber = array(F, dim=dim(bcb$rowxfactor)) 
-            for(ri in 1:nrow(bcb$rowxfactor)) {
-              mi = which.max(bcb$rowxfactor[ri,])
-              if (max(bcb$rowxfactor[ri,])>rthres) bc@RowxNumber[ri,mi] = T
-            }
-            bc@NumberxCol = array(F, dim=dim(bcb$factorxcol)) 
-            for(ri in 1:ncol(bcb$factorxcol)) {
-              mi = which.max(bcb$factorxcol[,ri])
-              if (max(bcb$factorxcol[,ri])>cthres) bc@NumberxCol[mi,ri] = T
-              
-              bc@Number = nrow(bcb$factorxcol)
-              bc@info = list(rowxfactor=bcb$rowxfactor,factoxcol=bcb$factorxcol)
-            } 
-            
-            ## plot x 4: factor heatplot + contribution of row/col
-            bcname3 = paste0(biclust_plot_dir, "/", feat_type,"_", bcmethod, ifelse(!is.na(par),paste0("-", par),""), "_factors.png")
-            png(bcname3, width=plotsize, height=plotsize)
-            par(mfrow=c(2,2))
-            
-            rowxfactor = bc@info$rowxfactor
-            plot(sort(rowxfactor[,1]),type="l", main="contribution of rows to each factor\n each line = factor" )
-            for (fi in 2:ncol(rowxfactor)) lines(sort(rowxfactor[,fi]))
-            
-            aheatmap(rowxfactor, main="row x factor")
-            
-            factorxcol = bc@info$factoxcol
-            plot(sort(factorxcol[1,]),type="l", main="contribution of cols to each factor\n each line = factor" )
-            for (fi in 2:nrow(factorxcol)) lines(sort(factorxcol[fi,]))
-            aheatmap(factorxcol, main="factor x col")
-            
-            graphics.off()
-          }
-          
-          
-          if (bcmethod == "BBbinary") {
-            # create binary matrix as input into BB-binary
-            bcb = B2PS(as.matrix(mbinary), sideData=NULL, Kt=Kr, Kp=Kc, iterations=max(ncol(mbinary)/20,min_iter), alpha_p = 1, alpha_t = 1, alpha_e = 1, alpha_sd = 1)
-            # THETA is trasnposed!
-            bcb$theta = t(bcb$Theta[,,2])
-            
-            # get significant biclusters only
-            theta = bcb$theta
-            theta = theta[sort(unique(bcb$transcript.clusters)),sort(unique(bcb$patient.clusters))]
-            bcb$p = array(1,dim = c(nrow(bcb$theta), ncol(bcb$theta)))
-            for (i in unique(bcb$transcript.clusters)) {
-              for (j in unique(bcb$patient.clusters)) {
-                bcb$p[i,j] = t.test.single(as.vector(theta),bcb$theta[i,j])
-                if (is.na(bcb$p[i,j])) bcb$p[i,j] = 1
-              }
-            }
-            # adjust format of biclustering to match output of biclust()
-            bc = biclust(array(0,dim=c(2,2)), method=BCPlaid())
-            bc@info = bcb
-            if (onlysigBB) {
-              bc@info$cid = cid = which(bcb$p<pval_thres, arr.ind=T)
-              if (nrow(cid) == 0) {
-                if (length(theta)>=6 & !all(bcb$p==1)) {
-                  bc@info$cid = cid = which(bcb$p<=sort(bcb$p)[4], arr.ind=T)
-                } else {
-                  # save(NULL, file=paste0(bcname,".Rdata"))
-                  next
-                }
-              }
-            } else {
-              bc@info$cid = cid = which(bcb$p<=1, arr.ind=T)
-            }
-            
-            # cidmatrix = data.frame(row=rep(0,nrow(cid)), col=rep(0,nrow(cid)))
-            # cidmatrix[cid] = 1
-            # bc@info$sigcluster = cidmatrix
-            bc@Number = nrow(cid)
-            bc@RowxNumber = array(F, dim=c(nrow(m),nrow(cid))); colnames(bc@RowxNumber) = rep(1,ncol(bc@RowxNumber))
-            bc@NumberxCol = array(F, dim=c(nrow(cid), ncol(m))); rownames(bc@NumberxCol) = rep(1,nrow(bc@NumberxCol))
-            for (i in 1:nrow(cid)) { #column = cluster
-              rowclust = cid[i,1]
-              colclust = cid[i,2]
-              colnames(bc@RowxNumber)[i] = rownames(bc@NumberxCol)[i] = bcb$p[rowclust,colclust]
-              rows = bcb$transcript.clusters==rowclust
-              cols = bcb$patient.clusters==colclust
-              bc@RowxNumber[rows, i] = T
-              bc@NumberxCol[i, cols] = T
-              # cat("\n", sum(bcb$transcript.clusters==rowclust), ", ", sum(bcb$patient.clusters==colclust), sep="")
-            }
-            rowclust = bc@info$transcript.clusters
-            colclust = bc@info$patient.clusters
-          }
-          
-          if (nrow(bc@RowxNumber) != nrow(m) | ncol(bc@RowxNumber) != bc@Number) bc@RowxNumber = t(bc@RowxNumber)
-          if (ncol(bc@NumberxCol) != ncol(m) | nrow(bc@NumberxCol) != bc@Number) bc@NumberxCol = t(bc@NumberxCol)
-          
-          ## get & save clustering & labels!
-          
-          if (bcmethod != "BBbinary") {
-            rowclust = rowxcluster_to_cluster(bc@RowxNumber)
-            colclust = clusterxcol_to_cluster(bc@NumberxCol)
-          } 
-          # rowlabel = sm[,target_col]
-          
-          if (length(unique(rowclust))==1) next
-          
-          # names(rowclust) = names(rowlabel) = rownames(m)
-          names(rowclust) = rownames(m)
-          names(colclust) = colnames(m)
-          clusts[[paste0(bcmethod,".",par)]] = list()
-          clusts[[paste0(bcmethod,".",par)]][["x"]] = list(x=rowclust, y=colclust, bc=bc)
-          # f1 = f.measure.comembership(rowlabel,rowclust)
-          
-          # save biclustering
-          # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust)
-          # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust,rowlabel=rowlabel)
-          # save(bc0, file=paste0(bcname,".Rdata"))
-          # write.csv(rowclust, file=paste0(bcname,"_rowclust.csv"))
-          # write.csv(colclust, file=paste0(bcname,"_colclust.csv"))
-          # write.csv(rowlabel, file=paste0(bcname,"_rowlabel.csv"))
-          
-          # #save row/col as csv
-          # try({
-          #   bcgene = bc@RowxNumber; rownames(bcgene) = sm[,target_cols[1]]
-          #   bcgene = bcgene[apply(bcgene, 1, function(x) all(!x)),]
-          #   write.csv(bcgene,file=paste0(bcname,"_row.csv"))
-          # })
-          # try ({
-          #   bccol = bc@NumberxCol
-          #   if (ncol(bccol)==bc@Number) bccol = t(bccol)
-          #   colnames(bccol) = colnames(m)
-          #   bccol = bccol[,apply(bccol, 2, function(x) all(!x))]
-          #   write.csv(bccol,file=paste0(bcname,"_col.csv"))
-          # })
-          
-          
-          ## plot ---------------------------------
-          
-          ## pretty heatmap
-          # prepare col/row annotation for pretty heatmap
-          if (bcmethod=="BBbinary") {
-            colcluster_temp = bc@info$patient.clusters              
-            colcluster_temp[!colcluster_temp%in%bc$colclust] = 0
-            rowcluster_temp = bc@info$transcript.clusters
-            rowcluster_temp[!rowcluster_temp%in%bc$rowclust] = 0
-          } else {
-            colcluster_temp = unlist(apply(bc@NumberxCol, 2, function(x) 
-              ifelse(sum(x)==0, 0, max(which(x))) ))
-            rowcluster_temp = unlist(apply(bc@RowxNumber, 1, function(x)
-              ifelse(sum(x)==0, 0, max(which(x))) ))
-          }
-          # plot
-          for (target_col in target_cols) {
             tryCatch ({
-              if (!target_col%in%colnames(sm)) next
               
-              #list out class labels
-              class = sm[,target_col];
-              class_unique = unique(class)
-              if (length(class_unique)<2) next
               
-              # plot path
-              dirname = paste0(target_col, "_",
-                               ifelse(length(class_unique)<10,
-                                      paste0(paste0(class_unique, ".",sapply(class_unique, function(x) sum(sm[,target_col]==x))), collapse="-"), length(class_unique)))
-              # biclust_dir1 = paste0(biclust_dir,"/",dirname); dir.create(biclust_dir1, showWarnings=F)
-              biclust_plot_dir1 = paste0(biclust_plot_dir,"/",dirname); dir.create(biclust_plot_dir1, showWarnings=F)
-              # bcname1 = paste0(biclust_dir, "/", feat_type)
-              bcname2 = paste0(biclust_plot_dir1, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
+              # # where to save biclustering
+              # bcname0 = paste("/",bcmethod, "_", feat_type, "_splitby-",split_col,".", tube, "_layer", str_pad(k, 2, pad = "0"), "_countThres-", countThres, sep = "")
+              # bcname = paste0(biclust_dir, bcname0)
+              
+              # bicluster
+              # if (overwrite | !file.exists(paste0(bcname,".Rdata"))) {
+              if (bcmethod == "plaid") bc = biclust(as.matrix(m), method=BCPlaid(), row.release=.3,col.release=.7, back.fit=10, verbose = F)
+              if (bcmethod == "CC") bc = biclust(as.matrix(m), method=BCCC(), number=Kr)
+              if (bcmethod == "Xmotifs") bc = biclust(as.matrix(m), method=BCXmotifs(), number=Kr, ns=50, nd=500, alpha=10)
+              if (bcmethod == "spectral") bc = biclust(as.matrix(m), method=BCSpectral(), numberOfEigenvalues=10)
+              if (bcmethod == "bimax") bc = biclust(as.matrix(m), method=BCBimax(),number=Kr)
+              if (bcmethod == "quest") bc = biclust(as.matrix(m), method=BCQuest(), number=Kr, ns=50)
+              if (!is.null(bc)) if (bc@Number==0) next
+              
+              bcb = NULL
+              if (bcmethod=="GrNMF" & colhascell) {
+                #build binary relation graph between features
+                cpind = match(colnames(m),colnames(ccm))
+                medge = ccm[cpind,cpind]
+                # bicluster
+                grnmfm = t(as.matrix(m-min(m)))
+                grnmfe = as.matrix(medge)
+                bcb = grnmf(grnmfm, grnmfe, k=Kr, lambda_multiple=par, n_iter=max(ncol(m),1000), converge=1e-06, dynamic_lambda=T)
+                
+                if (is.null(bcb)) next
+                bcb$rowxfactor = bcb$V
+                bcb$factorxcol = t(bcb$U)
+                if (all(is.na(bcb$rowxfactor))) next
+              }
+              
+              # unused
+              if (bcmethod=="fabia") {
+                bcb0 = fabia(as.matrix(abs(m)), p=Kr,alpha=0.01,cyc=max(ncol(m),1000),spl=0,spz=0.5,non_negative=0,random=1.0,center=2,norm=1,scale=0.0,lap=1.0,nL=0,lL=0,bL=0)
+                if (is.null(bcb0)) next
+                
+                bcb = list(source=bcb0)
+                bcb$rowxfactor = bcb0@L; if(all(bcb$rowxfactor==0)) next
+                bcb$factorxcol = bcb0@Z
+                
+                plot(bcb0)
+              }
+              
+              if (grepl("nmf",bcmethod)) { tryCatch({ 
+                bcb = nmf(abs(as.matrix(m)), rank=Kr, method=par)#, nrun=10, method=list("lee", "brunet", "nsNMF"))
+                if (is.null(bcb)) next
+                
+                bcb$rowxfactor = basis(bcb)
+                bcb$factorxcol = coef(bcb)
+              }, error = function(err) { cat(paste("nmf error:  ",err)); bcb = NULL }) }
+              
+              # adjust format of biclustering to match output of biclust()
+              if (grepl("nmf|GrNMF|fabia",bcmethod)) {
+                # threshold to determine significant bicluster
+                rthres = quantile(bcb$rowxfactor,qthres)
+                cthres = quantile(bcb$factorxcol,qthres)
+                
+                # get the framework of biclust output to put nmf output into
+                bc = biclust(array(0,dim=c(2,2)), method=BCPlaid()) #get the framwork
+                bc@RowxNumber = array(F, dim=dim(bcb$rowxfactor)) 
+                for(ri in 1:nrow(bcb$rowxfactor)) {
+                  mi = which.max(bcb$rowxfactor[ri,])
+                  if (max(bcb$rowxfactor[ri,])>rthres) bc@RowxNumber[ri,mi] = T
+                }
+                bc@NumberxCol = array(F, dim=dim(bcb$factorxcol)) 
+                for(ri in 1:ncol(bcb$factorxcol)) {
+                  mi = which.max(bcb$factorxcol[,ri])
+                  if (max(bcb$factorxcol[,ri])>cthres) bc@NumberxCol[mi,ri] = T
+                  
+                  bc@Number = nrow(bcb$factorxcol)
+                  bc@info = list(rowxfactor=bcb$rowxfactor,factoxcol=bcb$factorxcol)
+                } 
+                
+                ## plot x 4: factor heatplot + contribution of row/col
+                bcname3 = paste0(bcname20, "/", feat_type,"_", bcmethod, ifelse(!is.na(par),paste0("-", par)), "_factors.png")
+                png(bcname3, width=plotsize, height=plotsize)
+                par(mfrow=c(2,2))
+                
+                rowxfactor = bc@info$rowxfactor
+                plot(sort(rowxfactor[,1]),type="l", main="contribution of rows to each factor\n each line = factor" )
+                for (fi in 2:ncol(rowxfactor)) lines(sort(rowxfactor[,fi]))
+                
+                aheatmap(rowxfactor, main="row x factor")
+                
+                factorxcol = bc@info$factoxcol
+                plot(sort(factorxcol[1,]),type="l", main="contribution of cols to each factor\n each line = factor" )
+                for (fi in 2:nrow(factorxcol)) lines(sort(factorxcol[fi,]))
+                aheatmap(factorxcol, main="factor x col")
+                
+                graphics.off()
+              }
+              
+              
+              if (bcmethod == "BBbinary") {
+                # create binary matrix as input into BB-binary
+                bcb = B2PS(as.matrix(mbinary), sideData=NULL, Kt=Kr, Kp=Kc, iterations=max(ncol(mbinary)/20,min_iter), alpha_p = 1, alpha_t = 1, alpha_e = 1, alpha_sd = 1)
+                # THETA is trasnposed!
+                bcb$theta = t(bcb$Theta[,,2])
+                
+                # get significant biclusters only
+                theta = bcb$theta
+                theta = theta[sort(unique(bcb$transcript.clusters)),sort(unique(bcb$patient.clusters))]
+                bcb$p = array(1,dim = c(nrow(bcb$theta), ncol(bcb$theta)))
+                for (i in unique(bcb$transcript.clusters)) {
+                  for (j in unique(bcb$patient.clusters)) {
+                    bcb$p[i,j] = t.test.single(as.vector(theta),bcb$theta[i,j])
+                    if (is.na(bcb$p[i,j])) bcb$p[i,j] = 1
+                  }
+                }
+                # adjust format of biclustering to match output of biclust()
+                bc = biclust(array(0,dim=c(2,2)), method=BCPlaid())
+                bc@info = bcb
+                if (onlysigBB) {
+                  bc@info$cid = cid = which(bcb$p<pval_thres, arr.ind=T)
+                  if (nrow(cid) == 0) {
+                    if (length(theta)>=6 & !all(bcb$p==1)) {
+                      bc@info$cid = cid = which(bcb$p<=sort(bcb$p)[4], arr.ind=T)
+                    } else {
+                      # save(NULL, file=paste0(bcname,".Rdata"))
+                      next
+                    }
+                  }
+                } else {
+                  bc@info$cid = cid = which(bcb$p<=1, arr.ind=T)
+                }
+                
+                # cidmatrix = data.frame(row=rep(0,nrow(cid)), col=rep(0,nrow(cid)))
+                # cidmatrix[cid] = 1
+                # bc@info$sigcluster = cidmatrix
+                bc@Number = nrow(cid)
+                bc@RowxNumber = array(F, dim=c(nrow(m),nrow(cid))); colnames(bc@RowxNumber) = rep(1,ncol(bc@RowxNumber))
+                bc@NumberxCol = array(F, dim=c(nrow(cid), ncol(m))); rownames(bc@NumberxCol) = rep(1,nrow(bc@NumberxCol))
+                for (i in 1:nrow(cid)) { #column = cluster
+                  rowclust = cid[i,1]
+                  colclust = cid[i,2]
+                  colnames(bc@RowxNumber)[i] = rownames(bc@NumberxCol)[i] = bcb$p[rowclust,colclust]
+                  rows = bcb$transcript.clusters==rowclust
+                  cols = bcb$patient.clusters==colclust
+                  bc@RowxNumber[rows, i] = T
+                  bc@NumberxCol[i, cols] = T
+                  # cat("\n", sum(bcb$transcript.clusters==rowclust), ", ", sum(bcb$patient.clusters==colclust), sep="")
+                }
+                rowclust = bc@info$transcript.clusters
+                colclust = bc@info$patient.clusters
+              }
+              
+              if (nrow(bc@RowxNumber) != nrow(m) | ncol(bc@RowxNumber) != bc@Number) bc@RowxNumber = t(bc@RowxNumber)
+              if (ncol(bc@NumberxCol) != ncol(m) | nrow(bc@NumberxCol) != bc@Number) bc@NumberxCol = t(bc@NumberxCol)
+              
+              ## get & save clustering & labels!
+              
+              if (bcmethod != "BBbinary") {
+                rowclust = rowxcluster_to_cluster(bc@RowxNumber)
+                colclust = clusterxcol_to_cluster(bc@NumberxCol)
+              } 
+              # rowlabel = sm[,target_col]
+              
+              if (length(unique(rowclust))==1) next
+              
+              # names(rowclust) = names(rowlabel) = rownames(m)
+              names(rowclust) = rownames(m)
+              names(colclust) = colnames(m)
+              clusts[[paste0(bcmethod,".",par)]] = list(x=rowclust, y=colclust, bc=bc)
+              # f1 = f.measure.comembership(rowlabel,rowclust)
+              
+              # save biclustering
+              # path
+              # biclust_dir1 = paste0(biclust_dir,"/",dirname)
+              bcname1 = paste0(bcname10, "/", feat_type)
+              save(clusts, file=paste0(bcname1,".Rdata"))
+              # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust)
+              # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust,rowlabel=rowlabel)
+              # save(bc0, file=paste0(bcname,".Rdata"))
+              # write.csv(rowclust, file=paste0(bcname,"_rowclust.csv"))
+              # write.csv(colclust, file=paste0(bcname,"_colclust.csv"))
+              # write.csv(rowlabel, file=paste0(bcname,"_rowlabel.csv"))
+              
+              # #save row/col as csv
+              # try({
+              #   bcgene = bc@RowxNumber; rownames(bcgene) = sm[,target_cols[1]]
+              #   bcgene = bcgene[apply(bcgene, 1, function(x) all(!x)),]
+              #   write.csv(bcgene,file=paste0(bcname,"_row.csv"))
+              # })
+              # try ({
+              #   bccol = bc@NumberxCol
+              #   if (ncol(bccol)==bc@Number) bccol = t(bccol)
+              #   colnames(bccol) = colnames(m)
+              #   bccol = bccol[,apply(bccol, 2, function(x) all(!x))]
+              #   write.csv(bccol,file=paste0(bcname,"_col.csv"))
+              # })
+              
+            }, error = function(err) { cat(paste("biclustering error:  ",err)) })# ; return(T) })
+
+              
+            ## plot --------------------
+            
+              ## pretty heatmap
+            tryCatch({
+                
+              # prepare col/row annotation for pretty heatmap
+              if (bcmethod=="BBbinary") {
+                colcluster_temp = bc@info$patient.clusters              
+                colcluster_temp[!colcluster_temp%in%bc$colclust] = 0
+                rowcluster_temp = bc@info$transcript.clusters
+                rowcluster_temp[!rowcluster_temp%in%bc$rowclust] = 0
+              } else {
+                colcluster_temp = unlist(apply(bc@NumberxCol, 2, function(x) 
+                  ifelse(sum(x)==0, 0, max(which(x))) ))
+                rowcluster_temp = unlist(apply(bc@RowxNumber, 1, function(x)
+                  ifelse(sum(x)==0, 0, max(which(x))) ))
+              }
+              # plot
+              
+              
+              bcname2 = paste0(bcname20, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
               
               
               # prep data
@@ -437,7 +451,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
                        filename = paste0(bcname2, "_pheatmap-sorted.png"),
                        width=3, height=2) #inches
               
-            }, error = function(err) { cat(paste("pheatmap error:  ",err)); return(T) })
+            }, error = function(err) { cat(paste("pheatmap error:  ",err)) }) #; return(T) })
+            
             
             ## plot row clusters against different sample target_cols
             tryCatch({
@@ -486,7 +501,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # title(xlab="bicluster",ylab=target_col)
               # box()
               graphics.off()
-            }, error = function(err) { cat(paste("target_col plot error:  ",err)); return(T) })
+            }, error = function(err) { cat(paste("target_col plot error:  ",err)) })#; return(T) })
             
           }
           # # Specifying clustering from distance matrix
@@ -513,7 +528,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           ## plot heatmaps
           tryCatch ({
-            bcname2 = paste0(biclust_plot_dir, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
+            bcname2 = paste0(bcname20, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
             
             png(paste0(bcname2,"_heatmap0.png"), height=plot_size_bar[1], width=plot_size_bar[2])
             par(mar=c(5,3,6,5))
@@ -530,7 +545,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               drawHeatmap(as.matrix(m),bc,BCi,plotAll=T)
             }
             graphics.off()
-          }, error = function(err) { cat(paste("heatmap error:  ",err)); return(T) })
+          }, error = function(err) { cat(paste("heatmap error:  ",err)) }) #; return(T) })
           
           
           
@@ -558,13 +573,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # }
         
       } # bcmethod
-      save(clusts, file=paste0(bcname1,".Rdata"))
       # } #target_col
       time_output(start2)
-      return(F)
-    }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
-    return(F)
-  }, .parallel=T)
+      # return(F)
+    }, error = function(err) { cat(paste("ERROR:  ",err)) }) #; return(T) })
+    # return(F)
+  }#, .parallel=T)
   
   
   
