@@ -41,7 +41,7 @@ overwrite = T #overwrite biclust?
 good_count = 1 #trim matrix; only keep col/rows that meet criteria for more than 3 elements
 good_sample = 3 #trim matrix; only keep rows that are a part of a class with more than 3 samples
 
-k = 6 # until what layer of cells to use
+k = 4 # until what layer of cells to use
 countThres = 1000 #a cell is insignificant if count under cell CountThres so delete -- only for matrices that have cell populations as column names
 target_cols = c("class","gender") #the interested column in meta_file
 control = "control" #control value in target_col column
@@ -115,16 +115,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   for (feat_type in feat_types) {  
     tryCatch({
       cat("\n", feat_type, " ",sep="")
+      fname_ = paste0(feat_type, "_layer-", str_pad(k, 2, pad = "0"), "_countThres-", countThres)
+      
       start2 = Sys.time()
       
-      ## upload and prep feature matrix
-      m = mbinary = m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-      mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
-      # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
-      m = m[apply(m, 1, function(x) any(x>0)), apply(m, 2, function(x) any(x>countThres))]
-      sm = meta_file[match(rownames(m),meta_file[,id_col]),]
-      
-      colhascell = !grepl("_",colnames(m)[1])
+      # ## upload and prep feature matrix
+      # m = mbinary = 
+      m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
+      # mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
+      # # sm = meta_file[match(rownames(m0),meta_file[,id_col]),]
+      # m = m[apply(m, 1, function(x) any(x>0)), apply(m, 2, function(x) any(x>countThres))]
+      # sm = meta_file[match(rownames(m),meta_file[,id_col]),]
       
       # for (target_col in target_cols) {
       #   if (!target_col%in%colnames(meta_file)) next
@@ -174,8 +175,18 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # par(mfrow=c(plotn2,plotn2))
       
       for (target_col in target_cols) {
+        if (!target_col%in%colnames(meta_file)) next
+        ## upload and prep feature matrix
+        mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, k=k, countThres=countThres, goodcount=good_count, good_sample=good_sample)
+        if (is.null(mm)) next
+        m = mbinary = mm$m
+        mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
+        sm = mm$sm
+        if (all(sm[,target_col]==sm[1,target_col])) next
         
-        if (!target_col%in%colnames(sm)) next
+        colhascell = !grepl("_",colnames(m)[1])
+        
+        
         
         #list out class labels
         class = sm[,target_col];
@@ -190,15 +201,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         bcname20 = paste0(biclust_plot_dir, "/", dirname); dir.create(bcname20, recursive=T, showWarnings=F)
         bcname10 = paste0(biclust_dir, "/", dirname); dir.create(bcname10, showWarnings=F, recursive=T)
         
-      clusts = list()
-      
-      for (bcmethod in names(bmethodspar)) { #requires binary matrix
-        for (par in bmethodspar[[bcmethod]]) {
-          bcb = bc = NULL
-          cat("\n ",bcmethod," ",par, " ",sep="")
-          start2 = Sys.time()
-          if (bcmethod=="BBbinary" & !grepl("pval[A-z]*TRIM",feat_type)) next
-          
+        clusts = list()
+        
+        for (bcmethod in names(bmethodspar)) { #requires binary matrix
+          for (par in bmethodspar[[bcmethod]]) {
+            bcb = bc = NULL
+            cat("\n ",bcmethod," ",par, " ",sep="")
+            start2 = Sys.time()
+            if (bcmethod=="BBbinary" & !grepl("pval[A-z]*TRIM",feat_type)) next
+            
             tryCatch ({
               
               
@@ -275,7 +286,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
                 } 
                 
                 ## plot x 4: factor heatplot + contribution of row/col
-                bcname3 = paste0(bcname20, "/", feat_type,"_", bcmethod, ifelse(!is.na(par),paste0("-", par)), "_factors.png")
+                bcname3 = paste0(bcname20, "/", fname_,"_", bcmethod, ifelse(!is.na(par),paste0("-", par)), "_factors.png")
                 png(bcname3, width=plotsize, height=plotsize)
                 par(mfrow=c(2,2))
                 
@@ -369,7 +380,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # save biclustering
               # path
               # biclust_dir1 = paste0(biclust_dir,"/",dirname)
-              bcname1 = paste0(bcname10, "/", feat_type)
+              bcname1 = paste0(bcname10, "/", fname_)
               save(clusts, file=paste0(bcname1,".Rdata"))
               # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust)
               # bc0 = list(source=bc,rowclust=rowclust,colclust=colclust,rowlabel=rowlabel)
@@ -393,13 +404,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # })
               
             }, error = function(err) { cat(paste("biclustering error:  ",err)) })# ; return(T) })
-
-              
+            
+            
             ## plot --------------------
             
-              ## pretty heatmap
+            ## pretty heatmap
             tryCatch({
-                
+              
               # prepare col/row annotation for pretty heatmap
               if (bcmethod=="BBbinary") {
                 colcluster_temp = bc@info$patient.clusters              
@@ -415,7 +426,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # plot
               
               
-              bcname2 = paste0(bcname20, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
+              bcname2 = paste0(bcname20, "/", fname_, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
               
               
               # prep data
@@ -528,7 +539,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           ## plot heatmaps
           tryCatch ({
-            bcname2 = paste0(bcname20, "/", feat_type, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
+            bcname2 = paste0(bcname20, "/", fname_, "_", bcmethod, ifelse(!is.na(par),paste0("-", par),""))
             
             png(paste0(bcname2,"_heatmap0.png"), height=plot_size_bar[1], width=plot_size_bar[2])
             par(mar=c(5,3,6,5))

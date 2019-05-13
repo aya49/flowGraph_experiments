@@ -51,6 +51,7 @@ disnoneg = c("canberra") #dis measures that can't handle negative values
 
 # normalize = c("none","cellpop", "layer") # by none (for child matrices only), cell pop, layer
 
+k = 4 # layers used
 
 
 feat_count = c("file-cell-countAdj") #(needed if sample x cell pop matrices are used) count matrix, to get rid of low cell count cells
@@ -95,7 +96,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   # layers = c(1,4,max(meta_cell$phenolevel)) # how many markers to consider i.e. k=max(phenolevel) only
   
-  k = 4
   
   
   start = Sys.time()

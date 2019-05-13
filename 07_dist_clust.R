@@ -17,7 +17,7 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "tcltk"))
 
 #Setup Cores
-no_cores = detectCores()-3
+no_cores = 6#detectCores()-3
 setup_parallel(no_cores)
 
 

@@ -16,7 +16,7 @@ libr(c("stringr", "plyr", "Matrix",
        "clues", "PerfMeas", "cluster")) #if there are date variables
 
 #Setup Cores
-no_cores = 1#detectCores()-3
+no_cores = 2#detectCores()-3
 registerDoMC(no_cores)
 
 overwrite = F #redo and overwrite all past scores
@@ -32,6 +32,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")
   clust_dir = paste(result_dir,  "/clust", sep="")
+  dist_dir = paste(result_dir, "/dist", sep="")
   
   ## output directories
   score_dir = paste(result_dir, "/score_clust", sep=""); dir.create(score_dir, showWarnings=F)
@@ -51,16 +52,24 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   ## for each feature
   ncasl = llply(clust_types, function(clust_type) { 
+    # ncasl = lapply(clust_types, function(clust_type) { 
+    # for (clust_type in clust_types) {
     tryCatch({ cat("\n", clust_type, " ",sep="")
       
+      fname1 = str_split(clust_type, "[/]")[[1]]
+      d = NULL
+      if (grepl("dist",fname1[1]))
+        d = as.matrix(get(load(paste0(dist_dir,"/",fname1[length(fname1)],".Rdata"))))
+        
       ## upload and prep clust
       c00 = get(load(paste0(clust_dir,"/", clust_type,".Rdata")))
       
       # for each cluster result
       scores = list()
       for (i in 1:length(c00)) {
+        clust_name = names(c00[i])
         c0 = c00[[i]]$x
-        sm0 = meta_file[match(names(c),meta_file[,id_col]),]
+        sm0 = meta_file[match(as.character(names(c)), as.character(meta_file[,id_col])),]
         
         for (split_col in split_cols) {
           if (split_col=="none") {
@@ -166,9 +175,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # colnames(c1_df) = sort(unique(c1)); 
               # rownames(c1_df) = names(c1)
               
-              class_df = model.matrix(~class)
-              colnames(class_df) = sort(class_unique)
-              rownames(class_df) = names(class)
+              class_df = cluster_v2m(class)
+              # colnames(class_df) = sort(class_unique)
+              rownames(class_df) = rownames(c_df)
               
               
               
@@ -220,7 +229,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               
               
               
-              
+              if (!is.null(d)) {
               
               ## internal validation silmed (distance & clustering)
               # if (!cmethod%in%cmethodclass & dist_type!="NA") {
@@ -234,6 +243,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               # fm[[colnam]][[dindname]][[cltype]][[par]]["silmed"] = sil
               list_temp = append(list_temp, sil)
               # }
+              }
               
               # if (length(unique(cl))==1) {
               #   score = rep(NA,9)
@@ -245,7 +255,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               
               # end ------------------------------------
               
-              scores[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list_temp
+              
+              scores[[clust_name]][[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list_temp
               
             }# target col
           }# split_i
@@ -263,41 +274,57 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   temp = str_split(names(ncaslul),"\\\\")
   clusts = sapply(temp, function(x) x[1])
   other = sapply(temp, function(x) gsub("^[.]","",paste0(x[-1], collapse="/")))
-  ncasna = str_split(other,"[.]")
-  
+  ncasna0 = str_split(other,"[.]")
+  splitcols_ind = sapply(ncasna0, function(x) {
+    for (i in 1:(length(x)-1)) {
+      if (grepl(paste0("^",x[i]),x[i+1]) & (x[i]%in%colnames(meta_file) | x[i]=="none")) return(i)
+    }
+  })
+  clustmeth = sapply(1:length(ncasna0), function(xi) paste0(ncasna0[[xi]][1:(splitcols_ind[xi]-1)], collapse="."))
+  ncasna = llply(1:length(ncasna0), function(xi) ncasna0[[xi]][splitcols_ind[xi]:length(ncasna0[[xi]])])
+
   splitcols = sapply(ncasna, function(x) x[1])
   splitis = sapply(ncasna, function(x) x[2])
   targcols = sapply(ncasna, function(x) paste0(x[3:(length(x)-1)], collapse="; "))
   targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
   targcols_col = sapply(strsplit(targcols,"[:]"), function(x) x[1])
   score_types = sapply(ncasna, function(x) x[5])
-  score_table = data.frame(clustMethod=clusts, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=ncaslul)
+  score_table = data.frame(path=clusts, clustMethod.parameter=clustmeth, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, scoreType=score_types, score=ncaslul)
   write.csv(score_table, paste0(score_dir, ".csv"), row.names=F)
   
   feat = sapply(str_split(clusts, "_layer"), function(x) x[1])
+  feat = sapply(str_split(feat,"[/]"), function(x) x[length(x)])
   layer = as.numeric(gsub("layer-","",str_extract(clusts, "layer-[0-9]+")))
   dist = gsub("dist-","",str_extract(clusts, "dist-[a-zA-Z]+"))
   
   # plot
   dir.create(score_dir, showWarnings=F)
-  for (targ in unique(targcols_col)) {
-    ti = targcols_col==targ
+  targcols_cols = sapply(str_split(targcols_col,";"), function(x) x[1])
+  for (targ in unique(targcols_cols)) {
+    ti = targcols_cols==targ
     for (split in unique(splitcols)) {
       si = splitcols==split
       for (lay in unique(layer)) {
         li = layer==lay
-        for (dis in unique(clusts)) {
-          di = clusts==dis
-          for (sco in unique(score_types)) {
-            sci = score_types==sco
-            
-            score_temp = score_table[ti&si&li&di&sci,]
-            score_temp$feat = feat[ti&si&li&di&sci]
-            
-            png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"))
-            barchart(score~feat,data=score_temp,groups=score_type, 
-                     scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and cluster method ", dis))
-            graphics.off()
+        for (dis in unique(dist)) {
+          di = dist==dis; di[is.na(di)] = F
+          if (is.na(dis)) di = is.na(dist)
+          for (clus in unique(clustmeth)) {
+            cli = clustmeth==clus
+            for (sco in unique(score_types)) {
+              sci = score_types==sco
+              
+              indsfull = ti&si&li&di&sci&cli
+              if (sum(indsfull)<2) next
+              cat("\n", targ, ", ", split, ", ", lay,", ", clus, ", ", dis, ", ", sco)
+              score_temp = score_table[indsfull,]
+              score_temp$feat = feat[indsfull]
+              
+              png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"))
+              barchart(score~feat,data=score_temp,
+                       scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and cluster method ", clus, "(made from dist? ",dis,")"))
+              graphics.off()
+            }
           }
         }
       }
