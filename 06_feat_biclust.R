@@ -1,5 +1,5 @@
 ## input: features 
-## output: biclusters + some nice plots (if number of clusters/k required, the number of ground truth classes were provided)
+## output: biclusters (plaid, cheng and church, bimax, B2PS, fabia, GrNMF) + some nice plots (if number of clusters/k required, the number of ground truth classes were provided)
 
 
 ## root directory

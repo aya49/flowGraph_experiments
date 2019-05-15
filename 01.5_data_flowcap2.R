@@ -1,7 +1,7 @@
 ## input: count adjusted matrix (flowcap data set only) (must run 00_data_flowcap.R before running this, every time)
 ## output: count adjusted matrix + frankenstein samples
 ## process: 
-## - add a 3rd category of samples as a linear combination (weight = 1/(2*matchsamples)) of randomly sampled matchsamples (5) control & (5) aml samples -- sampling done once, combinations same for all flowcap panels
+## - add a 3rd category of samples as a linear combination (weight = 1/(2*matchsamples)) of randomly sampled (5) control & (5) aml samples -- sampling done once, combinations same for all flowcap panels
 ## - one frankenstein sample for every control sample is made
 
 ## root directory
