@@ -18,7 +18,7 @@ libr(c("biclust", "NMF","fabia","GrNMF", #devtools::install_github("jstjohn/GrNM
        "tcltk"))
 
 ## setup Cores for parallel processing (parallelized for each feature)
-no_cores = 1#detectCores()-3
+no_cores = 5#detectCores()-3
 registerDoMC(no_cores)
 
 
@@ -70,7 +70,7 @@ qthres = .15 # quantile of nmf type methods factors; how large does factor effec
 plot_size_bar = c(700,700)
 plot_size = c(300,300)
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[c(17:1)[-15]]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -111,8 +111,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   }
   
   ## for each feature
-  # a = llply(feat_types, function(feat_type) {
-  for (feat_type in feat_types) {  
+  a = llply(feat_types, function(feat_type) {
+  # for (feat_type in feat_types) {  
     tryCatch({
       cat("\n", feat_type, " ",sep="")
       fname_ = paste0(feat_type, "_layer-", str_pad(k, 2, pad = "0"), "_countThres-", countThres)
@@ -589,7 +589,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # return(F)
     }, error = function(err) { cat(paste("ERROR:  ",err)) }) #; return(T) })
     # return(F)
-  }#, .parallel=T)
+  }, .parallel=T)
   
   
   
