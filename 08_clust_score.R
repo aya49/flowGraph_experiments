@@ -13,7 +13,7 @@ source("source/_funcAlice.R")
 source("source/_funcdist.R")
 libr(c("stringr", "plyr", "Matrix",
        "foreach","doMC",
-       "clues", "PerfMeas", "cluster")) #if there are date variables
+       "clues", "PerfMeas", "cluster", "lattice")) #if there are date variables
 
 #Setup Cores
 no_cores = 5#detectCores()-3
@@ -287,9 +287,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   splitis = sapply(ncasna, function(x) x[2])
   targcols = sapply(ncasna, function(x) paste0(x[3:(length(x)-1)], collapse="; "))
   targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
-  targcols_col = sapply(strsplit(targcols,"[:]"), function(x) x[1])
+  targcols_col = sapply(strsplit(targcols,"[:|;]"), function(x) x[1])
   score_types = sapply(ncasna, function(x) x[5])
   score_table = data.frame(path=clusts, clustMethod.parameter=clustmeth, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, scoreType=score_types, score=ncaslul)
+  if(file.exists(paste0(score_dir, ".csv"))) file.remove(paste0(score_dir, ".csv"))
   write.csv(score_table, paste0(score_dir, ".csv"), row.names=F)
   
   feat = sapply(str_split(clusts, "_layer"), function(x) x[1])
@@ -309,23 +310,24 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         for (dis in unique(dist)) {
           di = dist==dis; di[is.na(di)] = F
           if (is.na(dis)) di = is.na(dist)
-          for (clus in unique(clustmeth)) {
-            cli = clustmeth==clus
+          # for (clus in unique(clustmeth)) {
+          #   cli = clustmeth==clus
             for (sco in unique(score_types)) {
               sci = score_types==sco
               
-              indsfull = ti&si&li&di&sci&cli
+              indsfull = ti&si&li&di&sci#&cli
               if (sum(indsfull)<2) next
-              cat("\n", targ, ", ", split, ", ", lay,", ", clus, ", ", dis, ", ", sco)
+              cat("\n", targ, ", ", split, ", ", lay, ", ", dis, ", ", sco)
               score_temp = score_table[indsfull,]
               score_temp$feat = feat[indsfull]
               
-              png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"))
-              barchart(score~feat,data=score_temp,
-                       scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and cluster method ", clus, "(made from dist? ",dis,")"))
+              png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"), width=1200)
+              barchart(score~feat, groups=clustMethod.parameter, data=score_temp, auto.key = list(columns=2),
+                       cex.axis=3,
+                       scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " grouped by cluster method (made from dist? ",dis,")"))
               graphics.off()
             }
-          }
+          # }
         }
       }
     }
