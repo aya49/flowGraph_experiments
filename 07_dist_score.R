@@ -170,9 +170,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           score_temp = score_table[ti&si&li&di&sci,]
           score_temp$feat = feat[ti&si&li&di&sci]
           
-          png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_dist-",dis, "scoretype-",sco, ".png"))
-          barchart(score~feat,data=score_temp,groups=score_type, 
+          png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_dist-",dis, "_scoretype-",sco, ".png"))
+          pl = barchart(score~feat,data=score_temp,groups=score_type, 
                    scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and distance ", dis))
+          print(pl)
           graphics.off()
           }
         }

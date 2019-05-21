@@ -26,7 +26,7 @@ target_cols = c("class","gender","group") #meta_file columns to plot
 split_cols = c("gender", "group","none")
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[16:17]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
@@ -55,6 +55,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     # ncasl = lapply(clust_types, function(clust_type) { 
     # for (clust_type in clust_types) {
     tryCatch({ cat("\n", clust_type, " ",sep="")
+      clust_typedir0 = str_split(clust_type,"/")
+      clust_typedir = paste0(clust_typedir0[[1]][1:(length(clust_typedir0[[1]])-1)], collapse="/")
+      clust_typedir = paste0(score_dir,"/",clust_typedir)
+      dir.create(clust_typedir, recursive=T, showWarnings=F)
       
       fname1 = str_split(clust_type, "[/]")[[1]]
       d = NULL
@@ -69,7 +73,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       for (i in 1:length(c00)) {
         clust_name = names(c00[i])
         c0 = c00[[i]]$x
-        sm0 = meta_file[match(as.character(names(c)), as.character(meta_file[,id_col])),]
+        sm0 = meta_file[match(as.character(names(c0)), as.character(meta_file[,id_col])),]
         
         for (split_col in split_cols) {
           if (split_col=="none") {
@@ -258,6 +262,18 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               
               scores[[clust_name]][[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list_temp
               
+              
+              # plot ---------------------------
+              cu = unique(class)
+              stackedbar = sapply(unique(c), function(x) {
+                sapply(cu, function(y) sum(class[c==x]==y)) })
+              colnames(stackedbar) = unique(c)
+              rownames(stackedbar) = cu
+              png(paste0(clust_typedir, "/", clust_typedir0[[1]][length(clust_typedir0[[1]])], "_split-",split_col,"-",split_i,"_class-",target_col, ".png"))
+              barplot(stackedbar, main="ground truth class distribution in each cluster",
+                      xlab="cluster",
+                      legend = rownames(stackedbar)) 
+              graphics.off()
             }# target col
           }# split_i
         }# split_col
@@ -286,7 +302,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   splitcols = sapply(ncasna, function(x) x[1])
   splitis = sapply(ncasna, function(x) x[2])
   targcols = sapply(ncasna, function(x) paste0(x[3:(length(x)-1)], collapse="; "))
-  targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
+  targcols = sapply(targcols, function(x) paste0(x, collapse=""))
   targcols_col = sapply(strsplit(targcols,"[:|;]"), function(x) x[1])
   score_types = sapply(ncasna, function(x) x[5])
   score_table = data.frame(path=clusts, clustMethod.parameter=clustmeth, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, scoreType=score_types, score=ncaslul)
@@ -321,10 +337,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               score_temp = score_table[indsfull,]
               score_temp$feat = feat[indsfull]
               
-              png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "scoretype-",sco, ".png"), width=1200)
-              barchart(score~feat, groups=clustMethod.parameter, data=score_temp, auto.key = list(columns=2),
-                       cex.axis=3,
-                       scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " grouped by cluster method (made from dist? ",dis,")"))
+              png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, ".png"), width=1200)
+              pl = barchart(score~feat, groups=clustMethod.parameter, data=score_temp, auto.key = list(columns=2),
+                       cex.axis=3, scales=list(x=list(rot=90,cex=0.8)), 
+                       main=paste0(sco," scores by feature type for class ", targ, " grouped by cluster method (made from dist? ",dis,")"))
+              print(pl)
               graphics.off()
             }
           # }
