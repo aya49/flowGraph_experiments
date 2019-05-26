@@ -125,6 +125,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             dunn_score = dunn(as.dist(d), as.numeric(factor(class)))
             
             scores[[split_col]][[paste0(split_i,"-",nrow(sm))]][[dirname]] = list(nca=nca_score,dunn=dunn_score) #2min, 21s
+            
+            
+            # plot -------------------
+            
+            
           }# target col
         }# split_i
       }# split_col

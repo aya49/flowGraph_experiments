@@ -137,6 +137,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         tsned = tsne(dist(d), k=2)
         png(cname2, width=plotn2*plotsize, height=plotn2*plotsize)
         par(mfrow=c(plotn2,plotn2))
+        plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("tsne plot of dist"))
+        legend("topleft", legend=levels(factor(class)), pch=16, col=unique(factor(class)))
         
         sim = get_graph(d) 
         clusts = list()
@@ -217,7 +219,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             # }
             
             plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("method = ", cmethod,", parameter = ", par, " (NA if none or # of clusters); \n o = cluster, . = actual class"))
-            legend("topleft", legend=levels(factor(class)), pch=16, col=unique(factor(class)))
             points(tsned, cex=2, col=factor(clt))
             
             names(clt) = rownames(d)

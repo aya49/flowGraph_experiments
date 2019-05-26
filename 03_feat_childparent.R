@@ -82,10 +82,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   mp = Matrix(get(load(paste0(feat_file_cell_prop_dir,".Rdata"))))
-  
-  feat_file_cell_logfold = Matrix(get(load(paste0(feat_file_cell_logfold_dir,".Rdata"))))
-  feat_file_cell_countAdjKO = Matrix(get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdata"))))
-  
   # meta_cell_child = get(load(paste0(meta_cell_child_dir,".Rdata")))
   # meta_cell_child_names = get(load(paste0(meta_cell_child_names_dir,".Rdata")))
   # meta_cell_child_ind = get(load(paste0(meta_cell_child_ind_dir,".Rdata")))
@@ -241,68 +237,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   time_output(start1)
   
-  
-  
-  ## Parent contribution ---------------------------------------------------------------
-  
-  start1 = Sys.time()
-  cat(", parentcontribution")
-  
-  feat_file_cell_countAdjWT = foreach(i=1:ncol(feat_file_cell_logfold),.combine="cbind") %dopar% { 
-    return(feat_file_cell_countAdjKO[,i]/exp(feat_file_cell_logfold[,i])) 
-  }
-  colnames(feat_file_cell_countAdjWT) = colnames(feat_file_cell_countAdjKO)
-  contrib0 = llply(1:length(meta_cell_parent_names), function(i) { #for each phenotype
-    cnames = names(meta_cell_parent_names)[i]
-    change = feat_file_cell_countAdjKO[,colnames(feat_file_cell_countAdjKO)%in%cnames] - feat_file_cell_countAdjWT[,colnames(feat_file_cell_countAdjWT)%in%cnames]
-    
-    pnames = meta_cell_parent_names[[i]]
-    koparents = feat_file_cell_countAdjKO[,colnames(feat_file_cell_countAdjKO)%in%pnames, drop=F]
-    wtparents = feat_file_cell_countAdjWT[,colnames(feat_file_cell_countAdjWT)%in%pnames, drop=F]
-    
-    changeparents = koparents - wtparents
-    changeparents[changeparents<1] = 1
-    
-    contrib = change / changeparents
-    
-    rownames(contrib) = rownames(feat_file_cell_countAdjKO)
-    colnames(contrib) = paste0(pnames,"_",cnames)
-    return(contrib)
-  }, .parallel=T)
-  contrib = Reduce("cbind",contrib0)
-  save(contrib, file=paste0(feat_file_edge_contrib_dir,".Rdata"))
-  if (writecsv) write.csv(contrib, file=paste0(feat_file_edge_contrib_dir,".csv"))
-  
-  time_output(start1)
-  
-  
-  
-  ## Parent effort -------------------------------------------------------
-  
-  start1 = Sys.time()
-  cat(", parenteffort")
-  
-  effort0 = llply(1:length(meta_cell_parent_names), function(i) {
-    pnames = meta_cell_parent_names[[i]]
-    parent = feat_file_cell_logfold[,colnames(m)%in%pnames,drop=F] 
-    cnames = names(meta_cell_parent_names)[i]
-    childr = feat_file_cell_logfold[,cnames]
-    
-    effort1 = childr - parent
-    if (length(pnames)==1) effort1 = matrix(effort1,ncol=1) #prob don't need, was a failsafe
-    rownames(effort1) = rownames(feat_file_cell_logfold)
-    colnames(effort1) = paste0(pnames,"_",cnames)
-    return(effort1)
-  }, .parallel=T)
-  
-  effort = Reduce("cbind",effort0)
-  save(effort, file=paste0(feat_file_edge_effort_dir,".Rdata"))
-  if (writecsv) write.csv(effort, file=paste0(feat_file_edge_effort_dir,".csv"))
-  
-  time_output(start1)
-  
-  
-  
   ## prop/expected -----------------------------------------------------
   
   start1 = Sys.time()
@@ -334,7 +268,82 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   time_output(start1)
   
   
+  
+  
+  ## features that require p value script -----------------------
+  if (file.exists(feat_file_cell_logfold_dir)) {
+    feat_file_cell_logfold = Matrix(get(load(paste0(feat_file_cell_logfold_dir,".Rdata"))))
+    feat_file_cell_countAdjKO = Matrix(get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdata"))))
+    
+    
+    ## Parent contribution ---------------------------------------------------------------
+    
+    start1 = Sys.time()
+    cat(", parentcontribution")
+    
+    feat_file_cell_countAdjWT = foreach(i=1:ncol(feat_file_cell_logfold),.combine="cbind") %dopar% { 
+      return(feat_file_cell_countAdjKO[,i]/exp(feat_file_cell_logfold[,i])) 
+    }
+    colnames(feat_file_cell_countAdjWT) = colnames(feat_file_cell_countAdjKO)
+    contrib0 = llply(1:length(meta_cell_parent_names), function(i) { #for each phenotype
+      cnames = names(meta_cell_parent_names)[i]
+      change = feat_file_cell_countAdjKO[,colnames(feat_file_cell_countAdjKO)%in%cnames] - feat_file_cell_countAdjWT[,colnames(feat_file_cell_countAdjWT)%in%cnames]
+      
+      pnames = meta_cell_parent_names[[i]]
+      koparents = feat_file_cell_countAdjKO[,colnames(feat_file_cell_countAdjKO)%in%pnames, drop=F]
+      wtparents = feat_file_cell_countAdjWT[,colnames(feat_file_cell_countAdjWT)%in%pnames, drop=F]
+      
+      changeparents = koparents - wtparents
+      changeparents[changeparents<1] = 1
+      
+      contrib = change / changeparents
+      
+      rownames(contrib) = rownames(feat_file_cell_countAdjKO)
+      colnames(contrib) = paste0(pnames,"_",cnames)
+      return(contrib)
+    }, .parallel=T)
+    contrib = Reduce("cbind",contrib0)
+    save(contrib, file=paste0(feat_file_edge_contrib_dir,".Rdata"))
+    if (writecsv) write.csv(contrib, file=paste0(feat_file_edge_contrib_dir,".csv"))
+    
+    time_output(start1)
+    
+    
+    
+    ## Parent effort -------------------------------------------------------
+    
+    start1 = Sys.time()
+    cat(", parenteffort")
+    
+    effort0 = llply(1:length(meta_cell_parent_names), function(i) {
+      pnames = meta_cell_parent_names[[i]]
+      parent = feat_file_cell_logfold[,colnames(m)%in%pnames,drop=F] 
+      cnames = names(meta_cell_parent_names)[i]
+      childr = feat_file_cell_logfold[,cnames]
+      
+      effort1 = childr - parent
+      if (length(pnames)==1) effort1 = matrix(effort1,ncol=1) #prob don't need, was a failsafe
+      rownames(effort1) = rownames(feat_file_cell_logfold)
+      colnames(effort1) = paste0(pnames,"_",cnames)
+      return(effort1)
+    }, .parallel=T)
+    
+    effort = Reduce("cbind",effort0)
+    save(effort, file=paste0(feat_file_edge_effort_dir,".Rdata"))
+    if (writecsv) write.csv(effort, file=paste0(feat_file_edge_effort_dir,".csv"))
+    
+    time_output(start1)
+    
+  }
+  
 }
+
+
+
+
+
+
+
 
   time_output(start)
 

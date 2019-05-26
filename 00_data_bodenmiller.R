@@ -42,30 +42,88 @@
 
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/gating_projects"
 setwd(root)
 
 
+## input
+
+
+
 ## ouput
-result_dir = paste0(root, "/result/diffcytof"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/HDCytoData_Bodenmiller"); dir.create(result_dir, showWarnings=F, recursive=T)
+data_dir = paste0(result_dir,"/data"); dir.create(data_dir, showWarnings=F, recursive=T)
+fcs_dir = paste0(result_dir,"/fcs"); dir.create(fcs_dir, showWarnings=F, recursive=T)
+gate_dir = paste0(result_dir,"/gates"); dir.create(gate_dir, showWarnings=F, recursive=T)
 
 
 ## libraries
-source("source/_funcAlice.R")
-libr(c("HDCytoData",
+source("source/_func.R")
+libr(c("HDCytoData", # requires bioconductor 3.9 which requires R 3.6
+       "flowCore", "flowDensity", "diffcyt", "flowType",
+       "MASS", "RColorBrewer",
        "foreach", "doMC", "plyr", "stringr"))
+# BiocManager::install(version="3.9")
 
 ## cores
 no_cores = 8#detectCores()-1
 registerDoMC(no_cores)
 
-
 writecsv = F
 
 
 
+load(paste0(result_dir,"/meta_file.Rdata"))
+load(paste0(result_dir,"/meta_mark.Rdata"))
+
+load(paste0(data_dir,"/se.Rdata")) #se
+# Transform data
+se <- transformData(se, cofactor=5)
+selist = llply(unique(meta_file$sample_id), function(x) se@assays$data$exprs[meta_file$sample_id==x,])
+names(selist) = unique(meta_file$sample_id)
+
+
+
+
+
+## flowtype ------------------------
 
 start = Sys.time()
+markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
+gthresm = c("cd3.gate","cd4.gate","cd20.gate","cd33.gate","cd14.gate","igm.gate","cd7.gate")
+gatesfd = gates = get(load(paste0(gate_dir,"/gates.Rdata"))) #gates
+load(paste0(fcs_dir,".Rdata")) #fslist
+
+# # alternative gates
+# for (ei in names(selist)) {
+#   pop = meta_file$population_id[meta_file$sample_id==ei]
+#   exprs = selist[[ei]]
+#   
+#   gates$cd3.gate[ei] = min(exprs[grepl("T-cells",pop),"CD3"]) #low
+#   gates$cd4.gate[ei] = min(exprs[grepl("CD4 T-cells",pop),"CD4"])
+#   gates$cd20.gate[ei] = min(exprs[grepl("B-cells",pop),"CD20"]) #low
+#   gates$cd33.gate[ei] = max(exprs[grepl("NK cells",pop),"CD33"]) #high
+#   # gates$cd14.gate[ei] = max(exprs[grepl("",pop),"CD14"])
+#   gates$igm.gate[ei] = min(exprs[grepl("B-cells IgM+",pop),"IgM"]) #low
+#   gates$cd7.gate[ei] = min(exprs[grepl("T-cells",pop) | grepl("NK cells",pop), "CD7"]) #low
+# }
+
+
+ftl = llply(1:length(fslist), function(i) {
+  flowType(Frame=fslist[[i]], 
+           PropMarkers=match(markers, meta_mark$channel_name), 
+           MarkerNames=markers, 
+           MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
+           Thresholds=as.list(gates[i,gthresm]), 
+           verbose=F, MemLimit=60)
+}, .parallel=F)
+ft = ldply(ftl, function(ft) ft@CellFreqs)
+ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return(decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
+meta_cell = getPhen(ftcell)
+ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) }
+colnames(ft) = colnames(ftp) = ftcell
+rownames(ft) = rownames(ftp) = names(fslist)
+
 
 
 time_output(start)
