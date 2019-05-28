@@ -64,7 +64,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_dir = paste0(result_dir,"/meta") # meta files directory
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   meta_cell_dir = paste(meta_dir, "/cell", sep="") #meta for rows (sample)
+  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
+  meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
+  
   
   ## output directories
   dist_dir = paste0(result_dir,"/dist"); suppressWarnings(dir.create (dist_dir))
@@ -92,9 +95,14 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   mc = Matrix(get(load(paste0(feat_dir,"/", feat_count,".Rdata"))))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
+  phenocodes = llply(meta_cell$phenocode, function(x) as.numeric(laply(seq(1, nchar(x), 1), function(i) substr(x, i, i))))
+  phenocodes = Reduce('rbind',phenocodes)
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
   # layers = c(1,4,max(meta_cell$phenolevel)) # how many markers to consider i.e. k=max(phenolevel) only
+  
+  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
+  meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
   
   
   
@@ -192,6 +200,43 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # if ("cellpop"%in%normalize) { #cell pop
         # dname1 = paste0(dname, "cellpop.Rdata")
         if (overwrite | !file.exists(dname)) {
+          d = matrix(0,nrow=nrow(m), ncol=nrow(m))
+          
+          ## - Parthasarathy-Ogihara for prop: 1-(sum(max(0,(1-theta*abs(a-b)))) / (length(union(a,b)))
+          theta = 1
+          minds = llply(1:nrow(m), function(i) m[i,]!=0)
+          for (i in 1:(nrow(m)-1)) {
+            for (j in (i+1):nrow(m)) {
+              mij = m[c(i,j), minds[[i]] & minds[[j]]]
+              mdiff = 1-theta*abs(mij[1,]-mij[2,])
+              mdiffsum = sum(sapply(a,function(x) max(x,0)))
+              d[i,j] = d[j,i] = 1-(mdiffsum/sum(minds[[i]] | minds[[j]]))
+            }
+          }
+          
+          ## - FOCUS: sum(abs(a-b)) / (sum(a)+sum(b))
+          for (i in 1:(nrow(m)-1)) {
+            for (j in (i+1):nrow(m)) {
+              mij = m[c(i,j), minds[[i]] & minds[[j]]]
+              mdiff = sum(abs(mij[1,]-mij[2,]))
+              mdiff2 = sum(mij[1,]+mij[2,])
+              d[i,j] = d[j,i] = mdiff / mdiff2
+            }
+          }
+
+          ## - li-origihara-zhou: 1-(2*i3)/(i1+i2) -- normalization for mutual info
+          phenocodes_ = phenocodes[match(colnames(m),meta_cell$phenotype),]
+          
+          #   - i1 = sum(sapply(every pair of cell pops in a, d(a1,a2)))
+          #   - i2 = sum(sapply(every pair of cell pops in b, d(b1,b2)))
+          #   - i3 = sum(sapply(every pair of cell pops in a,b, d(a1,b2))) -- mutual info between a,b
+          #   - d(x,y) = c*log(1+c)*min(supp(x),supp(y))
+          
+          dloz = function(x,y) {
+            cloz = x==1
+          }
+          
+          
           if (dis[i]%in%disindist) {
             d = dist(m, method=dis[i])
           } else { 

@@ -79,7 +79,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   cat("\ncreating child matrix")
   
   m = Matrix(get(load(paste0(feat_file_cell_countAdj_dir,".Rdata"))))
-
+  
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   mp = Matrix(get(load(paste0(feat_file_cell_prop_dir,".Rdata"))))
   # meta_cell_child = get(load(paste0(meta_cell_child_dir,".Rdata")))
@@ -337,13 +337,5 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   }
   
 }
-
-
-
-
-
-
-
-
-  time_output(start)
+time_output(start)
 
