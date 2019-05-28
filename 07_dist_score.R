@@ -1,5 +1,6 @@
 ## input: distance matrices
 ## output: nca & dunn (didn't work well lol) table of scores + bar plots based on how well distance matrix aligns with known classes
+## note: classes "normal" and "control" are treated the same with not phenodeviant features
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
@@ -104,7 +105,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             if (!target_col%in%colnames(sm)) next
             
             #list out class labels
-            class = sm[,target_col]; 
+            class = sm[,target_col]; if (grepl("control",class) & grepl("normal",class)) class[grepl("normal",class)] = "control"
             class_unique = unique(class)
             # las0 = sm$label
             if (length(class_unique)<2 | any(table(class)<2)) next

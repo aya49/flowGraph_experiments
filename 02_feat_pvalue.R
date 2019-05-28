@@ -64,6 +64,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
+  if (length(unique(meta_file0[,target_col]))<3) next
   
   for (feat_type in feat_types) {
     start1 = Sys.time()
