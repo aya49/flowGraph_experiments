@@ -43,7 +43,7 @@ order_cols = NULL
 
 control = "control"
 
-dis = c("manhattan", "euclidean") #distances metrics to use #, "binomial", "cao", "jaccard","mahalanobis", "gower","altGower","morisita","horn", "manhattan", "maximum", "binary", "minkowski", "raup", "mountford"
+dis = c("manhattan", "euclidean", "parthasarathyOgihara", "focus") #distances metrics to use #, "binomial", "cao", "jaccard","mahalanobis", "gower","altGower","morisita","horn", "manhattan", "maximum", "binary", "minkowski", "raup", "mountford"
 # disnoavg = c("euclidean", "manhattan", "canberra", "bray", "kulczynski", "morisita", "horn", "binomial")  #dis measures that don't average over number of features
 disindist = c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski") #use dist function when possible, instead of vegdist
 disnoneg = c("canberra") #dis measures that can't handle negative values
@@ -95,9 +95,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   mc = Matrix(get(load(paste0(feat_dir,"/", feat_count,".Rdata"))))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
-  phenocodes = llply(meta_cell$phenocode, function(x) as.numeric(laply(seq(1, nchar(x), 1), function(i) substr(x, i, i))))
-  phenocodes = Reduce('rbind',phenocodes)
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
+  
+  ## made for li-ogihara-zhou, but takes too long
+  # phenocodes = llply(meta_cell$phenocode, function(x) as.numeric(laply(seq(1, nchar(x), 1), function(i) substr(x, i, i))))
+  # phenocodes = Reduce('rbind',phenocodes)
+  # pd = Matrix(0, nrow=nrow(meta_cell), ncol=nrow(meta_cell), sparse=T)
+  # colnames(pd) = rownames(pd) = meta_cell$phenotype
+  # for (i in 2:nrow(pd)) 
+  #   for (j in 1:(i-1)) 
+  #     pd[i,j] = pd[j,i] = sum(phenocodes[i,]==phenocodes[j,])
+
   
   # layers = c(1,4,max(meta_cell$phenolevel)) # how many markers to consider i.e. k=max(phenolevel) only
   
@@ -121,6 +129,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       
       ## upload and prep feature matrix
       m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
+      iscell = grepl("_",colnames(m0))[10]
       
       ## does feature matrix have cell populations on column names?
       # layers = 0
@@ -200,48 +209,42 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # if ("cellpop"%in%normalize) { #cell pop
         # dname1 = paste0(dname, "cellpop.Rdata")
         if (overwrite | !file.exists(dname)) {
-          d = matrix(0,nrow=nrow(m), ncol=nrow(m))
+          d = Matrix(0,nrow=nrow(m), ncol=nrow(m), sparse=T)
           
-          ## - Parthasarathy-Ogihara for prop: 1-(sum(max(0,(1-theta*abs(a-b)))) / (length(union(a,b)))
-          theta = 1
-          minds = llply(1:nrow(m), function(i) m[i,]!=0)
-          for (i in 1:(nrow(m)-1)) {
-            for (j in (i+1):nrow(m)) {
-              mij = m[c(i,j), minds[[i]] & minds[[j]]]
-              mdiff = 1-theta*abs(mij[1,]-mij[2,])
-              mdiffsum = sum(sapply(a,function(x) max(x,0)))
-              d[i,j] = d[j,i] = 1-(mdiffsum/sum(minds[[i]] | minds[[j]]))
+          if (dis[i]=="parthasarathyOgihara") {
+            ## - Parthasarathy-Ogihara for prop: 1-(sum(max(0,(1-theta*abs(a-b)))) / (length(union(a,b)))
+            theta = 1
+            minds = llply(1:nrow(m), function(i) m[i,]!=0)
+            for (i in 1:(nrow(m)-1)) {
+              for (j in (i+1):nrow(m)) {
+                mij = m[c(i,j), minds[[i]] & minds[[j]]]
+                mdiff = 1-theta*abs(mij[1,]-mij[2,])
+                mdiffsum = sum(sapply(a,function(x) max(x,0)))
+                d[i,j] = d[j,i] = 1-(mdiffsum/sum(minds[[i]] | minds[[j]]))
+              }
             }
-          }
-          
-          ## - FOCUS: sum(abs(a-b)) / (sum(a)+sum(b))
-          for (i in 1:(nrow(m)-1)) {
-            for (j in (i+1):nrow(m)) {
-              mij = m[c(i,j), minds[[i]] & minds[[j]]]
-              mdiff = sum(abs(mij[1,]-mij[2,]))
-              mdiff2 = sum(mij[1,]+mij[2,])
-              d[i,j] = d[j,i] = mdiff / mdiff2
+          } else if (dis[i]=="focus") {
+            ## - FOCUS: sum(abs(a-b)) / (sum(a)+sum(b))
+            for (i in 1:(nrow(m)-1)) {
+              for (j in (i+1):nrow(m)) {
+                mij = m[c(i,j), minds[[i]] & minds[[j]]]
+                mdiff = sum(abs(mij[1,]-mij[2,]))
+                mdiff2 = sum(mij[1,]+mij[2,])
+                d[i,j] = d[j,i] = mdiff / mdiff2
+              }
             }
-          }
-
-          ## - li-origihara-zhou: 1-(2*i3)/(i1+i2) -- normalization for mutual info
-          phenocodes_ = phenocodes[match(colnames(m),meta_cell$phenotype),]
-          
-          #   - i1 = sum(sapply(every pair of cell pops in a, d(a1,a2)))
-          #   - i2 = sum(sapply(every pair of cell pops in b, d(b1,b2)))
-          #   - i3 = sum(sapply(every pair of cell pops in a,b, d(a1,b2))) -- mutual info between a,b
-          #   - d(x,y) = c*log(1+c)*min(supp(x),supp(y))
-          
-          dloz = function(x,y) {
-            cloz = x==1
-          }
-          
-          
-          if (dis[i]%in%disindist) {
+          } else if (dis[i]%in%disindist) {
             d = dist(m, method=dis[i])
           } else { 
             d = vegdist(m, method=dis[i]) 
           }
+          
+          ## - li-origihara-zhou: 1-(2*i3)/(i1+i2) -- normalization for mutual info
+          #   - i1 = sum(sapply(every pair of cell pops in a, d(a1,a2)))
+          #   - i2 = sum(sapply(every pair of cell pops in b, d(b1,b2)))
+          #   - i3 = sum(sapply(every pair of cell pops in a,b, d(a1,b2))) -- mutual info between a,b
+          #   - d(x,y) = c*log(1+c)*min(supp(x),supp(y))
+
           save(d, file=dname)
           if (writecsv) write.csv(as.matrix(d), file=gsub(".Rdata",".csv",checkm(d,dname)))
         }
