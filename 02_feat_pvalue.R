@@ -5,20 +5,7 @@
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
-  ## input directories
-  meta_dir = paste0(result_dir,"/meta")
-  meta_file_dir = paste(meta_dir, "/file", sep="")
-  feat_dir = paste(result_dir, "/feat", sep="")
-  
-  ## output directories
-  feat_file_cell_pval_dir = paste(feat_dir, "/file-cell-pval",sep="")
-  feat_file_cell_logfold_dir = paste(feat_dir, "/file-cell-logfold",sep="")
-  feat_file_cell_countAdjMax_dir = paste(feat_dir, "/file-cell-countAdjMax",sep="")
-  feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKO",sep="")
-  
+
   ## libraries
   source("source/_funcAlice.R")
   source("source/_funcdist.R")
@@ -59,6 +46,21 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_types = c("file-cell-countAdj") #, "file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")
   
   
+  for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+    # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+    
+    ## input directories
+    meta_dir = paste0(result_dir,"/meta")
+    meta_file_dir = paste(meta_dir, "/file", sep="")
+    feat_dir = paste(result_dir, "/feat", sep="")
+    
+    ## output directories
+    feat_file_cell_pval_dir = paste(feat_dir, "/file-cell-pval",sep="")
+    feat_file_cell_logfold_dir = paste(feat_dir, "/file-cell-logfold",sep="")
+    feat_file_cell_countAdjMax_dir = paste(feat_dir, "/file-cell-countAdjMax",sep="")
+    feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKO",sep="")
+    
+    
   
   start = Sys.time()
   

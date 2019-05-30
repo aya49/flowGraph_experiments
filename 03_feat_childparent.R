@@ -196,7 +196,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     #mlist[[i]] = list(pnratio=pnratio, childprop=childprop)
     return(en) #ratio = +child_prop / -child_prop
   }
-  
+  rownames(feat_file_cell_entropychild) = rownames(m)
   colnames(feat_file_cell_entropychild) = names(meta_cell_childpn_names_)
   
   save(feat_file_cell_entropychild, file=paste0(feat_file_cell_entropychild_dir, ".Rdata"))
@@ -230,7 +230,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     return(en) #ratio = +child_prop / -child_prop
   }
   colnames(feat_file_cell_entropyparent) = names(meta_cell_parent_names_)
-  
+  rownames(feat_file_cell_entropyparent) = rownames(m)
   feat_file_cell_entropyparent = feat_file_cell_entropyparent[,!apply(feat_file_cell_entropyparent,2,function(x) all(x==0))]
   save(feat_file_cell_entropyparent, file=paste0(feat_file_cell_entropyparent_dir, ".Rdata"))
   if (writecsv) write.csv(feat_file_cell_entropyparent, file=paste0(feat_file_cell_entropyparent_dir, ".csv"))
@@ -261,6 +261,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
     return(lnpropexpecti)
   }
+  rownames(lnpropexpect) = rownames(mpe)
   colnames(lnpropexpect) = cellis
   save(lnpropexpect, file=paste0(feat_file_cell_lnpropexpect_dir,".Rdata"))
   if (writecsv) write.csv(lnpropexpect, file=paste0(feat_file_cell_lnpropexpect_dir,".csv"))
@@ -271,7 +272,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   ## features that require p value script -----------------------
-  if (file.exists(feat_file_cell_logfold_dir)) {
+  if (file.exists(paste0(feat_file_cell_logfold_dir,".Rdata"))) {
     feat_file_cell_logfold = Matrix(get(load(paste0(feat_file_cell_logfold_dir,".Rdata"))))
     feat_file_cell_countAdjKO = Matrix(get(load(paste0(feat_file_cell_countAdjKO_dir,".Rdata"))))
     

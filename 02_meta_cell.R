@@ -4,7 +4,7 @@
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
 setwd(root)
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[1:14]) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   

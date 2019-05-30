@@ -132,13 +132,13 @@ for (tube in unique(meta_file$tube)) {
   meta_file_ = meta_file_[tubeorder,c("specimen","class"), drop=F]
   colnames(meta_file_)[1] = "id"
   
-  # randomly pick normal patients as controls
-  if (is.null(controli)) {
-    normn = sum(meta_file_$class=="normal")
-    amln = sum(meta_file_$class=="aml")
-    controli = grep("normal", meta_file_$class)[sample(normn, normn-amln)]
-  }
-  meta_file_$class[controli] = "control"
+  # # randomly pick normal patients as controls
+  # if (is.null(controli)) {
+  #   normn = sum(meta_file_$class=="normal")
+  #   amln = sum(meta_file_$class=="aml")
+  #   controli = grep("normal", meta_file_$class)[sample(normn, normn-amln)]
+  # }
+  # meta_file_$class[controli] = "control"
   
   meta_dir = paste(result_dir, "_panel", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   meta_cell_dir = paste(meta_dir, "/cell", sep="")

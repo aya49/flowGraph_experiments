@@ -71,19 +71,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   normali = which(meta_file0$class=="normal")
   amli = which(meta_file0$class=="aml")
   if (is.null(randomind)) {
-    for (i in 1:length(normali)) {
+    for (i in 1:length(amli)) {
       randomind[[i]] = list()
-      randomind[[i]]$normal = sample(length(normali), matchsamples)
-      randomind[[i]]$aml = sample(length(normali), matchsamples)
+      randomind[[i]]$normal = sample(normali, matchsamples)
+      randomind[[i]]$aml = sample(amli, matchsamples)
     }
   }
   
   weight = 1/(2*matchsamples)
   
   feat_file_cell_countAdj2 = foreach (randomi = randomind, .combine="rbind") %dopar% {
-    ni = normali[randomi$normal]
-    ai = amli[randomi$aml]
-    frankenstein = weight*colSums(feat_file_cell_countAdj0[append(ni,ai),])
+    frankenstein = weight*colSums(feat_file_cell_countAdj0[append(randomi$normal,randomi$aml),])
     return(frankenstein)
   }
   rownames(feat_file_cell_countAdj2) = c((1+nrow(feat_file_cell_countAdj0)):(nrow(feat_file_cell_countAdj2)+nrow(feat_file_cell_countAdj0)))

@@ -105,7 +105,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # for (i in 2:nrow(pd)) 
   #   for (j in 1:(i-1)) 
   #     pd[i,j] = pd[j,i] = sum(phenocodes[i,]==phenocodes[j,])
-
+  
   
   # layers = c(1,4,max(meta_cell$phenolevel)) # how many markers to consider i.e. k=max(phenolevel) only
   
@@ -119,7 +119,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #load different features matrix and calculate distance matrix
   # for (feat_type in feat_types_) {
   a = llply(feat_types, function(feat_type) {
-    tryCatch({
+    # tryCatch({
       cat("\n", feat_type, " ",sep="")
       start2 = Sys.time()
       
@@ -210,8 +210,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # dname1 = paste0(dname, "cellpop.Rdata")
         if (overwrite | !file.exists(dname)) {
           d = Matrix(0,nrow=nrow(m), ncol=nrow(m), sparse=T)
+          colnames(d) = rownames(d) = rownames(m)
           
-          if (dis[i]=="parthasarathyOgihara") {
+          if (dis[i]=="parthasarathyOgihara") { if (!grepl("_cell_",feat_type)) next
             ## - Parthasarathy-Ogihara for prop: 1-(sum(max(0,(1-theta*abs(a-b)))) / (length(union(a,b)))
             theta = 1
             minds = llply(1:nrow(m), function(i) m[i,]!=0)
@@ -223,7 +224,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
                 d[i,j] = d[j,i] = 1-(mdiffsum/sum(minds[[i]] | minds[[j]]))
               }
             }
-          } else if (dis[i]=="focus") {
+          } else if (dis[i]=="focus") { if (!grepl("_cell_",feat_type)) next
             ## - FOCUS: sum(abs(a-b)) / (sum(a)+sum(b))
             for (i in 1:(nrow(m)-1)) {
               for (j in (i+1):nrow(m)) {
@@ -244,7 +245,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           #   - i2 = sum(sapply(every pair of cell pops in b, d(b1,b2)))
           #   - i3 = sum(sapply(every pair of cell pops in a,b, d(a1,b2))) -- mutual info between a,b
           #   - d(x,y) = c*log(1+c)*min(supp(x),supp(y))
-
+          
           save(d, file=dname)
           if (writecsv) write.csv(as.matrix(d), file=gsub(".Rdata",".csv",checkm(d,dname)))
         }
@@ -277,7 +278,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       
       return(F)
       time_output(start2, feat_type)
-    }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
+    # }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }, .parallel=T)
   
   time_output(start)
