@@ -3,7 +3,7 @@
 
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 ## libraries

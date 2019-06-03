@@ -6,7 +6,7 @@
 ## - creates cell meta file (meta info for fcm cell populations)
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 panel = c("panel1") # panel2 is sanger-spleen only

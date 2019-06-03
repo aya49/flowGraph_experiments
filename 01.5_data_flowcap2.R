@@ -5,7 +5,7 @@
 ## - one frankenstein sample for every control sample is made
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 randomind = NULL
@@ -68,7 +68,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   start = Sys.time()
   
   #choose matching samples based on similar total cell count; do once
-  normali = which(meta_file0$class=="normal")
+  normali = which(meta_file0$class=="control")
   amli = which(meta_file0$class=="aml")
   if (is.null(randomind)) {
     for (i in 1:length(amli)) {
@@ -87,7 +87,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   rownames(feat_file_cell_countAdj2) = c((1+nrow(feat_file_cell_countAdj0)):(nrow(feat_file_cell_countAdj2)+nrow(feat_file_cell_countAdj0)))
   feat_file_cell_countAdj = rbind(feat_file_cell_countAdj0,feat_file_cell_countAdj2)
   meta_file = rbind(meta_file0, data.frame(id=max(meta_file0$id)+c(1:length(randomind)), class=rep("frankenstein", length(randomind))))
-  
+
   feat_file_cell_prop = feat_file_cell_countAdj/feat_file_cell_countAdj[,1]
   
   save(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir_,".Rdata"))

@@ -2,7 +2,7 @@
 ## output: clusters (if number of clusters/k required, the number of ground truth classes were provided)
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 

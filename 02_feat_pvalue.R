@@ -3,64 +3,64 @@
 
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr", "lubridate", "Matrix",
-         "foreach", "doMC"))
+## libraries
+source("source/_funcAlice.R")
+source("source/_funcdist.R")
+libr(c("stringr", "lubridate", "Matrix",
+       "foreach", "doMC"))
+
+
+## cores
+no_cores = detectCores() - 2
+registerDoMC(no_cores)
+
+
+
+## options
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+writecsv = F
+
+adjust = c("","BY","BH","bonferroni") #pvalue adjustment
+#test = "wilcox" #pvalue test
+cellCountThres = 1000 #insignificant if count under
+pval_thres = .025 #delete phenotypes/rows without any significant changes from the pVal matrix
+good_sample = 3 #only compare if >=3 samples available
+good_sample_wt = 15 #min 70 wt used to compare with KO
+
+control = "control"
+
+id_col = "id"
+target_col = "class"
+split_col = "gender"
+split_date = NULL
+# split_col = "group"
+# split_date = "date" # null if no date col associated with split_col groups
+max_control = 70 # set to null if don't require a max amount of controls samples to compare other samples to, only needed when split_date!=NULL
+
+feat_types = c("file-cell-countAdj") #, "file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")
+
+
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  
+  ## input directories
+  meta_dir = paste0(result_dir,"/meta")
+  meta_file_dir = paste(meta_dir, "/file", sep="")
+  feat_dir = paste(result_dir, "/feat", sep="")
+  
+  ## output directories
+  feat_file_cell_pval_dir = paste(feat_dir, "/file-cell-pval",sep="")
+  feat_file_cell_logfold_dir = paste(feat_dir, "/file-cell-logfold",sep="")
+  feat_file_cell_countAdjMax_dir = paste(feat_dir, "/file-cell-countAdjMax",sep="")
+  feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKO",sep="")
   
   
-  ## cores
-  no_cores = detectCores() - 2
-  registerDoMC(no_cores)
-  
-  
-  
-  ## options
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  writecsv = F
-  
-  adjust = c("","BY","BH","bonferroni") #pvalue adjustment
-  #test = "wilcox" #pvalue test
-  cellCountThres = 1000 #insignificant if count under
-  pval_thres = .025 #delete phenotypes/rows without any significant changes from the pVal matrix
-  good_sample = 3 #only compare if >=3 samples available
-  good_sample_wt = 15 #min 70 wt used to compare with KO
-  
-  control = "control"
-  
-  id_col = "id"
-  target_col = "class"
-  split_col = "gender"
-  split_date = NULL
-  # split_col = "group"
-  # split_date = "date" # null if no date col associated with split_col groups
-  max_control = 70 # set to null if don't require a max amount of controls samples to compare other samples to, only needed when split_date!=NULL
-  
-  feat_types = c("file-cell-countAdj") #, "file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")
-  
-  
-  for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-    # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-    
-    ## input directories
-    meta_dir = paste0(result_dir,"/meta")
-    meta_file_dir = paste(meta_dir, "/file", sep="")
-    feat_dir = paste(result_dir, "/feat", sep="")
-    
-    ## output directories
-    feat_file_cell_pval_dir = paste(feat_dir, "/file-cell-pval",sep="")
-    feat_file_cell_logfold_dir = paste(feat_dir, "/file-cell-logfold",sep="")
-    feat_file_cell_countAdjMax_dir = paste(feat_dir, "/file-cell-countAdjMax",sep="")
-    feat_file_cell_countAdjKO_dir = paste(feat_dir, "/file-cell-countAdjKO",sep="")
-    
-    
   
   start = Sys.time()
   

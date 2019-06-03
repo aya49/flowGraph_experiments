@@ -3,7 +3,7 @@
 ## note: classes "normal" and "control" are treated the same with not phenodeviant features
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 options(stringsAsFactors=FALSE)

@@ -6,7 +6,7 @@
 ## - creates cell meta file (meta info for fcm cell populations)
 
 ## root directory
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metrics"
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 result_dir = paste0(root, "/result/flowcap") #; dir.create(result_dir, showWarnings=F, recursive=T)
@@ -87,7 +87,7 @@ feat_file_cell_count = as.matrix(apply(result[,(ncol(meta_filetemp)+1):ncol(resu
 sm = result[,1:(ncol(meta_filetemp))]
 
 #order meta_cell and feat_file_cell_count
-pheno_order = order(meta_cell$phenocode)
+pheno_order = order(meta_cell$phenolevel)
 meta_cell = meta_cell[pheno_order,]
 feat_file_cell_count = feat_file_cell_count[,pheno_order]
 
@@ -106,7 +106,7 @@ feat_file_cell_prop = feat_file_cell_count/feat_file_cell_count[,1]
 dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
 
 #rename classes, so there is a control group
-# meta_file$class[meta_file$class=="normal"] = "control"
+meta_file$class[meta_file$class=="normal"] = "control"
 
 
 
@@ -140,7 +140,7 @@ for (tube in unique(meta_file$tube)) {
   # }
   # meta_file_$class[controli] = "control"
   
-  meta_dir = paste(result_dir, "_panel", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+  meta_dir = paste(result_dir, "_p", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   meta_cell_dir = paste(meta_dir, "/cell", sep="")
   meta_file_dir = paste(meta_dir, "/file", sep="")
   save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
