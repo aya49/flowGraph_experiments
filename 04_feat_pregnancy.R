@@ -12,7 +12,7 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 ## libraries
-source("source/_funcAlice.R")
+source("source/_func.R")
 libr(c("foreach","doMC",
        "stringr","plyr","Matrix"))
 

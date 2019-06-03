@@ -7,8 +7,7 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 ## libraries
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
        "vegan", # libr(proxy)
        "foreach","doMC",
@@ -34,7 +33,7 @@ writecsv = F
 readcsv = F
 
 good_count = 3
-good_sample = 3
+good_sample = 3 # each class must have more thatn good_sample amount of samples or else prune
 countThres = 1000 #insignificant if count under
 
 id_col = "id"
@@ -57,7 +56,7 @@ k = 4 # layers used
 feat_count = c("file-cell-countAdj") #(needed if sample x cell pop matrices are used) count matrix, to get rid of low cell count cells
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -141,12 +140,16 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       # }
       
       ## for each layer, trim feature matrix accordingly
-      #trim matrix
-      mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, k=k, countThres=countThres, goodcount=good_count, good_sample=good_sample)
-      if (is.null(mm)) next
-      m = m_ordered = mm$m
-      meta_file_ordered = mm$sm
-      if (all(meta_file_ordered[,target_col]==meta_file_ordered[1,target_col])) next
+      ## trim matrix
+      # mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, k=k, countThres=countThres, goodcount=good_count, good_sample=good_sample)
+      sm = meta_file[match(rownames(m0),meta_file$id),]
+      # good_sample
+      tcl = table(sm$class); delrow = rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=good_sample]]
+      sm = sm[!delrow,]
+      # layer k or less cell pops
+      pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_file$id),]
+      m = m0[!delrow, pm$phenolevel<=k]
+      if (all(sm$class==sm$class[1])) next
       
       #for every distance type
       a = match(disnoneg,dis)

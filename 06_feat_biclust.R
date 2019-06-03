@@ -8,8 +8,7 @@ setwd(root)
 
 
 ## libraries
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 source("source/_bayesianbiclustering.R")
 libr(c("biclust", "NMF","fabia","GrNMF", #devtools::install_github("jstjohn/GrNMF")
        "pheatmap",
@@ -70,7 +69,7 @@ qthres = .15 # quantile of nmf type methods factors; how large does factor effec
 plot_size_bar = c(700,700)
 plot_size = c(300,300)
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -177,13 +176,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       for (target_col in target_cols) {
         if (!target_col%in%colnames(meta_file)) next
         ## upload and prep feature matrix
-        mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, k=k, countThres=countThres, goodcount=good_count, good_sample=good_sample)
-        if (is.null(mm)) next
-        m = mbinary = mm$m
-        mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
-        sm = mm$sm
-        if (all(sm[,target_col]==sm[1,target_col])) next
+        sm = meta_file[match(rownames(m0),meta_file$id),]
+        # good_sample
+        tcl = table(sm$class); delrow = rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=good_sample]]
+        sm = sm[!delrow,]
+        # layer k or less cell pops
+        pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_file$id),]
+        m = mbinary = m0[!delrow, pm$phenolevel<=k]
+        if (all(sm$class==sm$class[1])) next
         
+        mbinary[mbinary != 0] = 1 #make matrix binary (for p values TRIM only)
+
         colhascell = !grepl("_",colnames(m)[1])
         
         

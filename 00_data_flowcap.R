@@ -25,7 +25,7 @@ csv_dir2 = paste0(data_dir,"/AMLTraining.csv") #meta file directory
 
 
 ## libraries
-source("source/_funcAlice.R")
+source("source/_func.R")
 libr(c("flowCore", "flowType",
        "foreach", "doMC"))
 

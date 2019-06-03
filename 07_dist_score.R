@@ -10,8 +10,7 @@ options(stringsAsFactors=FALSE)
 #options(device="cairo")
 options(na.rm=T)
 
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 libr(c("stringr", "plyr",
        "foreach","doMC",
        "Brobdingnag","lubridate", "clValid", "lattice")) #if there are date variables
@@ -31,7 +30,7 @@ split_cols = c("gender", "group","none")
 
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-15]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   #Input

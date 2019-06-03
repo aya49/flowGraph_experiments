@@ -12,13 +12,13 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 ## libraries
-source("source/_funcAlice.R")
+source("source/_func.R")
 libr(c("stringr", "Matrix", "entropy", "plyr",
        "foreach", "doMC"))
 
 
 ## cores
-no_cores = 5#detectCores() - 1
+no_cores = detectCores() - 3
 registerDoMC(no_cores)
 
 
@@ -35,7 +35,7 @@ writecsv = F
 feat_count = "file-cell-countAdj"
 
 start = Sys.time()
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories

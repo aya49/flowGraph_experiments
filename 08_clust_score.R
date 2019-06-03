@@ -10,8 +10,7 @@ options(stringsAsFactors=FALSE)
 #options(device="cairo")
 options(na.rm=T)
 
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 libr(c("stringr", "plyr", "Matrix",
        "foreach","doMC",
        "clues", "PerfMeas", "cluster", "lattice")) #if there are date variables
@@ -27,7 +26,7 @@ target_cols = c("class","gender","group") #meta_file columns to plot
 split_cols = c("gender", "group","none")
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[16:17]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   ## input directories
   meta_dir = paste0(result_dir,"/meta")

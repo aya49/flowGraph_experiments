@@ -7,8 +7,7 @@ setwd(root)
 
 
 ## libraries
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 libr(c("FastKNN","cluster","mclust","kernlab", "igraph", 
        "tsne",
        "densitycut", #devtools::install_bitbucket("jerry00/densitycut_dev")
@@ -58,7 +57,7 @@ cmethodspar = list(#knn=c(1:6),
   hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-15]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories

@@ -7,8 +7,7 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 ## libraries
-source("source/_funcAlice.R")
-source("source/_funcdist.R")
+source("source/_func.R")
 libr(c("stringr", "lubridate", "Matrix",
        "foreach", "doMC"))
 
@@ -46,7 +45,7 @@ max_control = 70 # set to null if don't require a max amount of controls samples
 feat_types = c("file-cell-countAdj") #, "file-cell-countAdj.PEER-layerbylayer","file-cell-countAdj.PEER-all")
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -72,7 +71,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     start1 = Sys.time()
     
     #load matrices
-    m = get(load(paste0(feat_dir,"/", feat_type,".Rdata")))
+    m = as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
     morder = match(rownames(m),meta_file0[,id_col]); morder = morder[!is.na(morder)]
     meta_file = meta_file0[morder,]
     
@@ -147,7 +146,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             # else if (test=="ttest") {
             #   try({ pvalcol[j] = t.test(compare1, compare2)$p.value })
             # } 
-            all0 = all(append(compare1,compare2)==0)
+            all0 = all(append(compare1,compare2)==0) | all(compare2==compare1)
             pvalcol[j] = ifelse(all0,1, t.test.single(compare1, compare2))
             logfold[j] = ifelse(all0,1, log(compare2/exp(mean(log(compare1)))))
             maxcount[j] = max(compare2,exp(mean(log(compare1))))

@@ -8,6 +8,36 @@
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
+
+## libraries
+source("source/_func.R")
+libr(c("stringr",
+       "foreach","doMC"))
+# libr(flowDensity)
+
+## cores
+no_cores = detectCores()-1
+registerDoMC(no_cores)
+
+
+
+## options
+writecsv = F
+options(stringsAsFactors=FALSE)
+# options(device="cairo")
+options(na.rm=T)
+
+id_col = "id"
+target_col = "class" #column with control/experiment
+control = "control" #control value in target_col column
+
+cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
+layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
+cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
+
+matchsamples = 5 # number of samples from each normal and aml to mix
+
+
 randomind = NULL
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   if (!grepl("flowcap",result_dir) | grepl("artificial",result_dir)) next
@@ -26,36 +56,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_dir_ = paste(result_dir, ".artificial/feat", sep=""); dir.create(feat_dir_, recursive=T)
   feat_file_cell_countAdj_dir_ = paste(feat_dir_, "/file-cell-countAdj", sep="")
   feat_file_cell_prop_dir_ = paste(feat_dir_, "/file-cell-prop", sep="")
-  
-  
-  ## libraries
-  source("source/_funcAlice.R")
-  source("source/_funcdist.R")
-  libr(c("stringr",
-         "foreach","doMC"))
-  # libr(flowDensity)
-  
-  ## cores
-  no_cores = detectCores()-1
-  registerDoMC(no_cores)
-  
-  
-  
-  ## options
-  writecsv = F
-  options(stringsAsFactors=FALSE)
-  # options(device="cairo")
-  options(na.rm=T)
-  
-  id_col = "id"
-  target_col = "class" #column with control/experiment
-  control = "control" #control value in target_col column
-  
-  cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
-  layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
-  cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
-  
-  matchsamples = 5 # number of samples from each normal and aml to mix
   
   
   #Prepare data
