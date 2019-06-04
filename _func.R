@@ -425,6 +425,7 @@ getPhen <- function(phen) {
   require(stringr)
   pm = data.frame(phenotype=phen)
   markers = unique(unlist(str_split(phen,"[+-]")))
+  markers = markers[!markers==""]
   pm$phenocode = sapply(phen, function(x) encodePhenotype(x, markers))
   pm$phenolevel = cell_type_layers(phen)
   
