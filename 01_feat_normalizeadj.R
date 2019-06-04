@@ -38,7 +38,7 @@ cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run 
 layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
 cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   if (grepl("artificial",result_dir)) next
   print(result_dir)

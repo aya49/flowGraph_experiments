@@ -181,7 +181,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         tcl = table(sm$class); delrow = rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=good_sample]]
         sm = sm[!delrow,]
         # layer k or less cell pops
-        pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_file$id),]
+        pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_cell$phenotype),]
         m = mbinary = m0[!delrow, pm$phenolevel<=k]
         if (all(sm$class==sm$class[1])) next
         

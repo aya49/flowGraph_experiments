@@ -25,6 +25,7 @@ options(na.rm=T)
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
+  start = Sys.time()
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
@@ -62,12 +63,18 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   res = NULL
   for (pl in minl:maxl) {
     result = llply(which(ilevel), function(i) {
-      ci= cn = cp = pp = NULL
+      ci = cn = cp = pp = NULL
       
-      if(!is.null(ichild)) ci = 
-        which(ichild)[apply(meta_cell_grid[ichild,], 1, function(x) sum(x!=meta_cell_grid[i,]))==1]
-      if(!is.null(iparen)) pp =
-        which(iparend)[apply(meta_cell_grid[iparen,], 1, function(x) sum(x!=meta_cell_grid[i,]))==1]
+      if(!is.null(ichild)) {
+        ci = which(ichild)[apply(meta_cell_grid[ichild,],1,function(x)
+          sum(x!=meta_cell_grid[i,]))==1]
+        names(ci) = meta_cell$phenotype[ci]
+      }
+      if(!is.null(iparen)) {
+        pp = which(iparen)[apply(meta_cell_grid[iparen,,drop=F],1,function(x)
+          sum(x!=meta_cell_grid[i,]))==1]
+        names(pp) = meta_cell$phenotype[pp]
+      }
       
       if (length(ci)>0)
       cn = ci[mcsum[ci]-1 == mcsum[i]]; if (length(cn)==0) cn = NULL
@@ -78,9 +85,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     names(result) = meta_cell$phenotype[ilevel]
     res = append(res, result)
     
-    ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
     iparen = ilevel
     ilevel = ichild
+    ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
   }
   
   pchild = llply(res, function(x) {
@@ -94,7 +101,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   pparen = llply(res, function(x) return(x$parent))
   pparen = Filter(Negate(is.null), pparen)
   
-  # start = Sys.time()
   
   # start1 = Sys.time()
   

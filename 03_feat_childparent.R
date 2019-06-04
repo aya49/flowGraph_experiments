@@ -18,7 +18,7 @@ libr(c("stringr", "Matrix", "entropy", "plyr",
 
 
 ## cores
-no_cores = detectCores() - 3
+no_cores = detectCores() - 1
 registerDoMC(no_cores)
 
 
