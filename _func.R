@@ -423,9 +423,8 @@ getleaves <- function (phenoMeta, no_cores) {
 getPhen <- function(phen) {
   require(flowType)
   require(stringr)
-  require(stringr)
   pm = data.frame(phenotype=phen)
-  markers = unique(unlist(str_split(phen,"[+-]")))[-1]
+  markers = unique(unlist(str_split(phen,"[+-]")))
   pm$phenocode = sapply(phen, function(x) encodePhenotype(x, markers))
   pm$phenolevel = cell_type_layers(phen)
   
