@@ -69,7 +69,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       
       if (grepl("pregnancy",result_dir) & !grepl("TRIM",dist_type)) { try({
         mfri = ceiling(sqrt(length(unique(sm0$patient))))
-        png(paste0(score_dir,"/", dist_type, "_intrapatient.png"), width=mfri*300, height=mfri*200)
+        png(paste0(result_dir,"/", dist_type, "_intrapatient.png"), width=mfri*300, height=mfri*200)
         par(mfrow=c(mfri,mfri))
         cl = length(unique(sm0$class))
         for (pi in unique(sm0$patient)) {
@@ -144,6 +144,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   scoreslul = unlist(scoresl)
   temp = str_split(names(scoreslul),"\\\\")
   dists = sapply(temp, function(x) x[1])
+  distss = sapply(str_split(dists,"-"), function(x) x[length(x)])
   other = sapply(temp, function(x) gsub("^[.]","",paste0(x[-1], collapse="/")))
   scoresna = str_split(other,"[.]")
   splitcols = sapply(scoresna, function(x) x[1])
@@ -152,12 +153,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   targcols = apply(targcols, 2, function(x) paste0(x, collapse=""))
   targcols_col = sapply(strsplit(targcols,"[:]"), function(x) x[1])
   score_types = sapply(scoresna, function(x) x[length(x)])
-  score_table = data.frame(distance=dists, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=scoreslul)
+  score_table = data.frame(distance=distss, split_by_col=splitcols, split_variable_nosamples=splitis, NoOfClassesOrClasses=targcols, score_type=score_types, score=scoreslul)
   write.csv(score_table, paste0(score_dir, ".csv"))
   
   feat = sapply(str_split(dists, "_layer"), function(x) x[1])
   layer = as.numeric(gsub("layer-","",str_extract(dists, "layer-[0-9]+")))
-  dist = gsub("dist-","",str_extract(dists, "dist-[a-zA-Z]+"))
+  # dist = gsub("dist-","",str_extract(dists, "dist-[a-zA-Z]+"))
   
   # plot
   dir.create(score_dir, showWarnings=F)
@@ -167,21 +168,30 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       si = splitcols==split
       for (lay in unique(layer)) {
         li = layer==lay
-        for (dis in unique(dist)) {
-          di = dist==dis
-          for (sco in unique(score_types)) {
-            sci = score_types==sco
+        # for (dis in unique(dist)) {
+        #   di = dist==dis
+        for (sco in unique(score_types)) {
+          sci = score_types==sco
           
-          score_temp = score_table[ti&si&li&di&sci,]
-          score_temp$feat = feat[ti&si&li&di&sci]
+          score_temp = score_table[ti&si&li&sci,]
+          score_temp$feat = feat[ti&si&li&sci]
           
-          png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_dist-",dis, "_scoretype-",sco, ".png"))
-          pl = barchart(score~feat,data=score_temp,groups=score_type, 
-                   scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ, " and distance ", dis))
+          png(paste0(result_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, ".png"))
+          pl = barchart(score~feat,data=score_temp[!grepl("paired",score_temp[,"feat"]),],groups=distance, 
+                        scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ))
+          print(pl)
+          
+          if (any(grepl("paired",score_temp[,"feat"]))) {
+            graphics.off()
+            png(paste0(result_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, "_paired.png"))
+            pl = barchart(score~feat,data=score_temp[grepl("paired",score_temp[,"feat"]),],groups=distance, 
+                          scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," PAIRED scores by feature type for class ", targ))
+            print(pl)
+          } 
           print(pl)
           graphics.off()
-          }
         }
+        # }
       }
     }
   }

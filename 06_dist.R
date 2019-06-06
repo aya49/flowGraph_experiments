@@ -118,7 +118,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #load different features matrix and calculate distance matrix
   # for (feat_type in feat_types_) {
   a = llply(feat_types, function(feat_type) {
-    # tryCatch({
+    tryCatch({
     cat("\n", feat_type, " ",sep="")
     start2 = Sys.time()
     
@@ -147,7 +147,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     tcl = table(sm$class); delrow = rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=good_sample]]
     sm = sm[!delrow,]
     # layer k or less cell pops
-    pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_cell$phenotype),]
+    # pm = meta_cell[match(sapply(str_split(colnames(m0),"_"), function(x) x[1]),meta_cell$phenotype),]
+    if (grepl("_",colnames(m0)[1])) {
+      pm = getPhen(sapply(str_split(colnames(m0),"_"), function(x) x[1]))
+    } else {
+      pm = getPhen(colnames(m0))
+    }
     m = m0[!delrow, pm$phenolevel<=k]
     if (all(sm$class==sm$class[1])) return(F)
     
@@ -214,6 +219,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       if (overwrite | !file.exists(dname)) {
         d = Matrix(0,nrow=nrow(m), ncol=nrow(m), sparse=T)
         colnames(d) = rownames(d) = rownames(m)
+        m_ = m-min(m)
+        m_ = m_/max(m_)
         
         if (dis[i]=="parthasarathyOgihara") { if (!grepl("_cell_",feat_type)) next
           ## - Parthasarathy-Ogihara for prop: 1-(sum(max(0,(1-theta*abs(a-b)))) / (length(union(a,b)))
@@ -221,7 +228,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           minds = llply(1:nrow(m), function(i) m[i,]!=0)
           for (i in 1:(nrow(m)-1)) {
             for (j in (i+1):nrow(m)) {
-              mij = m[c(i,j), minds[[i]] & minds[[j]]]
+              mij = m_[c(i,j), minds[[i]] & minds[[j]]]
               mdiff = 1-theta*abs(mij[1,]-mij[2,])
               mdiffsum = sum(sapply(a,function(x) max(x,0)))
               d[i,j] = d[j,i] = 1-(mdiffsum/sum(minds[[i]] | minds[[j]]))
@@ -231,7 +238,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           ## - FOCUS: sum(abs(a-b)) / (sum(a)+sum(b))
           for (i in 1:(nrow(m)-1)) {
             for (j in (i+1):nrow(m)) {
-              mij = m[c(i,j), minds[[i]] & minds[[j]]]
+              mij = m_[c(i,j), minds[[i]] & minds[[j]]]
               mdiff = sum(abs(mij[1,]-mij[2,]))
               mdiff2 = sum(mij[1,]+mij[2,])
               d[i,j] = d[j,i] = mdiff / mdiff2
@@ -281,7 +288,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
     return(F)
     time_output(start2, feat_type)
-    # }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
+    }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }, .parallel=T)
   
   time_output(start)

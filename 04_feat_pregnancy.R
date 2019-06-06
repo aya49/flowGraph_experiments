@@ -30,7 +30,7 @@ overwrite = T
 writecsv = F
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  if (!grepl("pregnancy",result_dir)) next()
+  if (!grepl("pregnancy|Bodenmiller",result_dir)) next()
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   
@@ -57,12 +57,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       start2 = Sys.time()
 
       m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-      meta_file = meta_file0[match(rownames(m0),meta_file0$id),]
+      meta_file = meta_file0#[match(rownames(m0),meta_file0$id),]
       
       for (pi in meta_file$patient) {
         pii = meta_file$patient==pi
-        mp = m[pii,]ø
-        mpm = colMeans(mp)
+        mp = m[pii,]
+        mpm = colMeans(as.matrix(mp))
         m[pii,] = foreach(i=1:nrow(mp),.combine="rbind") %do% { return(mp[i,]-mpm) }
       }
       save(m, file=paste0(feat_dir,"/", feat_type,"-paired.Rdata"))
