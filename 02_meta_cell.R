@@ -11,7 +11,7 @@ source("source/_func.R")
 libr(c("foreach", "doMC","stringr","plyr"))
 
 ## cores
-no_cores = detectCores()-4
+no_cores = 6# detectCores()-4
 registerDoMC(no_cores)
 
 
@@ -22,7 +22,7 @@ options(device="cairo")
 options(na.rm=T)
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   start = Sys.time()
@@ -30,6 +30,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_cell_dir = paste(meta_dir, "/cell", sep="")
+  feat_dir = paste0(result_dir,"/feat")
+  file_cell_count_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
   
   ## output directories
   # meta_cell_child_dir = paste(meta_dir, "/cell_child",sep="") #specifies a phenotypes children
@@ -45,7 +47,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_cell_parentpn_ind_dir = paste(meta_dir, "/cell_parentpn_ind",sep="")
   
   ## prepare data
-  meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
+  mc = get(load(paste0(file_cell_count_dir,".Rdata")))
+  meta_cell = getPhen(colnames(mc))
+  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
   meta_cell_grid = ldply(1:nrow(meta_cell), function(i) {
     pc = meta_cell$phenocode[i]
     pc = as.numeric(laply(seq(1, nchar(pc), 1), function(i) substr(pc, i, i)))

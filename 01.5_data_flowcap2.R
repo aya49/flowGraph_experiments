@@ -16,7 +16,7 @@ libr(c("stringr",
 # libr(flowDensity)
 
 ## cores
-no_cores = detectCores()-1
+no_cores = 3#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -86,7 +86,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   }
   rownames(feat_file_cell_countAdj2) = c((1+nrow(feat_file_cell_countAdj0)):(nrow(feat_file_cell_countAdj2)+nrow(feat_file_cell_countAdj0)))
   feat_file_cell_countAdj = rbind(feat_file_cell_countAdj0,feat_file_cell_countAdj2)
-  meta_file = rbind(meta_file0, data.frame(id=max(meta_file0$id)+c(1:length(randomind)), class=rep("frankenstein", length(randomind))))
+  meta_file = rbind(meta_file0, data.frame(
+    id=max(meta_file0$id)+c(1:length(randomind)), 
+    tube=rep(as.numeric(gsub("p","",str_extract(result_dir,"p[0-9]$"))), length(randomind)), 
+    specimen=rep(0, length(randomind)), 
+    class=rep("frankenstein", length(randomind)), 
+    type=append(rep("test",floor(length(randomind)/2)), rep("train",ceiling(length(randomind)/2)))))
 
   feat_file_cell_prop = feat_file_cell_countAdj/feat_file_cell_countAdj[,1]
   

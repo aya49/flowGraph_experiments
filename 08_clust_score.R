@@ -52,7 +52,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   ## for each feature
   ncasl = llply(clust_types, function(clust_type) { 
-    # ncasl = lapply(clust_types, function(clust_type) { 
+    # ncasl = slapply(clust_types, function(clust_type) { 
     # for (clust_type in clust_types) {
     tryCatch({ cat("\n", clust_type, " ",sep="")
       clust_typedir0 = str_split(clust_type,"/")
@@ -61,9 +61,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       dir.create(clust_typedir, recursive=T, showWarnings=F)
       
       fname1 = str_split(clust_type, "[/]")[[1]]
-      d = NULL
-      if (grepl("dist",fname1[1]))
-        d = as.matrix(get(load(paste0(dist_dir,"/",fname1[length(fname1)],".Rdata"))))
+      # d = NULL
+      # if (grepl("dist",fname1[1]))
+      #   d = as.matrix(get(load(paste0(dist_dir,"/",fname1[length(fname1)],".Rdata"))))
         
       ## upload and prep clust
       c00 = get(load(paste0(clust_dir,"/", clust_type,".Rdata")))
@@ -88,15 +88,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           
           # scores[[split_col]] = list()
           for (split_i in names(cl)) {
-            c = cl[[split_i]]
+            c = cl[[split_i]]; if (all(c==c[1])) next
             sm = sml[[split_i]]
             
             # scores[[split_col]][[paste0(split_i,".",nrow(sm))]] = list()
             for (target_col in target_cols) {
               if (!target_col%in%colnames(sm)) next
-              
+
               #list out class labels
-              class = sm[,target_col]; if (grepl("control",class) & grepl("normal",class)) class[grepl("normal",class)] = "control"
+              class = sm[,target_col]; if (any(grepl("control",class)) & any(grepl("normal",class))) class[grepl("normal",class)] = "control"
               class_unique = unique(class)
               # las0 = sm$label
               if (length(class_unique)<2 | any(table(class)<2)) next
@@ -232,23 +232,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               
               
               
-              
-              if (!is.null(d)) {
-              
-              ## internal validation silmed (distance & clustering)
-              # if (!cmethod%in%cmethodclass & dist_type!="NA") {
-              # if (!"silmed"%in%names(fm[[colnam]][[dindname]][[cltype]][[par]]) | overwritef) {
-              # if (length(unique(c))==1) { 
-              #   sil = NA
-              # } else { 
-              sil = median(silhouette(c,d)[,3])
-              names(sil) = "silmed"
-              # }
-              # fm[[colnam]][[dindname]][[cltype]][[par]]["silmed"] = sil
-              list_temp = append(list_temp, sil)
-              # }
-              }
-              
+
               # if (length(unique(cl))==1) {
               #   score = rep(NA,9)
               #   names(score) = c("average.between","average.within","avg.silwidth","pearsongamma","dunn","dunn2","entropy","wb.ratio","ch")

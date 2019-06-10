@@ -19,7 +19,7 @@ libr(c("stringr", "pracma", "fitdistrplus",
 # libr(flowDensity)
 
 ## cores
-no_cores = detectCores()-1
+no_cores = 6#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -38,7 +38,7 @@ cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run 
 layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
 cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   if (grepl("artificial",result_dir)) next
   print(result_dir)
@@ -115,40 +115,39 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   col_cnts = apply(feat_file_cell_countAdj, 2, function(x) any(x>cellCountThres))
   
   
-  #trim columns with too small of a mean/sd
-  try ({
-    
-    small = ldply(1:ncol(feat_file_cell_countAdj), function(i) {
-      fit = NULL
-      try({
-        fit = fitdist(unlist(feat_file_cell_countAdj[,i]), "nbinom")
-      })
-      if (is.null(fit)) return(rep(0,4))
-      # plot(density(feat_file_cell_countAdj[,i]))
-      return( c(fit$estimate[1], fit$sd[1],fit$estimate[2], fit$sd[2]))
-    }, .parallel=T)
-    errsum = sum(apply(small,1,function(x) all(x==0)))
-    muuu = small[,3:4]; size = small[,1:2]; rm(small)
-    colnames(size)[2] = colnames(muuu)[2] = "sd"
-    musd = muuu[,1]/muuu[,2] # mean/sd for every column
-    
-    png(file=paste0(feat_dir,"_countadj_negbin.png"), width=300, height=800)
-    par(mfrow=c(3,1))
-    plot(density(musd, na.rm=T), main="negative binomial per cell pop, mu/sd")
-    plot(muuu, main="negative binomial per cell pop, mu vs sd")
-    plot(size, main="negative binomial per cell pop, size vs sd")
-    graphics.off()
-    
-    layers = max(meta_cell$phenolevel):min(meta_cell$phenolevel)
-    png(file=paste0(feat_dir,"_countadj_negbin_bylayer.png"), width=300, height=300*length(layers))
-    par(mfrow=c(length(layers),1))
-    for (l in layers) { if (l>0)
-      lind = meta_cell$phenolevel==l
-      plot(density(musd[lind], na.rm=T), main=paste0("negative binomial per cell pop, mu/sd for layer ", l))
-    }
-    graphics.off()
-    
-  })
+  #trim columns with too small of a mean/sd -- not used
+  # try ({
+  #   small = ldply(1:ncol(feat_file_cell_countAdj), function(i) {
+  #     fit = NULL
+  #     try({
+  #       fit = fitdist(unlist(feat_file_cell_countAdj[,i]), "nbinom")
+  #     })
+  #     if (is.null(fit)) return(rep(0,4))
+  #     # plot(density(feat_file_cell_countAdj[,i]))
+  #     return( c(fit$estimate[1], fit$sd[1],fit$estimate[2], fit$sd[2]))
+  #   }, .parallel=T)
+  #   errsum = sum(apply(small,1,function(x) all(x==0)))
+  #   muuu = small[,3:4]; size = small[,1:2]; rm(small)
+  #   colnames(size)[2] = colnames(muuu)[2] = "sd"
+  #   musd = muuu[,1]/muuu[,2] # mean/sd for every column
+  #   
+  #   png(file=paste0(feat_dir,"_countadj_negbin.png"), width=300, height=800)
+  #   par(mfrow=c(3,1))
+  #   plot(density(musd, na.rm=T), main="negative binomial per cell pop, mu/sd")
+  #   plot(muuu, main="negative binomial per cell pop, mu vs sd")
+  #   plot(size, main="negative binomial per cell pop, size vs sd")
+  #   graphics.off()
+  #   
+  #   layers = max(meta_cell$phenolevel):min(meta_cell$phenolevel)
+  #   png(file=paste0(feat_dir,"_countadj_negbin_bylayer.png"), width=300, height=300*length(layers))
+  #   par(mfrow=c(length(layers),1))
+  #   for (l in layers) { if (l>0)
+  #     lind = meta_cell$phenolevel==l
+  #     plot(density(musd[lind], na.rm=T), main=paste0("negative binomial per cell pop, mu/sd for layer ", l))
+  #   }
+  #   graphics.off()
+  #   
+  # })
   
   
   

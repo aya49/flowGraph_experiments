@@ -17,7 +17,7 @@ libr(c("biclust", "NMF","fabia","GrNMF", #devtools::install_github("jstjohn/GrNM
        "tcltk"))
 
 ## setup Cores for parallel processing (parallelized for each feature)
-no_cores = 5#detectCores()-3
+no_cores = 3#detectCores()-3
 registerDoMC(no_cores)
 
 

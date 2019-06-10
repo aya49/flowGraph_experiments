@@ -73,7 +73,7 @@ libr(c("HDCytoData", # requires bioconductor 3.9 which requires R 3.6
 # BiocManager::install(version="3.9")
 
 ## cores
-no_cores = 8 #detectCores()-1
+no_cores = 3 #detectCores()-1
 registerDoMC(no_cores)
 
 writecsv = F

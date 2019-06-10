@@ -17,7 +17,7 @@ libr(c("foreach","doMC",
        "stringr","plyr","Matrix"))
 
 #Setup Cores
-no_cores = detectCores()-6
+no_cores = 6#detectCores()-6
 registerDoMC(no_cores)
 
 ## options for script

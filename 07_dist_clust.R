@@ -16,7 +16,7 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "tcltk"))
 
 #Setup Cores
-no_cores = 10#detectCores()-3
+no_cores = detectCores()-3
 setup_parallel(no_cores)
 
 
@@ -57,7 +57,7 @@ cmethodspar = list(#knn=c(1:6),
   hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-c(16)]) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -86,155 +86,158 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # meta_train = read.csv(meta_train_dir)
   
   a = llply(dist_types, function(dist_type) { 
-    tryCatch({ cat("\n", dist_type, " ",sep="")
-      start2 = Sys.time()
+    # tryCatch({ cat("\n", dist_type, " ",sep="")
+    start2 = Sys.time()
+    
+    ## upload and prep feature matrix
+    d = as.matrix(get(load(paste0(dist_dir,"/", dist_type,".Rdata"))))
+    d[is.infinite(d)] = max(d[!is.infinite(d)])
+    tsned = tsne(dist(d), k=2)
+    sm = meta_file[match(rownames(d),meta_file[,id_col]),]
+    
+    # ## split up analysis of feature matrix rows by split_col
+    # if (is.null(split_col)) {
+    #   split_ind = list(all = 1:nrow(meta_file_ordered))
+    # } else {
+    #   split_ids = unique(meta_file_ordered[,split_col])
+    #   split_ids = split_ids[!is.na(split_ids)]
+    #   split_ind = lapply(split_ids, function(split_id) which(meta_file_ordered[,split_col]==split_id) )
+    #   names(split_ind) = split_ids
+    # }
+    # 
+    # for (tube in names(split_ind)) {
+    #   d = d0[split_ind[[tube]],split_ind[[tube]]]
+    #   if (!sum(d!=0)>0) next()
+    # sm = meta_file_ordered[split_ind[[tube]],]
+    # if (length(unique(sm[,target_col]))<=1) next()
+    # if (length(unique(sm[,target_col]))<2) next()
+    # if (min(sapply(unique(sm[,target_col]), function(x) length(sm[,target_col]==x)))<1) next()
+    
+    ## for each feature
+    for (target_col in target_cols) {
+      if (!target_col%in%colnames(sm)) next
+      #list out class labels
+      class = sm[,target_col]; 
+      class_unique = unique(class)
+      # las0 = sm$label
       
-      ## upload and prep feature matrix
-      d = as.matrix(get(load(paste0(dist_dir,"/", dist_type,".Rdata"))))
-      sm = meta_file[match(rownames(d),meta_file[,id_col]),]
+      dirname = paste0(target_col, "_",
+                       ifelse(length(class_unique)<10, 
+                              paste0(paste0(class_unique, ".",sapply(class_unique, function(x) sum(sm[,target_col]==x))), collapse="-"), length(class_unique)))
+      clust_dir1 = paste0(clust_dir,"/",dirname); dir.create(clust_dir1, showWarnings=F)
+      clust_plot_dir1 = paste0(clust_plot_dir,"/",dirname); dir.create(clust_plot_dir1, showWarnings=F)
       
-      # ## split up analysis of feature matrix rows by split_col
-      # if (is.null(split_col)) {
-      #   split_ind = list(all = 1:nrow(meta_file_ordered))
-      # } else {
-      #   split_ids = unique(meta_file_ordered[,split_col])
-      #   split_ids = split_ids[!is.na(split_ids)]
-      #   split_ind = lapply(split_ids, function(split_id) which(meta_file_ordered[,split_col]==split_id) )
-      #   names(split_ind) = split_ids
-      # }
-      # 
-      # for (tube in names(split_ind)) {
-      #   d = d0[split_ind[[tube]],split_ind[[tube]]]
-      #   if (!sum(d!=0)>0) next()
-      # sm = meta_file_ordered[split_ind[[tube]],]
-      # if (length(unique(sm[,target_col]))<=1) next()
-      # if (length(unique(sm[,target_col]))<2) next()
-      # if (min(sapply(unique(sm[,target_col]), function(x) length(sm[,target_col]==x)))<1) next()
+      cname1 = paste0(clust_dir1, "/", dist_type)
+      cname2 = paste0(clust_plot_dir1, "/", dist_type)
+      #to do or not to do
+      if ((file.exists(cname1) | file.exists(cname2)) & !overwrite) next
       
-      ## for each feature
-      for (target_col in target_cols) {
-        if (!target_col%in%colnames(sm)) next
-        #list out class labels
-        class = sm[,target_col]; 
-        class_unique = unique(class)
-        # las0 = sm$label
-        
-        dirname = paste0(target_col, "_",
-                         ifelse(length(class_unique)<10, 
-                                paste0(paste0(class_unique, ".",sapply(class_unique, function(x) sum(sm[,target_col]==x))), collapse="-"), length(class_unique)))
-        clust_dir1 = paste0(clust_dir,"/",dirname); dir.create(clust_dir1, showWarnings=F)
-        clust_plot_dir1 = paste0(clust_plot_dir,"/",dirname); dir.create(clust_plot_dir1, showWarnings=F)
-        
-        cname1 = paste0(clust_dir1, "/", dist_type)
-        cname2 = paste0(clust_plot_dir1, "/", dist_type)
-        #to do or not to do
-        if ((file.exists(cname1) | file.exists(cname2)) & !overwrite) next
-        
-        # plot
-        plotn = length(unlist(cmethodspar))
-        plotn2 = ceiling(sqrt(plotn))
-        tsned = tsne(dist(d), k=2)
-        png(cname2, width=plotn2*plotsize, height=plotn2*plotsize)
-        par(mfrow=c(plotn2,plotn2))
-        plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("tsne plot of dist"))
-        legend("topleft", legend=levels(factor(class)), pch=16, col=unique(factor(class)))
-        
-        sim = get_graph(d) 
-        clusts = list()
-        ## for each clustering method
-        for (cmethod in names(cmethodspar)) {
-          for (par in cmethodspar[[cmethod]]) {
-            cat(" ",cmethod," ",sep="")
-            start2 = Sys.time()
-            
-            # ## knn for each k (classification)
-            # if (cmethod=="knn") {
-            #   labelss = class
-            #   labelss[is.na(las0)] = NA
-            #   clt1 = as.numeric(factor(knntable(as.matrix(d),par,labelss)[,1]))
-            #   clt = rep(0,length(class))
-            #   clt[is.na(las0)] = clt1
-            # } #parameter k
-            
-            ## kmeans
-            if (cmethod=="kmeans") {
-              clt = kmeans(dist(d), centers=length(class_unique), nstart=10)$cluster
-            } #number of tries
-            
-            ## kmedoids
-            if (cmethod=="kmed") {
-              # if (is.na(par)) {
-              #   par = length(class_unique)
-              #   if (length(class_unique)%in%pars) next
-              # } 
-              clt = pam(dist(d),length(class_unique))$clustering
-            } #number of tries
-            
-            ## louvain
-            if (cmethod=="lv") { #input is a similarity matrix
-              sim1 = sim
-              tops = quantile(as.vector(sim),par)
-              sim1[sim1<tops] = 0
-              gr = graph_from_adjacency_matrix(sim1, weighted=T, mode='undirected', diag=F)
-              clt = cluster_louvain(gr)$membership
-            }
-            
-            # ## random walk refined distance matrices only
-            # if (cmethod=="rw1") {
-            #   # } else { next }
-            #   clt = rw1table(sim,par)[,1]
-            # }
-            
-            ## spectral clustering via distance matrix
-            if (cmethod=="spec1") {
-              # matrix power operator: computes M^power (M must be diagonalizable)
-              "%^%" <- function(M, power) 
-                with(eigen(M), vectors %*% (values^power * solve(vectors)))
-              
-              D <- diag(apply(sim, 1, sum)) # sum rows
-              # L <- D - sim # unnormalized laplacian
-              # L <- diag(nrow(my.data)) - solve(D) %*% A  # simple Laplacian
-              L <- (D %^% (-1/2)) %*% sim %*% (D %^% (-1/2))  # normalized Laplacian
-              
-              k   <- length(class_unique)
-              evL <- eigen(L, symmetric=TRUE)
-              Z   <- evL$vectors[,(ncol(evL$vectors)-k+1):ncol(evL$vectors)]
-              # plot(Z, col=factor(class), pch=20)
-              
-              kmeans(Z, centers=length(class_unique), nstart=10)
-              
-              # pp0t = specc(as.kernelMatrix(d),centers=length(class_unique))@.Data
-              # clt = spec1table(sim,class_unique)[,1]
-            }
-            
-            ## hierarchical clustering
-            if (cmethod=="hc") { 
-              clt = cutree(hclust(as.dist(d),method=par),k=length(class_unique))
-            }
-            
-            # ## densitycut via distance matrix (k=3)
-            # if (cmethod=="dc1") { 
-            #   clt = dc1table(d)[,1]
-            # }
-            
-            plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("method = ", cmethod,", parameter = ", par, " (NA if none or # of clusters); \n o = cluster, . = actual class"))
-            points(tsned, cex=2, col=factor(clt))
-            
-            names(clt) = rownames(d)
-            clusts[[paste0(cmethod,".",par)]] = list()
-            clusts[[paste0(cmethod,".",par)]][["x"]] = clt
-            
-            time_output(start2)
-            
+      # plot
+      plotn = length(unlist(cmethodspar))
+      plotn2 = ceiling(sqrt(plotn))
+      png(cname2, width=plotn2*plotsize, height=plotn2*plotsize)
+      par(mfrow=c(plotn2,plotn2))
+      plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("tsne plot of dist"))
+      legend("topleft", legend=levels(factor(class)), pch=16, col=unique(factor(class)))
+      
+      sim = get_graph(d) 
+      clusts = list()
+      ## for each clustering method
+      for (cmethod in names(cmethodspar)) {
+        for (par in cmethodspar[[cmethod]]) {
+          cat(" ",cmethod," ",sep="")
+          start2 = Sys.time()
+          
+          # ## knn for each k (classification)
+          # if (cmethod=="knn") {
+          #   labelss = class
+          #   labelss[is.na(las0)] = NA
+          #   clt1 = as.numeric(factor(knntable(as.matrix(d),par,labelss)[,1]))
+          #   clt = rep(0,length(class))
+          #   clt[is.na(las0)] = clt1
+          # } #parameter k
+          
+          ## kmeans
+          if (cmethod=="kmeans") {
+            clt = kmeans(dist(d), centers=length(class_unique), nstart=10)$cluster
+          } #number of tries
+          
+          ## kmedoids
+          if (cmethod=="kmed") {
+            # if (is.na(par)) {
+            #   par = length(class_unique)
+            #   if (length(class_unique)%in%pars) next
+            # } 
+            clt = pam(dist(d),length(class_unique))$clustering
+          } #number of tries
+          
+          ## louvain
+          if (cmethod=="lv") { #input is a similarity matrix
+            sim1 = sim
+            tops = quantile(as.vector(sim),par)
+            sim1[sim1<tops] = 0
+            gr = graph_from_adjacency_matrix(sim1, weighted=T, mode='undirected', diag=F)
+            clt = cluster_louvain(gr)$membership
           }
+          
+          # ## random walk refined distance matrices only
+          # if (cmethod=="rw1") {
+          #   # } else { next }
+          #   clt = rw1table(sim,par)[,1]
+          # }
+          
+          ## spectral clustering via distance matrix
+          if (cmethod=="spec1") {
+            # matrix power operator: computes M^power (M must be diagonalizable)
+            "%^%" <- function(M, power) 
+              with(eigen(M), vectors %*% (values^power * solve(vectors)))
+            
+            D <- diag(apply(sim, 1, sum)) # sum rows
+            # L <- D - sim # unnormalized laplacian
+            # L <- diag(nrow(my.data)) - solve(D) %*% A  # simple Laplacian
+            L <- (D %^% (-1/2)) %*% sim %*% (D %^% (-1/2))  # normalized Laplacian
+            
+            k   <- length(class_unique)
+            evL <- eigen(L, symmetric=TRUE)
+            Z   <- evL$vectors[,(ncol(evL$vectors)-k+1):ncol(evL$vectors)]
+            # plot(Z, col=factor(class), pch=20)
+            
+            kmeans(Z, centers=length(class_unique), nstart=10)
+            
+            # pp0t = specc(as.kernelMatrix(d),centers=length(class_unique))@.Data
+            # clt = spec1table(sim,class_unique)[,1]
+          }
+          
+          ## hierarchical clustering
+          if (cmethod=="hc") { 
+            clt = cutree(hclust(as.dist(d),method=par),k=length(class_unique))
+          }
+          
+          # ## densitycut via distance matrix (k=3)
+          # if (cmethod=="dc1") { 
+          #   clt = dc1table(d)[,1]
+          # }
+          
+          if (all(clt==clt[1])) next
+          
+          plot(tsned, pch=16, cex=1, col=factor(class), main=paste0("method = ", cmethod,", parameter = ", par, " (NA if none or # of clusters); \n o = cluster, . = actual class"))
+          points(tsned, cex=2, col=factor(clt))
+          
+          names(clt) = rownames(d)
+          clusts[[paste0(cmethod,".",par)]] = list()
+          clusts[[paste0(cmethod,".",par)]][["x"]] = clt
+          
+          time_output(start2)
+          
         }
-        graphics.off()
-        save(clusts, file=paste0(cname1,".Rdata"))
       }
-      return(F)
-    }, error = function(e) {
-      cat(paste("ERROR:  ",e)); return(T)
-    })
+      graphics.off()
+      save(clusts, file=paste0(cname1,".Rdata"))
+    }
+    return(F)
+    # }, error = function(e) {
+    #   cat(paste("ERROR:  ",e)); return(T)
+    # })
   }, .parallel=T)
   
   time_output(start)

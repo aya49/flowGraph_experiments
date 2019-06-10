@@ -20,13 +20,13 @@ gthres_dir = paste0(input_dir, "/gates_flowLearn.Rdata")
 filters_dir = paste0(input_dir, "/filters.Rdata")
 
 ## ouput
-result_dir = paste0(root, "/result/pregnancy")#; dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/pregnancy"); dir.create(result_dir, showWarnings=F, recursive=T)
 
 
 
 
 ## libraries
-source("source/_funcAlice.R")
+source("source/_func.R")
 libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "CytoML", "flowWorkspace",
        "pracma", "tools", "MASS", "KernSmooth",
@@ -34,7 +34,7 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr"))
 
 ## cores
-no_cores = 8#detectCores()-1
+no_cores = 5#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -93,30 +93,34 @@ rownames(ft) = rownames(ftp) = meta_file$id
 
 meta_file$class[meta_file$class==1] = "control"
 
-for (typed in unique(meta_file$type)) {
-  typei = meta_file$type==typed
-  
-  meta_dir = paste(result_dir, "_",typed,"/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
-  meta_file_ = meta_file[typei,!colnames(meta_file)%in%"type"]
-  save(meta_file_, file=paste0(meta_dir,"/file.Rdata"))
-  if (writecsv) write.csv(meta_file_, file=paste0(meta_dir,"/file.csv"), row.names=F)
-  save(meta_cell, file=paste0(meta_dir,"/cell.Rdata"))
-  if (writecsv) write.csv(meta_cell, file=paste0(meta_dir,"/cell.csv"), row.names=F)
-  
-  feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
-  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
-  ft_ = ft[typei,]
-  ftp_ = ftp[typei,]
-  
-  ft_ = as.matrix(ft_)
-  save(ft_, file=paste0(feat_file_cell_count_dir,".Rdata"))
-  if (writecsv) write.csv(ft_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
-  
-  ftp_ = as.matrix(ftp_)
-  save(ftp_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-  if (writecsv) write.csv(ftp_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
-}
+# for (typed in unique(meta_file$type)) {
+#   typei = meta_file$type==typed
+#   
+#   meta_dir = paste(result_dir, "_",typed,"/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+# meta_file_ = meta_file[typei,!colnames(meta_file)%in%"type"]
+meta_file_ = meta_file
+save(meta_file_, file=paste0(meta_dir,"/file.Rdata"))
+if (writecsv) write.csv(meta_file_, file=paste0(meta_dir,"/file.csv"), row.names=F)
+save(meta_cell, file=paste0(meta_dir,"/cell.Rdata"))
+if (writecsv) write.csv(meta_cell, file=paste0(meta_dir,"/cell.csv"), row.names=F)
+
+feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
+feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
+feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+# ft_ = ft[typei,]
+# ftp_ = ftp[typei,]
+ft_ = ft
+ftp_ = ftp
+
+ft_ = as.matrix(ft_)
+save(ft_, file=paste0(feat_file_cell_count_dir,".Rdata"))
+if (writecsv) write.csv(ft_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+
+ftp_ = as.matrix(ftp_)
+save(ftp_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+if (writecsv) write.csv(ftp_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+# }
 
 time_output(start)
 

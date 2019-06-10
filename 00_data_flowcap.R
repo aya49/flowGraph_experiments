@@ -107,6 +107,8 @@ dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
 
 #rename classes, so there is a control group
 meta_file$class[meta_file$class=="normal"] = "control"
+meta_file$type[as.numeric(gsub("T[0-9]S|FT","",meta_file$id))%in%meta_file_trt$SampleNumber[is.na(meta_file_trt$Label)]] = "test"
+meta_file$type[is.na(meta_file$type)] = "train"
 
 
 
@@ -129,8 +131,8 @@ for (tube in unique(meta_file$tube)) {
   
   meta_file_ = meta_file[tubei,]
   tubeorder = order(meta_file_$specimen)
-  meta_file_ = meta_file_[tubeorder,c("specimen","class"), drop=F]
-  colnames(meta_file_)[1] = "id"
+  meta_file_ = meta_file_[tubeorder,]#c("specimen","class"), drop=F]
+  meta_file_$id = as.numeric(gsub("T[0-9]S|FT","",meta_file_$id))
   
   # # randomly pick normal patients as controls
   # if (is.null(controli)) {
