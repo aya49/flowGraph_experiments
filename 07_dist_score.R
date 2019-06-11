@@ -16,7 +16,7 @@ libr(c("stringr", "plyr",
        "Brobdingnag","lubridate", "clValid", "lattice")) #if there are date variables
 
 #Setup Cores
-no_cores = 5#detectCores()-3
+no_cores = 6#detectCores()-3
 registerDoMC(no_cores)
 
 doUnderflow = T #if numbers used to calculate scores --> 0, do work-around (slow)
@@ -30,7 +30,7 @@ split_cols = c("gender", "group","none")
 
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   #Input

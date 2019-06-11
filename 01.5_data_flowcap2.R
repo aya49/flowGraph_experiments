@@ -16,7 +16,7 @@ libr(c("stringr",
 # libr(flowDensity)
 
 ## cores
-no_cores = 3#detectCores()-1
+no_cores = 10#detectCores()-1
 registerDoMC(no_cores)
 
 

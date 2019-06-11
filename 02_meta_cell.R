@@ -34,18 +34,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   file_cell_count_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
   
   ## output directories
-  # meta_cell_child_dir = paste(meta_dir, "/cell_child",sep="") #specifies a phenotypes children
-  # meta_cell_child_ind_dir = paste(meta_dir, "/cell_child_ind",sep="")
-  # meta_cell_child_names_dir = paste(meta_dir, "/cell_child_names",sep="")
-  # meta_cell_childpn_dir = paste(meta_dir, "/cell_childpn",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
-  # meta_cell_childpn_ind_dir = paste(meta_dir, "/cell_childpn_ind",sep="")
   meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="")
-  # meta_cell_parent_dir = paste(meta_dir, "/cell_parent",sep="") #specifies a phenotypes parents
   meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
-  # meta_cell_parent_ind_dir = paste(meta_dir, "/cell_parent_ind",sep="")
-  # meta_cell_parentpn_dir = paste(meta_dir, "/cell_parentpn",sep="") #specifies a phenotypes parents and splits them into +/- (only for when both -/+ exists)
-  # meta_cell_parentpn_ind_dir = paste(meta_dir, "/cell_parentpn_ind",sep="")
-  
+
   ## prepare data
   mc = get(load(paste0(file_cell_count_dir,".Rdata")))
   meta_cell = getPhen(colnames(mc))
@@ -170,17 +161,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # pparen = pparen1[sapply(pparen1, function(x) x[1]!="NA")]
   
   
-  
   #save
-  # save(meta_cell_child, file=paste0(meta_cell_child_dir, ".Rdata"))
-  # save(meta_cell_child_ind, file=paste0(meta_cell_child_ind_dir, ".Rdata"))
-  # save(pchild, file=paste0(meta_cell_child_names_dir, ".Rdata")) #list of children for each named parent
-  # save(meta_cell_childpn, file=paste0(meta_cell_childpn_dir, ".Rdata"))
-  # save(meta_cell_childpn_ind, file=paste0(meta_cell_childpn_ind_dir, ".Rdata"))
   save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
-  
-  # save(meta_cell_parent, file=paste0(meta_cell_parent_dir, ".Rdata"))
-  # save(meta_cell_parent_ind, file=paste0(meta_cell_parent_ind_dir, ".Rdata"))
   save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
   
   time_output(start)

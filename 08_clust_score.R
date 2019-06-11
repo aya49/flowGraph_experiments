@@ -16,7 +16,7 @@ libr(c("stringr", "plyr", "Matrix",
        "clues", "PerfMeas", "cluster", "lattice")) #if there are date variables
 
 #Setup Cores
-no_cores = 5#detectCores()-3
+no_cores = 6#detectCores()-3
 registerDoMC(no_cores)
 
 overwrite = F #redo and overwrite all past scores

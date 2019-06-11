@@ -16,7 +16,7 @@ libr(c("FastKNN","cluster","mclust","kernlab", "igraph",
        "tcltk"))
 
 #Setup Cores
-no_cores = detectCores()-3
+no_cores = 6#detectCores()-3
 setup_parallel(no_cores)
 
 
@@ -57,7 +57,7 @@ cmethodspar = list(#knn=c(1:6),
   hc=c("ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid"))
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-c(16)]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories

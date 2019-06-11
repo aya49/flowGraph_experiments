@@ -17,7 +17,7 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
 
 
 #Setup Cores
-no_cores = 6 # detectCores()-5
+no_cores = 10 # detectCores()-5
 registerDoMC(no_cores)
 
 
@@ -34,7 +34,7 @@ writecsv = F
 
 readcsv = F
 
-pthres = .1 # p value sig threshold for t test
+pthres = .05 # p value sig threshold for t test
 good_count = 5
 # minfold = 5 # minimum number of samples in each fold/class
 good_sample = minfold = 5 # each class must have more thatn good_sample amount of samples or else prune
@@ -47,7 +47,7 @@ order_cols = NULL
 control = "control"
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -63,7 +63,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   #data paths
-  feat_count = "feat_cell_countAdj"
+  feat_count = "file-cell-countAdj"
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
   # feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
   feat_types = gsub(".Rdata","",feat_types)
@@ -87,7 +87,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
     ## upload and prep feature matrix
     m0 = Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata"))))
-    iscell = grepl("_",colnames(m0))[10]
+    # iscell = grepl("_",colnames(m0))[10]
     
     sm = meta_file[match(rownames(m0),meta_file$id),]
     # good_sample
@@ -131,11 +131,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         tri = foldsip[[uc]][[fold]]$train
         tei = foldsip[[uc]][[fold]]$test
         
-        pv_tr = sapply(1:ncol(m), function(j) 
-          t.test(m[controli,j], m[tri,j])$p.value)
-        pv_te = sapply(1:ncol(m), function(j) 
-          t.test(m[controli,j], m[tei,j])$p.value)
-        
+        pvs = lapply(1:ncol(m), function(j) {
+          cm = m[controli,j]; trm = m[tri,j]; tem = m[tei,j]
+          return(list(test=ifelse(all(tem==tem[1]),1,t.test(cm, tem)$p.value), 
+                      train=ifelse(all(trm==trm[1]),1,t.test(cm, trm)$p.value)))
+        })
+        pv_tr = sapply(pvs, function(x) x$train)
+        pv_te = sapply(pvs, function(x) x$test)
         names(pv_tr) = names(pv_te) = colnames(m)
         foldsip[[uc]][[fold]]$p_train = pv_tr
         foldsip[[uc]][[fold]]$p_test = pv_te
@@ -143,8 +145,14 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         pv_trl = log(pv_tr)
         pv_tel = log(pv_te)
         
-        foldsip[[uc]][[fold]]$pcorr = cor(pv_trl,pv_tel, method="pearson")
-        foldsip[[uc]][[fold]]$pcorrp = cor.test(pv_trl,pv_tel, method="pearson")$p.value
+        # tr_sig = pv_tr<pthres
+        # te_sig = pv_te<pthres
+        
+        
+        foldsip[[uc]][[fold]]$pcorr = 
+          cor(pv_trl,pv_tel, method="pearson")
+        foldsip[[uc]][[fold]]$pcorrp = 
+          cor.test(pv_trl,pv_tel, method="pearson")$p.value
       }
     }
     
@@ -152,7 +160,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     time_output(start2, feat_type)
     }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }, .parallel=T)
+  names(foldsip0) = feat_types
   save(foldsip0, file=paste0(pval_dir,"/pval.Rdata"))
+  
+  
+  load(paste0(pval_dir,"/pval.Rdata"))
   
   
   for (feat_type in names(foldsip0)) {
@@ -160,29 +172,34 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     nw = max(sapply(foldsip0[[feat_type]],length))
     png(paste0(pval_dir,"/",feat_type,".png"),
         width=nw*500,height=nh*500)
-    par(mfrow=c(nh,nw))
+    par(mfrow=c(nh,nw), mar=c(2,2,12,2))
     
     for (uc in names(foldsip0[[feat_type]])) {
       for (fold in 1:length(foldsip0[[feat_type]][[uc]])) {
         fsip = foldsip0[[feat_type]][[uc]][[fold]]
         
-        pv_trl = log(fsip$p_train)
-        pv_tel = log(fsip$p_test)
+        pv_trl = -log(fsip$p_train)
+        pv_tel = -log(fsip$p_test)
 
         phens = names(pv_trl)
         if(grepl("_",phens[10])) phens = sapply(str_split(names(pv_trl),"_"), function(x) x[1])
-        mcm = colMeans(mc0[c(which(rownames(mc0)%in%meta_file$id[meta_file$class=="control"]),fsip$train,fsip$test), phens])
-        mcm_ = log(mcm); mcm_ = 2*mcm_/max(mcm_) # for plot dot size
+        files = as.character(c(
+          rownames(mc0)[rownames(mc0)%in%as.character(meta_file$id[meta_file$class=="control"])],
+          fsip$train,fsip$test))
+        mcm = colMeans(mc0[files,match(phens,colnames(mc0))])
+        mcm_ = log(mcm); mcm_ = mcm_/max(mcm_) # for plot dot size
         
         dcol = rep("black",length(pv_trl))
-        dcol[fsip$p_train<pthres] = "blue"
-        dcol[fsip$p_test<pthres] = "red"
-        dcol[fsip$p_train<pthres & fsip$p_test<pthres] = "purple"
+        tr_sig = fsip$p_train<pthres
+        te_sig = fsip$p_test<pthres
+        dcol[tr_sig] = "blue"
+        dcol[te_sig] = "red"
+        dcol[tr_sig & te_sig] = "purple"
         
         plot(pv_trl, pv_tel, pch=16, cex=mcm_, col=dcol,
-             main=paste0("ln(train) vs ln(test) ",feat_type," feature pvalues
-             \nsize=2*ln(meancount)/max(ln(meancount))
-\nsig train=blue, test=red, both=purple
+             main=paste0("-ln(train) vs -ln(test) ",feat_type," feature pvalues
+             \nsize=ln(meancount)/max(ln(meancount))
+\nsig train=blue, test=red, both=purple; sigs=",pthres,"
             \nclass=",uc," (ntrain=",length(fsip$train)," ntest=",length(fsip$test)," nctrl=",sum(fsip$controln),")
             \n pearson corr=",round(fsip$pcorr,3)," pvalue=",round(fsip$pcorrp,3)))
       }

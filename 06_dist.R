@@ -17,7 +17,7 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
 
 
 #Setup Cores
-no_cores = 5 # detectCores()-5
+no_cores = 6 # detectCores()-5
 registerDoMC(no_cores)
 
 
@@ -56,7 +56,7 @@ k = 4 # layers used
 feat_count = c("file-cell-countAdj") #(needed if sample x cell pop matrices are used) count matrix, to get rid of low cell count cells
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories

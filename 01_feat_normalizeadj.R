@@ -19,7 +19,7 @@ libr(c("stringr", "pracma", "fitdistrplus",
 # libr(flowDensity)
 
 ## cores
-no_cores = 6#detectCores()-1
+no_cores = 10#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -159,12 +159,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   if (writecsv) write.csv(feat_file_cell_countAdj_, file=paste0(feat_file_cell_countAdj_dir,".csv"), row.names=T)
   
   feat_file_cell_count_ = feat_file_cell_count0[,finalinds]
-  save(feat_file_cell_count_, file=paste0(feat_file_cell_countAdj_dir,".Rdata"))
+  save(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".Rdata"))
   if (writecsv) write.csv(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
   
   feat_file_cell_prop_ = feat_file_cell_prop0[,finalinds]
-  save(feat_file_cell_prop_, file=paste0(feat_file_cell_countAdj_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_prop, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  save(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+  if (writecsv) write.csv(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
   
   meta_cell_ = meta_cell[finalinds,]
   save(meta_cell_, file=paste0(meta_cell_dir,".Rdata"))
