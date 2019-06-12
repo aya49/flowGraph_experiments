@@ -57,32 +57,64 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
   for (pl in minl:maxl) {
-    result = llply(which(ilevel), function(i) {
-      ci = cn = cp = pp = NULL
-      
-      if(!is.null(ichild)) {
-        ci = which(ichild)[apply(meta_cell_grid[ichild,],1,function(x)
-          sum(x!=meta_cell_grid[i,]))==1]
-        names(ci) = meta_cell$phenotype[ci]
+    start2 = Sys.time()
+    cat(sum(ilevel)," pops ")
+    
+    if(!is.null(ichild)) ccand = meta_cell_grid[ichild,,drop=F]
+    if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
+                  
+    loop_ind = loopInd(which(ilevel),no_cores)
+    result = llply(loop_ind, function(ii) {
+      resulti = NULL
+      if (pl==0) {
+        pos_ind = apply(ccand,1,function(x) 2%in%x)
+        resulti[[""]]$pos = meta_cell$phenotype[which(ichild)[pos_ind]]
+        resulti[[""]]$neg = meta_cell$phenotype[which(ichild)[!pos_ind]]
+      } else if(!is.null(ichild)) {
+        for (i in ii) {
+          ci = cn = cp = NULL
+          mci = meta_cell_grid[i,,drop=T]
+          ci_ind = llply(which(mci>0), function(j) ccand[,j]==mci[j])
+          ci = which(ichild)[Reduce("&",ci_ind)]
+          names(ci) = meta_cell$phenotype[ci]
+          if (length(ci)>0) {
+            cn = ci[mcsum[ci]-1==mcsum[i]]; if(length(cn)==0) cn = NULL
+            cp = ci[mcsum[ci]-2==mcsum[i]]; if(length(cp)==0) cp = NULL
+          }
+          resulti[[meta_cell$phenotype[i]]]$pos = names(cp)
+          resulti[[meta_cell$phenotype[i]]]$neg = names(cn)
+          
+        }
+      } else {
+        for (i in ii) resulti[[meta_cell$phenotype[i]]]$pos = NULL
+        for (i in ii) resulti[[meta_cell$phenotype[i]]]$neg = NULL
       }
-      if(!is.null(iparen)) {
-        pp = which(iparen)[apply(meta_cell_grid[iparen,,drop=F],1,function(x)
-          sum(x!=meta_cell_grid[i,]))==1]
-        names(pp) = meta_cell$phenotype[pp]
+      
+      if (pl==1) {
+        for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = ""
+      } else if(!is.null(iparen)) {
+        for (i in ii) {
+          pi = NULL
+          pi_ind = sapply(which(mci>0), function(j) pcand[,j]==mci[j])
+          pi = which(iparen)[rowSums(pi_ind)==(sum(mci>0)-1)]
+          names(pi) = meta_cell$phenotype[pi]
+          if (length(pi)>0)
+            resulti[[meta_cell$phenotype[i]]]$parent = names(pi)
+        }
+      } else {
+        for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = NULL
       }
-      
-      if (length(ci)>0)
-      cn = ci[mcsum[ci]-1 == mcsum[i]]; if (length(cn)==0) cn = NULL
-      cp = ci[mcsum[ci]-2 == mcsum[i]]; if (length(cp)==0) cp = NULL
-      
-      return(list(pos=names(cp), neg=names(cn), parent=names(pp)))
+    
+      return(resulti)
     }, .parallel=T)
+    result = unlist(result, recursive=F)
     names(result) = meta_cell$phenotype[ilevel]
     res = append(res, result)
     
     iparen = ilevel
     ilevel = ichild
     ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
+    time_output(start2,paste0("layer",pl))
   }
   
   pchild = llply(res, function(x) {

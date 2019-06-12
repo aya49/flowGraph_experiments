@@ -26,7 +26,7 @@ target_cols = c("class","gender","group") #meta_file columns to plot
 split_cols = c("gender", "group","none")
 
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)[-16]) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
