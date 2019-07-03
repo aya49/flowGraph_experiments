@@ -176,20 +176,20 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           score_temp = score_table[ti&si&li&sci,]
           score_temp$feat = feat[ti&si&li&sci]
           
-          png(paste0(result_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, ".png"))
+          png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, ".png"))
           pl = barchart(score~feat,data=score_temp[!grepl("paired",score_temp[,"feat"]),],groups=distance, 
                         scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," scores by feature type for class ", targ))
           print(pl)
+          graphics.off()
           
           if (any(grepl("paired",score_temp[,"feat"]))) {
             graphics.off()
-            png(paste0(result_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, "_paired.png"))
+            png(paste0(score_dir, "/splitby-", split, "_class-", targ, "_layer-", lay, "_scoretype-",sco, "_paired.png"))
             pl = barchart(score~feat,data=score_temp[grepl("paired",score_temp[,"feat"]),],groups=distance, 
                           scales=list(x=list(rot=90,cex=0.8)), main=paste0(sco," PAIRED scores by feature type for class ", targ))
             print(pl)
+            graphics.off()
           } 
-          print(pl)
-          graphics.off()
         }
         # }
       }

@@ -91,7 +91,7 @@ rownames(ft) = rownames(ftp) = meta_file$id
 # compile ---------------------------
 # make a control class (1st week) for meta_file class
 
-meta_file$class[meta_file$class==1] = "control"
+meta_file$class[meta_file$class==4] = "control"
 
 # for (typed in unique(meta_file$type)) {
 #   typei = meta_file$type==typed
