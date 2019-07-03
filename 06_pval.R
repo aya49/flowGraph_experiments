@@ -10,7 +10,7 @@ setwd(root)
 ## libraries
 source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
-       "vegan", # libr(proxy)
+       "lattice", # libr(proxy)
        "foreach","doMC",
        "kernlab"))
 
@@ -147,22 +147,27 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           trm = m[unlist(tri),j]; 
           trm2 = NULL; if (is.list(tri)) trm2 = lapply(tri, function(trii) m[trii,j])
           tem = m[tei,j]
+          cmtf = !all(tem==tem[1])
           
           t = wilcox = list()
           t$test = t$train = t$train2 = 
             wilcox$test = wilcox$train = wilcox$train2 = 1
-          if (!all(tem==tem[1])) {
+          if (!all(tem==tem[1]) & cmtf) {
             t$test = t.test(cm, tem)$p.value
             wilcox$test = wilcox.test(cm, tem)$p.value
           }
-          if (!all(trm==trm[1])) {
+          if (!all(trm==trm[1]) & cmtf) {
             t$train = t.test(cm, trm)$p.value
             wilcox$train = wilcox.test(cm, trm)$p.value
             if (!is.null(trm2)) {
-              t$train2 = max(sapply(trm2, function(trm2i) 
-                t.test(trm2i)$p.value))
-              wilcox$train2 = max(sapply(trm2, function(trm2i) 
-                wilcox.test(trm2i)$p.value))
+              t$train2 = median(sapply(trm2, function(trm2i) {
+                if (!all(trm2i==trm2i[1])) return(1)
+                return(t.test(cm, trm2i)$p.value)
+              }))
+              wilcox$train2 = median(sapply(trm2, function(trm2i) {
+                if (!all(trm2i==trm2i[1])) return(1)
+                return(wilcox.test(cm, trm2i)$p.value)
+              }))
             }
           }
           return(list(t=t, wilcox=wilcox))
@@ -212,7 +217,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             # dcol[te_sig] = "red"
             # dcol[tr_sig & te_sig] = "purple"
             
-            title = paste0("class ",uc,", ", adj," adj ",ptype, " pvalues",
+            title = paste0("-ln(train) vs -ln(test); class ",uc,", ", adj," adj ",ptype, " pvalues",
                            "\nsize=ln(meancout)/max(ln(meancount)); sigs=",pthres, "; (ntrain / test / ctrl=",length(unlist(tri))," / ",length(tei)," / ",sum(controln),")")
             plot(pv_trl, pv_tel, pch=16, cex=mcm_, col=rgb(0,0,0,.5), #col=dcol,
                  xlab="-ln(train)", ylab="-ln(test)",
@@ -227,13 +232,18 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             
             abline(h=-log(pthres), v=-log(pthres))
             
-            
+            overlap = sum(tr_sig & te_sig)
+            rec = overlap/sum(te_sig)
+            prec = overlap/sum(tr_sig)
+            overlap2 = sum(tr2_sig & te_sig)
+            rec2 = overlap2/sum(te_sig)
+            prec2 = overlap2/sum(tr2_sig)
             foldres = 
               rbind(foldres, 
                     data.frame(feature=feat_type, class=uc, sig_test=ptype, adjustment=adj, p_thres=pthres, folds_in_train=ifelse(is.list(tri),1,length(tri)), samples_train=length(unlist(tri)), samples_test=length(tei), samples_control=sum(controln),
                     nsig_test=sum(te_sig), 
-                    nsig_train=sum(tr_sig), nsig_overlap=sum(tr_sig & te_sig), pcorr=pcorr, pcorr_pvalue=pcorrp, nsig_recall=sum(tr_sig & te_sig)/sum(te_sig), nsig_precision=sum(tr_sig & te_sig)/sum(tr_sig),
-                    nsig_train_fold=sum(tr2_sig), nsig_overlap_fold=sum(tr2_sig & te_sig), pcorr_fold=pcorr2, pcorr_pvalue_fold=pcorrp2, nsig_recall_fold=sum(tr2_sig & te_sig)/sum(te_sig), nsig_precision_fold=sum(tr2_sig & te_sig)/sum(tr2_sig)
+                    nsig_train=sum(tr_sig), nsig_overlap=overlap, pcorr=pcorr, pcorr_pvalue=pcorrp, nsig_recall=rec, nsig_precision=prec, f=2*((prec*rec)/(prec+rec2)),
+                    nsig_train_fold=sum(tr2_sig), nsig_overlap_fold=overlap2, pcorr_fold=pcorr2, pcorr_pvalue_fold=pcorrp2, nsig_recall_fold=rec2, nsig_precision_fold=prec2, f_fold=2*((prec2*rec2)/(prec2+rec2))
               ))
           } # adjust
         } # ptype
@@ -245,9 +255,78 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       time_output(start2, feat_type)
     }, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }, .parallel=T)
-  write.csv(foldres0, file=paste0(pval_dir,"/result.csv"), row.names=F)
+  save(foldres0, file=paste0(pval_dir,"/result.Rdata"), row.names=F)
   
   time_output(start)
 }
 
+
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  load(paste0(pval_dir,"/result.Rdata"))
+  foldres0$pmethod_adjust = paste(foldres0$sig_test, foldres0$adjustment)
+  extras = ifelse(any(grepl("paired",foldres0$feature)),2,1)
+  # png(paste0(pval_dir,"/result.png"), 
+  #     width=length(unique(foldres0$class))*500,
+  #     height=extras*3*2*500)
+  # par(mfcol=c(extras*3*2,length(unique(foldres0$class))))
+
+  for (uc in unique(foldres0$class)) {
+    fr = foldres0[!grepl("paired",foldres0$feature),]
+    for (i in 1:2) {
+      if (i==2 & !extras) next
+      if (i==2 & extras) 
+        fr = foldres0[grepl("paired",foldres0$feature),]
+      if (nrow(fr)==0) next
+      try ({
+        pl_r = barchart(nsig_recall~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_recall",ifelse(i==2, "_paired",""),".png"))
+        print(pl_r)
+        graphics.off()
+      })
+      try ({
+        pl_r_ = barchart(nsig_recall_fold~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_recall",ifelse(i==2, "_paired",""),"_.png"))
+        print(pl_r_)
+        graphics.off()
+      })
+      try ({
+        pl_p = barchart(nsig_precision~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_precision",ifelse(i==2, "_paired",""),".png"))
+        print(pl_p)
+        graphics.off()
+      })
+      try ({
+        pl_p_ = barchart(nsig_precision_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_precision",ifelse(i==2, "_paired",""),"_.png"))
+        print(pl_p_)
+        graphics.off()
+      })
+      try ({
+        pl_f = barchart(f~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_f",ifelse(i==2, "_paired",""),".png"))
+        print(pl_f)
+        graphics.off()
+      })
+      try ({
+        pl_f_ = barchart(f_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_f",ifelse(i==2, "_paired",""),"_.png"))
+        print(pl_f_)
+        graphics.off()
+      })
+      try ({
+        pl_c = barchart(pcorr~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_corr",ifelse(i==2, "_paired",""),".png"))
+        print(pl_c)
+        graphics.off()
+      })
+      try ({
+        pl_c_ = barchart(pcorr_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
+        png(paste0(pval_dir,"/result_class-",uc,"_corr",ifelse(i==2, "_paired",""),"_.png"))
+        print(pl_c_)
+        graphics.off()
+      })
+    }
+  }
+  
+}
 
