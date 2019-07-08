@@ -3,7 +3,10 @@
 ## - child_prop (proportion of child count over parent count)
 ## - child_pnratio (ratio of positive over negative child e.g. a+b+/a+b-)
 ## - child/parent_entropy (entropy of values of a cell population's children/parents)
+## - group_entropy (entropy of duplicate marker groups after removing -+ e.g. a+b+ a+b- a-b+ a-b-)
 ## - lnpropexpect (product of parent props over product of grandparent props -- both normalized via an exponent 1/(number of parents/grandparents))
+## - lnpropexpectshort (lnpropexpect but without any - markers, so all + marker combinations only)
+## - 
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
@@ -16,7 +19,7 @@ libr(c("stringr", "Matrix", "entropy", "plyr",
 
 
 ## cores
-no_cores = 6# detectCores() - 3
+no_cores = detectCores() - 3
 registerDoMC(no_cores)
 
 
@@ -34,6 +37,7 @@ feat_count = "file-cell-countAdj"
 
 start = Sys.time()
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+  print(result_dir)
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
   ## input directories
@@ -52,7 +56,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_file_edge_prop_dir = paste(feat_dir, "/file-edge-prop",sep="")
   feat_file_cell_entropychild_dir = paste(feat_dir, "/file-cell-entropychild",sep="")
   feat_file_cell_entropyparent_dir = paste(feat_dir, "/file-cell-entropyparent",sep="")
+  feat_file_group_entropy_dir = paste(feat_dir, "/file-group-entropy",sep="")
+  feat_file_group_var_dir = paste(feat_dir, "/file-group-var",sep="")
+
   feat_file_cell_lnpropexpect_dir = paste(feat_dir, "/file-cell-lnpropexpect",sep="")
+  feat_file_cell_lnpropexpectshort_dir = paste(feat_dir, "/file-cell-lnpropexpectshort",sep="")
   
   
   
@@ -66,7 +74,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   mp = Matrix(get(load(paste0(feat_file_cell_prop_dir,".Rdata"))))
   meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-  meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  meta_cell_parent_names_ = meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
 
   
   
@@ -203,7 +211,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   start1 = Sys.time()
   cat(", parententropy")
   
-  meta_cell_parent_names_ = meta_cell_parent_names
   for (i in 1:length(meta_cell_parent_names))
     if (length(meta_cell_parent_names[[i]])<2) meta_cell_parent_names_[[i]] = NULL
   feat_file_cell_entropyparent = foreach(i = 1:length(meta_cell_parent_names_), .combine='cbind') %dopar% { #for each phenotype
@@ -235,6 +242,57 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   time_output(start1)
   
+  ## group entropy & variance --------------------------------------------
+  
+  start1 = Sys.time()
+  cat(", groupentropy")
+  
+  allplus = which(!grepl("[-]",colnames(m)) & grepl("[+]",colnames(m)))
+  nonp = gsub("[-|+]","",colnames(m))
+  nonpu = unique(nonp)
+  groupi = match(nonp, nonp)
+  groups = llply(allplus, function(i) {
+    ii = which(groupi==groupi[i])
+    if (length(ii)>1) return(ii)
+    return(NULL)
+  })
+  names(groups) = colnames(m)[allplus]
+  groups = plyr::compact(groups)
+  
+  a = llply(loopInd(1:length(groups),no_cores), function(gi) 
+    sapply(groups[gi],function(i) apply(m[,i],1,entropy)), .parallel=T)
+  feat_file_group_entropy = Reduce("cbind",a)
+  b = llply(loopInd(1:length(groups),no_cores), function(gi) 
+    sapply(groups[gi],function(i) apply(m[,i],1,var)), .parallel=T)
+  feat_file_group_var = Reduce("cbind",b)
+  e = llply(loopInd(1:length(groups),no_cores), function(gi) 
+    sapply(groups[gi],function(i) apply(mp[,i],1,entropy)),.parallel=T)
+  feat_file_group_entropyp = Reduce("cbind",e)
+  f = llply(loopInd(1:length(groups),no_cores), function(gi) 
+    sapply(groups[gi],function(i) apply(mp[,i],1,var)), .parallel=T)
+  feat_file_group_varp = Reduce("cbind",f)
+  
+  colnames(feat_file_group_entropy) = colnames(feat_file_group_var) = colnames(feat_file_group_entropyp) = colnames(feat_file_group_varp) =  names(groups)
+  rownames(feat_file_group_entropy) = rownames(feat_file_group_var) = rownames(feat_file_group_entropyp) = rownames(feat_file_group_varp) = rownames(m)
+  
+  feat_file_group_entropy = feat_file_group_entropy[,apply(feat_file_group_entropy,2,function(x) !all(x==x[1]))]
+  feat_file_group_var = feat_file_group_var[,apply(feat_file_group_var,2,function(x) !all(x==x[1]))]
+  feat_file_group_entropyp = feat_file_group_entropyp[,apply(feat_file_group_entropyp,2,function(x) !all(x==x[1]))]
+  feat_file_group_varp = feat_file_group_varp[,apply(feat_file_group_varp,2,function(x) !all(x==x[1]))]
+  
+  save(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".Rdata"))
+  if (writecsv) write.csv(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".csv"))
+  save(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".Rdata"))
+  if (writecsv) write.csv(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".csv"))
+  save(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.Rdata"))
+  if (writecsv) write.csv(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.csv"))
+  save(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.Rdata"))
+  if (writecsv) write.csv(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.csv"))
+  
+  time_output(start1)
+  
+  
+  
   ## prop/expected -----------------------------------------------------
   
   start1 = Sys.time()
@@ -258,13 +316,20 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     childr = mpe[,i]
     
     lnpropexpecti = log(childr/expect)
+    lnpropexpecti[expect==0] = log(childr)
     
     return(lnpropexpecti)
   }
   rownames(lnpropexpect) = rownames(mpe)
   colnames(lnpropexpect) = cellis
+  
   save(lnpropexpect, file=paste0(feat_file_cell_lnpropexpect_dir,".Rdata"))
   if (writecsv) write.csv(lnpropexpect, file=paste0(feat_file_cell_lnpropexpect_dir,".csv"))
+  
+  lnpropexpectshort = lnpropexpect[,!grepl("[-]",colnames(lnpropexpect)) & grepl("[+]",colnames(lnpropexpect))]
+  
+  save(lnpropexpectshort, file=paste0(gsub("cell","group",feat_file_cell_lnpropexpect_dir),".Rdata"))
+  if (writecsv) write.csv(lnpropexpectshort, file=paste0(gsub("cell","group",feat_file_cell_lnpropexpect_dir),".csv"))
   
   time_output(start1)
   

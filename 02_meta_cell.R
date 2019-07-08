@@ -11,7 +11,7 @@ source("source/_func.R")
 libr(c("foreach", "doMC","stringr","plyr"))
 
 ## cores
-no_cores = 6# detectCores()-4
+no_cores = detectCores()-4
 registerDoMC(no_cores)
 
 
@@ -25,6 +25,7 @@ options(na.rm=T)
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
+  print(result_dir)
   start = Sys.time()
   
   ## input directories
@@ -56,7 +57,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   ilevel = meta_cell$phenolevel==minl
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
-  for (pl in minl:maxl) {
+  for (pl in unique(meta_cell$phenolevel)) {
     start2 = Sys.time()
     cat(sum(ilevel)," pops ")
     
@@ -64,7 +65,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
                   
     loop_ind = loopInd(which(ilevel),no_cores)
-    result = llply(loop_ind, function(ii) {
+    result = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
       resulti = NULL
       if (pl==0) {
         pos_ind = apply(ccand,1,function(x) 2%in%x)
@@ -94,6 +95,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = ""
       } else if(!is.null(iparen)) {
         for (i in ii) {
+          mci = meta_cell_grid[i,,drop=T]
           pi = NULL
           pi_ind = sapply(which(mci>0), function(j) pcand[,j]==mci[j])
           pi = which(iparen)[rowSums(pi_ind)==(sum(mci>0)-1)]
