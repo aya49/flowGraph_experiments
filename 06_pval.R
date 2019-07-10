@@ -183,10 +183,14 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       })
       
       for (ptype in names(pvs[[1]])) {
-        pv_tr = sapply(pvs, function(x) x[[ptype]]$train)
+        pv_tr = sapply(pvs, function(x) x[[ptype]]$train); 
         pv_tr2 = sapply(pvs, function(x) x[[ptype]]$train2)
         pv_te = sapply(pvs, function(x) x[[ptype]]$test)
         pv_all = sapply(pvs, function(x) x[[ptype]]$all)
+        pv_tr[is.nan(pv_tr) | is.na(pv_tr)] = 
+          pv_tr2[is.nan(pv_tr2) | is.na(pv_tr2)] = 
+          pv_te[is.nan(pv_te) | is.na(pv_te)] = 
+          pv_all[is.nan(pv_all) | is.na(pv_all)] = 1
         names(pv_tr) = names(pv_tr2) = names(pv_te) = names(pv_all) = colnames(m)
         # adjust or combo p values
         for (adj in adjust) {
@@ -195,17 +199,17 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             
             phens = names(pv_tr)
             if(grepl("_",phens[10])) phens = sapply(str_split(names(pv_tr),"_"), function(x) x[1])
-            nonp = gsub("[-|+]","",phens)
-            allplus = which(grepl("[-|+]",phens) & !duplicated(nonp))
+            nonp = gsub("[-]|[+]","",phens)
+            allplus = which(grepl("[-]|[+]",phens) & !duplicated(nonp))
             if (length(allplus)==length(phens)) next
-            nonpu = unique(nonp)
+            # nonpu = unique(nonp)
             groupi = match(nonp, nonp)
             groups = llply(allplus, function(i) {
               ii = which(groupi==groupi[i])
               if (length(ii)>1) return(ii)
               return(NULL)
             })
-            names(groups) = gsub("[-]","[+]",phens[allplus])
+            names(groups) = gsub("-","+",phens[allplus])
             groups = plyr::compact(groups)
             
             pv_tr_ = pv_tr2_ = pv_te_ = pv_all_ = a = rep(1,length(groups)); names(a) = names(groups)
@@ -227,8 +231,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             }
             if (adj=="fisher") {
               # for (x in groups[atr]) cat(" ",sumlog(pv_tr[x]))
-              if (any(atr)) pv_tr_[atr] = 
-                  laply(groups[atr],function(x) sumlog(pv_tr[x])$p)
+              for (x in which(atr)) 
+                pv_tr_[x] = sumlog(pv_tr[groups[[x]]])$p
               if (any(atr2)) pv_tr2_[atr2] = 
                   laply(groups[atr2],function(x) sumlog(pv_tr2[x])$p)
               if (any(ate)) pv_te_[ate] = 
@@ -335,8 +339,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   for (uc in ucs) {
     for (ptype in ptypes) {
       for (adj in adjs) {
-        png(paste0(pval_dir,"/qq_",uc,"_",ptype,"-",adj,".png"))
-        par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE) # Add extra space to right of plot area
+        png(paste0(pval_dir,"/qq_",uc,"_",ptype,"-",adj,".png"),width=530, height=400)
+        par(mar=c(5.1, 4.1, 4.1, 12), xpd=TRUE) # Add extra space to right of plot area
         
         for (fi in 1:length(features)) {
           if (is.null(foldps[[fi]][[uc]][[ptype]][[adj]])) next
@@ -345,7 +349,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           if (fi<length(features)) par(new=T)
         }
         qqline(c(0,1))
-        legend("topright", inset=c(-0.2,0), legend=features, col=1:length(features))
+        legend("topright", inset=c(-.55,0), legend=features, col=1:length(features))
         graphics.off()
       }
     }
