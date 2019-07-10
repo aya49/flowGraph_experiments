@@ -18,7 +18,7 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
 
 
 #Setup Cores
-no_cores = detectCores()-3
+no_cores = 5#detectCores()-3
 registerDoMC(no_cores)
 
 
@@ -194,10 +194,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             # if (grepl("group",feat_type)) next()
             
             phens = names(pv_tr)
-            if(grepl("_",phens[10])) phens = sapply(str_split(names(pv_trl),"_"), function(x) x[1])
-            allplus = which(!grepl("[-]",phens) & grepl("[+]",colnames(m)))
-            if (length(allplus)==length(phens)) next
+            if(grepl("_",phens[10])) phens = sapply(str_split(names(pv_tr),"_"), function(x) x[1])
             nonp = gsub("[-|+]","",phens)
+            allplus = which(grepl("[-|+]",phens) & !duplicated(nonp))
+            if (length(allplus)==length(phens)) next
             nonpu = unique(nonp)
             groupi = match(nonp, nonp)
             groups = llply(allplus, function(i) {
@@ -205,7 +205,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
               if (length(ii)>1) return(ii)
               return(NULL)
             })
-            names(groups) = phens[allplus]
+            names(groups) = gsub("[-]","[+]",phens[allplus])
             groups = plyr::compact(groups)
             
             pv_tr_ = pv_tr2_ = pv_te_ = pv_all_ = a = rep(1,length(groups)); names(a) = names(groups)
@@ -339,6 +339,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE) # Add extra space to right of plot area
         
         for (fi in 1:length(features)) {
+          if (is.null(foldps[[fi]][[uc]][[ptype]][[adj]])) next
           p_all = foldps[[fi]][[uc]][[ptype]][[adj]]$p_all
           qqnorm(p_all, col=fi, ylim=c(0,1), xlim=c(-4,3), main="p value quantiles", pch=16,cex=.3)
           if (fi<length(features)) par(new=T)

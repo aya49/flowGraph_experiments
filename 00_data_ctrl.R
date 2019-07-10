@@ -80,16 +80,20 @@ gthresm = c(# "cd11b", "cd11c",
   # "hladr.MMDSCs", 
   "tbet.cd8t", "tcrd")
 thress = as.list(gthres[[1]][gthresm])
+f = fslist[[1]]
+for (jj in 1:length(markers)) {
+  j = channels.ind[markers[jj]]
+  # a = 
+  # a = a-min(a)
+  # a = a*(max(f@exprs[,j])-max(a))
+  f@exprs[,j] = rexp(nrow(f@exprs))
+  thress[[gthresm[jj]]] = mean(f@exprs[,j])
+}
 
 ftl = llply(1:length(fslist), function(i) {
-  f = fslist[[i]]
   for (jj in 1:length(markers)) {
     j = channels.ind[markers[jj]]
-    a = rexp(nrow(f@exprs))
-    a = a-min(a)
-    a = a*(max(f@exprs[,j])-max(a))
-    f@exprs[,j] = a
-    thress[[gthresm[jj]]] = mean(a)
+    f@exprs[,j] = rexp(nrow(f@exprs))
   }
   flowType(Frame=f, 
            PropMarkers=channels.ind[markers], MarkerNames=markers, 

@@ -19,7 +19,7 @@ libr(c("stringr", "pracma", "fitdistrplus",
 # libr(flowDensity)
 
 ## cores
-no_cores = 10#detectCores()-1
+no_cores = 5#detectCores()-1
 registerDoMC(no_cores)
 
 
