@@ -1,7 +1,7 @@
 ## input: gates + fcm files,  meta data paths
 ## output: feat_file_cell_count, meta_file, meta_cell
 ## process: 
-## - takes gates + fcm files (values randomly generated via exponential distribution), outputs flowtype vectors 
+## - takes gates + fcm files (values randomly generated via exponential distribution; for class 3,4 FCS files, we increase gate values of the first 4 markers by 25% for artificial positive experiment files), outputs flowtype vectors 
 ## - compiles flowtype vectors together to create cell count matrix
 ## - reformats meta file (meta info for fcm files)
 ## - creates cell meta file (meta info for fcm cell populations)
@@ -20,7 +20,7 @@ gthres_dir = paste0(input_dir, "/gates_flowLearn.Rdata")
 filters_dir = paste0(input_dir, "/filters.Rdata")
 
 ## ouput
-result_dir = paste0(root, "/result/ctrl"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/pos"); dir.create(result_dir, showWarnings=F, recursive=T)
 
 
 
@@ -89,9 +89,18 @@ for (jj in 1:length(markers)) {
   f@exprs[,j] = rexp(nrow(f@exprs))
   thress[[gthresm[jj]]] = mean(f@exprs[,j])
 }
+thress1 = thress2 = thress
+for (jj in 1:(length(markers)/2)) 
+  thress2[[gthresm[jj]]] = quantile(f@exprs[,j], .75)
 
 ftl = llply(1:length(fslist), function(i) {
+  ii = names(fslist)[i]
   f = fslist[[i]]
+  if (grepl("_1_|_2_",ii)) {
+    thress = thress1
+  } else {
+    thress = thress2
+  }
   for (jj in 1:length(markers)) {
     j = channels.ind[markers[jj]]
     f@exprs[,j] = rexp(nrow(f@exprs))
