@@ -18,7 +18,7 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
 
 
 #Setup Cores
-no_cores = 5#detectCores()-3
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 

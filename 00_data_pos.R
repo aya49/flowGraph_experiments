@@ -1,7 +1,7 @@
 ## input: gates + fcm files,  meta data paths
 ## output: feat_file_cell_count, meta_file, meta_cell
 ## process: 
-## - takes gates + fcm files (values randomly generated via exponential distribution; for class 3,4 FCS files, we increase gate values of the first 4 markers by 25% for artificial positive experiment files), outputs flowtype vectors 
+## - takes gates + fcm files (values randomly generated via exponential distribution; for class 3,4 FCS files, we increase gate values of the first 2 markers by 25% for artificial positive experiment files), outputs flowtype vectors 
 ## - compiles flowtype vectors together to create cell count matrix
 ## - reformats meta file (meta info for fcm files)
 ## - creates cell meta file (meta info for fcm cell populations)
@@ -90,7 +90,7 @@ for (jj in 1:length(markers)) {
   thress[[gthresm[jj]]] = mean(f@exprs[,j])
 }
 thress1 = thress2 = thress
-for (jj in 1:(length(markers)/2)) 
+for (jj in 1:2)
   thress2[[gthresm[jj]]] = quantile(f@exprs[,j], .75)
 
 ftl = llply(1:length(fslist), function(i) {

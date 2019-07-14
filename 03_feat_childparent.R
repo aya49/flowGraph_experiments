@@ -19,7 +19,7 @@ libr(c("stringr", "Matrix", "entropy", "plyr",
 
 
 ## cores
-no_cores = detectCores() - 3
+no_cores = detectCores() - 1
 registerDoMC(no_cores)
 
 
@@ -39,7 +39,7 @@ start = Sys.time()
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   print(result_dir)
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
+    
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_cell_dir = paste(meta_dir, "/cell", sep="")

@@ -11,7 +11,7 @@ source("source/_func.R")
 libr(c("foreach", "doMC","stringr","plyr"))
 
 ## cores
-no_cores = detectCores()-4
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -24,7 +24,7 @@ options(na.rm=T)
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
+
   print(result_dir)
   start = Sys.time()
   
