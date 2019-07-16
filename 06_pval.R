@@ -63,6 +63,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   ## output directories
+  
   pval_dir = paste0(result_dir,"/pval"); suppressWarnings(dir.create (pval_dir))
   
   
@@ -117,12 +118,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       
       # test/train indices
       if ("type"%in%colnames(sm)) {
-        foldsip[[uc]]$test = sm$id[sm$type=="test" & uci]
-        foldsip[[uc]]$train = sm$id[sm$type=="train" & uci]
+        foldsip[[uc]]$test = as.character(sm$id[sm$type=="test" & uci])
+        foldsip[[uc]]$train = as.character(sm$id[sm$type=="train" & uci])
       } else {
         testni = sample(which(uci), max(minfold,testn*sum(uci)))
-        foldsip[[uc]]$test = sm$id[testni]
-        foldsip[[uc]]$train = sm$id[!c(1:nrow(sm))%in%testni & uci]
+        foldsip[[uc]]$test = as.character(sm$id[testni])
+        foldsip[[uc]]$train = as.character(sm$id[!c(1:nrow(sm))%in%testni & uci])
       }
       
       # n-fold cv train indices; if only two folds? then still train/test; number of folds rounded
@@ -135,11 +136,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
     # calculate p value and plot; plot needs clean up, right now plots same number of plots per row, will want to fix so that plot only up until a nmber of folds per row so it's a unique class per row
     
-    nh = 2*2*2*length(adjust) # number of p value methods
-    nw = length(foldsip)
-    png(paste0(pval_dir,"/",feat_type,".png"), 
-        width=nw*500,height=nh*500)
-    par(mfcol=c(nh,nw), mar=c(3,2,6,1))
+    # nh = 2*2*2*length(adjust) # number of p value methods
+    # nw = length(foldsip)
+    # png(paste0(pval_dir,"/",feat_type,".png"), 
+    #     width=nw*500,height=nh*500)
+    # par(mfcol=c(nh,nw), mar=c(3,2,6,1))
     
     for (uc in names(foldsip)) {
       tri = foldsip[[uc]]$train
@@ -283,20 +284,38 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           # dcol[te_sig] = "red"
           # dcol[tr_sig & te_sig] = "purple"
           
-          title = paste0("-ln(train) vs -ln(test); class ",uc,", ", adj," adj ",ptype, " pvalues",
-                         "\nsize=ln(meancout)/max(ln(meancount)); sigs=",pthres, "; (ntrain / test / ctrl=",length(unlist(tri))," / ",length(tei)," / ",sum(controln),")")
-          plot(pv_trl, pv_tel, pch=16, cex=mcm_, col=rgb(0,0,0,.5), #col=dcol,
-               xlab="-ln(train)", ylab="-ln(test)",
-               main=paste0(title, "\n pearson corr / p=",round(pcorr,3)," / ",round(pcorrp,3),
-                           ";   sig train / test / both=",sum(tr_sig)," / ",sum(te_sig)," / ",sum(tr_sig & te_sig)))
-          abline(h=-log(pthres), v=-log(pthres))
           
-          plot(pv_trl2, pv_tel, pch=16, cex=mcm_, col=rgb(0,0,0,.5), #col=dcol,
-               xlab="-ln(train) max(train folds)", ylab="-ln(test)",
-               main=paste0(title, "\n pearson corr / p=",round(pcorr2,3)," / ",round(pcorrp2,3),
-                           ";   sig train / test / both=",sum(tr2_sig)," / ",sum(te_sig)," / ",sum(tr2_sig & te_sig)))
+          if (!all(pv_tel==pv_tel[1])) {
+            png(paste0(pval_dir,"/",feat_type,".png"), 
+                width=1*500,height=2*500)
+            par(mfcol=c(1,2), mar=c(3,2,6,1))
+            
+            title = paste0("-ln(train) vs -ln(test); class ",uc,", ", adj," adj ",ptype, " pvalues",
+                           "\nsize=ln(meancout)/max(ln(meancount)); sigs=",pthres, "; (ntrain / test / ctrl=",length(unlist(tri))," / ",length(tei)," / ",sum(controln),")")
+            if (!all(pv_trl==pv_trl[1])) {
+              plot(pv_trl, pv_tel, pch=16, cex=mcm_, col=rgb(0,0,0,.5), #col=dcol,
+                   xlab="-ln(train)", ylab="-ln(test)",
+                   main=paste0(title, "\n pearson corr / p=",round(pcorr,3)," / ",round(pcorrp,3),
+                               ";   sig train / test / both=",sum(tr_sig)," / ",sum(te_sig)," / ",sum(tr_sig & te_sig)))
+              abline(h=-log(pthres), v=-log(pthres))
+            } else {
+              next
+            }
+            
+            if (!all(pv_trl==pv_trl[1])) {
+              plot(pv_trl2, pv_tel, pch=16, cex=mcm_, col=rgb(0,0,0,.5), #col=dcol,
+                   xlab="-ln(train) max(train folds)", ylab="-ln(test)",
+                   main=paste0(title, "\n pearson corr / p=",round(pcorr2,3)," / ",round(pcorrp2,3),
+                               ";   sig train / test / both=",sum(tr2_sig)," / ",sum(te_sig)," / ",sum(tr2_sig & te_sig)))
+              abline(h=-log(pthres), v=-log(pthres))
+            } else {
+              next
+            }
+            graphics.off()
+          } else {
+            next
+          }
           
-          abline(h=-log(pthres), v=-log(pthres))
           
           overlap = sum(tr_sig & te_sig)
           rec = overlap/sum(te_sig)
@@ -314,7 +333,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         } # adjust
       } # ptype
     } # uc
-    graphics.off()
+    # graphics.off()
     
     save(foldsip, file=paste0(pval_dir,"/",feat_type,".Rdata"))
     time_output(start2, feat_type)
