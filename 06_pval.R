@@ -267,7 +267,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       tri = foldsip[[uc]]$train
       tei = foldsip[[uc]]$test
       
-      pan = length(foldsip[[uc]])-2 + length(foldsip[[uc]][[1]])
+      pan = length(foldsip[[uc]])-2 + length(foldsip[[uc]][[3]])
       png(paste0(pval_dir,"/",feat_type,"_",uc,".png"), 
           width=pan*500,height=2*500)
       par(mfcol=c(2,pan), mar=c(3,3,6,1))
@@ -339,7 +339,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             next
           }
           
-          
+          # save table
           overlap = sum(tr_sig & te_sig)
           rec = overlap/sum(te_sig)
           prec = overlap/sum(tr_sig)
@@ -349,9 +349,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           foldres = 
             rbind(foldres, 
                   data.frame(feature=feat_type, class=uc, sig_test=ptype, adjust.combine=adj, p_thres=pthres, folds_in_train=ifelse(is.list(tri),1,length(tri)), samples_train=length(unlist(tri)), samples_test=length(tei), samples_control=sum(controln),
-                             nsig_test=sum(te_sig), 
-                             nsig_train=sum(tr_sig), nsig_overlap=overlap, pcorr=pcorr, pcorr_pvalue=pcorrp, nsig_recall=rec, nsig_precision=prec, f=2*((prec*rec)/(prec+rec)),
-                             nsig_train_fold=sum(tr2_sig), nsig_overlap_fold=overlap2, pcorr_fold=pcorr2, pcorr_pvalue_fold=pcorrp2, nsig_recall_fold=rec2, nsig_precision_fold=prec2, f_fold=2*((prec2*rec2)/(prec2+rec2))
+                             nsig_test=sum(te_sig), nsigall_test=length(te_sig),
+                             nsig_train=sum(tr_sig), nsigall_train=length(tr_sig), 
+                             nsig_overlap=overlap, 
+                             pcorr=pcorr, pcorr_pvalue=pcorrp, nsig_recall=rec, nsig_precision=prec, f=2*((prec*rec)/(prec+rec)),
+                             nsig_train_fold=sum(tr2_sig), nsigall_train_fold=length(tr2_sig), 
+                             nsig_overlap_fold=overlap2, pcorr_fold=pcorr2, pcorr_pvalue_fold=pcorrp2, nsig_recall_fold=rec2, nsig_precision_fold=prec2, f_fold=2*((prec2*rec2)/(prec2+rec2))
                   ))
         } # adjust
       } # ptype
@@ -364,13 +367,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     #}, error = function(err) { cat(paste("ERROR:  ",err)); return(T) })
   }, .parallel=T)
   save(foldres0, file=paste0(pval_dir,"/table.Rdata"))
-
+  
   # combine results
   foldps = llply(feat_types, function(x) {
     fna = paste0(pval_dir,"/",x,".Rdata")
     a = NULL; if (file.exists(fna)) {
       a = get(load(fna))
-      file.remove(a)
     }
     return(a)
   })
@@ -385,7 +387,7 @@ time_output(start)
 
 ## write table of results
 table = ldply (list.dirs(paste0(root, "/result"), full.names=T, recursive=F), function(result_dir) {
-  load(paste0(result_dir, "/pval", "/table.Rdata"))
+  foldres0 = get(load(paste0(result_dir, "/pval/table.Rdata")))
   cbind(data=fileNames(result_dir), foldres0)
 })
 write.csv(table, paste0(root,"/pval.csv"))
@@ -393,97 +395,119 @@ write.csv(table, paste0(root,"/pval.csv"))
 
 ## plot result table stuff
 start = Sys.time()
-tbl = table
-  pval_dir = paste0(result_dir,"/pval")
-  load(paste0(pval_dir,"/table.Rdata"))
-  tbl$pmethod_adjust = paste(tbl$sig_test, tbl$adjust.combine)
-  tbl = tbl[tbl$feature!="file-cell-count",]
-  extras = ifelse(any(grepl("paired",tbl$feature)),2,1)
-  # png(paste0(pval_dir,"/result.png"), 
-  #     width=length(unique(tbl$class))*500,
-  #     height=extras*3*2*500)
-  # par(mfcol=c(extras*3*2,length(unique(tbl$class))))
-  pl_r = pl_r_ = pl_p = pl_p_ = pl_f = pl_f_ = pl_c = pl_c_ = list()
-  for (ds in unique(tbl$data)) {
-    for (uc in unique(tbl$class)) {
-      fr = tbl[!grepl("paired",tbl$feature),]
-      for (i in 1:2) {
-        if (i==2 & !extras) next
-        if (i==2 & extras) 
-          fr = tbl[grepl("paired",tbl$feature),]
-        if (nrow(fr)==0) next
-        ploti = paste0(ds,"_",uc,ifelse(i==2,"_paired",""))
-        plotnom = paste0("data: ",ds,ifelse(i==2,"_paired",""),"; class: ",uc)
-        
-        try ({
-          pl_r[[ploti]] = barchart(nsig_recall~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_recall",ifelse(i==2, "_paired",""),".png"))
-          print(pl_r)
-          graphics.off()
-        })
-        try ({
-          pl_r_[[ploti]] = barchart(nsig_recall_fold~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_recall",ifelse(i==2, "_paired",""),"_.png"))
-          print(pl_r_)
-          graphics.off()
-        })
-        try ({
-          pl_p[[ploti]] = barchart(nsig_precision~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_precision",ifelse(i==2, "_paired",""),".png"))
-          print(pl_p)
-          graphics.off()
-        })
-        try ({
-          pl_p_[[ploti]] = barchart(nsig_precision_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_precision",ifelse(i==2, "_paired",""),"_.png"))
-          print(pl_p_)
-          graphics.off()
-        })
-        try ({
-          pl_f[[ploti]] = barchart(f~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_f",ifelse(i==2, "_paired",""),".png"))
-          print(pl_f)
-          graphics.off()
-        })
-        try ({
-          pl_f_[[ploti]] = barchart(f_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_f",ifelse(i==2, "_paired",""),"_.png"))
-          print(pl_f_)
-          graphics.off()
-        })
-        try ({
-          pl_c[[ploti]] = barchart(pcorr~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)))
-          png(paste0(pval_dir,"/result_class-",uc,"_corr",ifelse(i==2, "_paired",""),".png"))
-          print(pl_c)
-          graphics.off()
-        })
-        try ({
-          pl_c_[[ploti]] = barchart(pcorr_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main)
-          png(paste0(pval_dir,"/result_class-",uc,"_corr",ifelse(i==2, "_paired",""),"_.png"))
-          print(pl_c_)
-          graphics.off()
-        })
-      }
+tbl0 = table
+pval_dir = paste0(result_dir,"/pval")
+
+width = 700
+tbl0$pmethod_adjust = paste(tbl0$sig_test, tbl0$adjust.combine)
+tbl0 = tbl0[tbl0$feature!="file-cell-count",]
+extras = ifelse(any(grepl("paired",tbl0$feature)),2,1)
+# png(paste0(pval_dir,"/result.png"), 
+#     width=length(unique(tbl$class))*500,
+#     height=extras*3*2*500)
+# par(mfcol=c(extras*3*2,length(unique(tbl$class))))
+pl_r = pl_r_ = pl_p = pl_p_ = pl_f = pl_f_ = pl_c = pl_c_ = pl_n = pl_n_ = list()
+dss = unique(tbl0$data)
+dss = c(dss[grepl("ctrl",dss)],dss[grepl("pos",dss)],dss[!grepl("pos|ctrl",dss)])
+for (ds in dss) {
+  dsp = get(load(paste0(root,"/result/",ds,"/pval/result.Rdata")))
+  tbl = tbl0[tbl0$data==ds,]
+  for (uc in unique(tbl$class)) {
+    fr = tbl[!grepl("paired",tbl$feature),]
+    for (i in 1:2) {
+      if (i==2 & !extras) next
+      if (i==2 & extras) 
+        fr = tbl[grepl("paired",tbl$feature),]
+      if (nrow(fr)==0) next
+      ploti = paste0(ds,"_",uc,ifelse(i==2,"_paired",""))
+      plotnom = paste0("data: ",ds,ifelse(i==2,"_paired",""),"; class: ",uc)
+      
+      try ({
+        pl_r[[ploti]] = barchart(nsig_recall~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_recall",ifelse(i==2, "_paired",""),".png"), width=width)
+        print(pl_r[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_r_[[ploti]] = barchart(nsig_recall_fold~feature, data=fr ,groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_recall",ifelse(i==2, "_paired",""),"_.png"), width=width)
+        print(pl_r_[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_p[[ploti]] = barchart(nsig_precision~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_precision",ifelse(i==2, "_paired",""),".png"), width=width)
+        print(pl_p[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_p_[[ploti]] = barchart(nsig_precision_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_precision",ifelse(i==2, "_paired",""),"_.png"), width=width)
+        print(pl_p_[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_f[[ploti]] = barchart(f~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_f",ifelse(i==2, "_paired",""),".png"), width=width)
+        print(pl_f[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_f_[[ploti]] = barchart(f_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_f",ifelse(i==2, "_paired",""),"_.png"), width=width)
+        print(pl_f_[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_c[[ploti]] = barchart(pcorr~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_corr",ifelse(i==2, "_paired",""),".png"), width=width)
+        print(pl_c[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_c_[[ploti]] = barchart(pcorr_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=plotnom)
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_corr",ifelse(i==2, "_paired",""),"_.png"), width=width)
+        print(pl_c_[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_n[[ploti]] = barchart(nsig_train~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=paste0(plotnom, " ::: total feats: ", fr$nsigall_train))
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_nsig",ifelse(i==2, "_paired",""),".png"), width=width)
+        print(pl_c[[ploti]])
+        graphics.off()
+      })
+      try ({
+        pl_n_[[ploti]] = barchart(nsig_train_fold~feature,data=fr, groups=pmethod_adjust, auto.key = list(columns=2), cex.axis=3, las=2, scales=list(x=list(rot=90,cex=0.8)), main=paste0(plotnom, " ::: total feats: ", fr$nsigall_train_fold))
+        png(paste0(root,"/pval_",ds,"_class-",uc,"_nsig_",ifelse(i==2, "_paired",""),"_.png"), width=width)
+        print(pl_c_[[ploti]])
+        graphics.off()
+      })
+      
     }
   }
-  
-  g = do.call(grid.arrange, pl_r)
-  ggsave(file=paste0(root,"/pval_recall.png"), g) #saves g
-  g = do.call(grid.arrange, pl_r_)
-  ggsave(file=paste0(root,"/pval_recall_.png"), g) #saves g
-  g = do.call(grid.arrange, pl_p)
-  ggsave(file=paste0(root,"/pval_prec.png"), g) #saves g
-  g = do.call(grid.arrange, pl_p_)
-  ggsave(file=paste0(root,"/pval_prec_.png"), g) #saves g
-  g = do.call(grid.arrange, pl_f)
-  ggsave(file=paste0(root,"/pval_f.png"), g) #saves g
-  g = do.call(grid.arrange, pl_f_)
-  ggsave(file=paste0(root,"/pval_f_.png"), g) #saves g
-  g = do.call(grid.arrange, pl_c)
-  ggsave(file=paste0(root,"/pval_corr.png"), g) #saves g
-  g = do.call(grid.arrange, pl_c_)
-  ggsave(file=paste0(root,"/pval_corr_.png"), g) #saves g
-  
+}
+
+g = do.call(grid.arrange, pl_r)
+ggsave(file=paste0(root,"/pval_recall.png"), g) #saves g
+g = do.call(grid.arrange, pl_r_)
+ggsave(file=paste0(root,"/pval_recall_.png"), g) #saves g
+g = do.call(grid.arrange, pl_p)
+ggsave(file=paste0(root,"/pval_prec.png"), g) #saves g
+g = do.call(grid.arrange, pl_p_)
+ggsave(file=paste0(root,"/pval_prec_.png"), g) #saves g
+g = do.call(grid.arrange, pl_f)
+ggsave(file=paste0(root,"/pval_f.png"), g) #saves g
+g = do.call(grid.arrange, pl_f_)
+ggsave(file=paste0(root,"/pval_f_.png"), g) #saves g
+g = do.call(grid.arrange, pl_c)
+ggsave(file=paste0(root,"/pval_corr.png"), g) #saves g
+g = do.call(grid.arrange, pl_c_)
+ggsave(file=paste0(root,"/pval_corr_.png"), g) #saves g
+g = do.call(grid.arrange, pl_n)
+ggsave(file=paste0(root,"/pval_nsig.png"), g) #saves g
+g = do.call(grid.arrange, pl_n_)
+ggsave(file=paste0(root,"/pval_nsig_.png"), g) #saves g
+
 time_output(start)
 
 
@@ -498,7 +522,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   adjs = names(foldps[[1]][[1]][[3]])
   for (uc in ucs) {
     
-    png(paste0(pval_dir,"/qq_",uc,".png"),width=length(ptypes)*530, height=length(adjs)*400)
+    png(paste0(pval_dir,"/qq_",uc,".png"),width=length(adjs)*530, height=length(ptypes)*400)
     par(mfrow=c(length(ptypes),length(adjs)), mar=c(5.1, 4.1, 4.1, 13), xpd=TRUE) # Add extra space to right of plot area
     for (ptype in ptypes) {
       for (adj in adjs) {
@@ -506,7 +530,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         for (fi in 1:length(features)) {
           if (is.null(foldps[[fi]][[uc]][[ptype]][[adj]])) next
           p_all = foldps[[fi]][[uc]][[ptype]][[adj]]$p_all
-          qqnorm(p_all, col=fi, ylim=c(0,1), xlim=c(-4,3), main=paste0("p value quantiles; ", ptype, " ", adj), pch=16,cex=.3)
+          qqnorm(p_all, col=fi, ylim=c(0,1), xlim=c(-4,3), main=ifelse(fi==1,paste0("p value quantiles; ", ptype, " ", adj),""), pch=16,cex=.3)
           if (fi<length(features)) par(new=T)
         }
         qqline(c(0,1))
