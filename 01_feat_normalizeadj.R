@@ -36,7 +36,7 @@ control = "control" #control value in target_col column
 
 cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
 layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
-cellCountThres = 1000 #don't use phenotypes with cell count lower than cellCountThres
+cellCountThres = 400 #don't use phenotypes with cell count lower than cellCountThres
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   if (result_dir!="ctrl" & result_dir!="pos")
