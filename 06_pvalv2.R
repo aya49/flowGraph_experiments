@@ -112,7 +112,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       controli = sm$class=="control"
       controln = sum(controli)
       
-    
+      
       foldsip = foldres = NULL # save original
       for (uc in unique(sm$class[!controli])) {
         
@@ -276,9 +276,10 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     } # if
     foldsip = get(load(paste0(pvalsource_dir,"/",feat_type,".Rdata")))
     foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
+    a = list(foldsip=foldsip, foldres=foldres)
     
     time_output(start2)
-    return(list(foldsip=foldsip, foldres=foldres))
+    return(a)
   }, .parallel=T)
   pvals[[data]] = llply(result, function(x) x$foldsip)
   names(pvals[[data]]) = feat_types
