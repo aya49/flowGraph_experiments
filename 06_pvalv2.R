@@ -72,7 +72,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
   ## output directories
-  unlink(paste0(result_dir,"/pval"))
+  # unlink(paste0(result_dir,"/pval"))
   pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
 
   #data paths
@@ -88,7 +88,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #load different features matrix and calculate distance matrix
   # for (feat_type in feat_types_) {
-  result = ldply(feat_types, function(feat_type) #for (feat_type in feat_types) 
+  result = llply(feat_types, function(feat_type) #for (feat_type in feat_types) 
   {
     start2 = Sys.time()
     
@@ -224,9 +224,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             } # tretype
             
             pv_tr_ = foldsip[[uc]]$p[[ptype]][[adj]]$train
-            pv_tr2_ = foldsip[[uc]]$p[[ptype]][[adj]]$p_train2
-            pv_te_ = foldsip[[uc]]$p[[ptype]][[adj]]$p_test
-            pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$p_all
+            pv_tr2_ = foldsip[[uc]]$p[[ptype]][[adj]]$train2
+            pv_te_ = foldsip[[uc]]$p[[ptype]][[adj]]$test
+            pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$all
             
             ## calculate correlations between p values test & train/2
             pv_trl = -log(pv_tr_)
@@ -287,6 +287,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   time_output(start1)
 } # result
+time_output(start)
 
 mc0 = Matrix(get(load(paste0(feat_dir,"/", feat_count,".Rdata"))))
 

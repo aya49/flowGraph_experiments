@@ -34,7 +34,7 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr"))
 
 ## cores
-no_cores = 1#detectCores()-1
+no_cores = 8#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -49,7 +49,7 @@ channels.ind = get(load(channelsind_dir))
 ## flowtype -----------------------------------------
 start = Sys.time()
 
-gs = load_gs(gs_dir)
+if (!exists("gs")) gs = load_gs(gs_dir)
 fslist = as(getData(gs),Class="list")
 f = fslist[[1]]
 if (!file.exists(paste0(root, "/result/pregnancy/markerdistr.png"))) {
@@ -110,7 +110,7 @@ ftl = llply(1:length(fslist), function(i) {
            MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
            Thresholds=thress, 
            verbose=F, MemLimit=60)
-}, .parallel=F)
+}, .parallel=T)
 ft = ldply(ftl, function(ft) ft@CellFreqs)
 ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
 meta_cell = getPhen(ftcell)

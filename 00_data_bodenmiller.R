@@ -73,7 +73,7 @@ libr(c("HDCytoData", # requires bioconductor 3.9 which requires R 3.6
 # BiocManager::install(version="3.9")
 
 ## cores
-no_cores = 3 #detectCores()-1
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 writecsv = F
@@ -123,7 +123,7 @@ ftl = llply(1:length(fslist), function(i) {
            MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
            Thresholds=as.list(gates[i,gthresm]), 
            verbose=F, MemLimit=60)
-}, .parallel=F)
+}, .parallel=T)
 ft = ldply(ftl, function(ft) ft@CellFreqs)
 ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return(decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
 ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) }

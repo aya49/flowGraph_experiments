@@ -17,7 +17,7 @@ libr(c("foreach","doMC",
        "stringr","plyr","Matrix"))
 
 #Setup Cores
-no_cores = 6#detectCores()-6
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 ## options for script
@@ -38,36 +38,37 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_dir = paste0(result_dir,"/meta") # meta files directory
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
-
+  
   ## output directories
   
-
+  
   #data paths
   feat_types = gsub(".Rdata","",list.files(path=feat_dir,pattern=glob2rx("*.Rdata")))
   feat_types = feat_types[!grepl("paired",feat_types)]
   
   
-
+  
   start = Sys.time()
   
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
-
+  
   for (feat_type in feat_types) {
-      cat("\n", feat_type, " ",sep="")
-      start2 = Sys.time()
-
-      m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-      meta_file = meta_file0#[match(rownames(m0),meta_file0$id),]
-      
-      for (pi in meta_file$patient) {
-        pii = meta_file$patient==pi
-        mp = m[pii,]
-        mpm = colMeans(as.matrix(mp))
-        m[pii,] = foreach(i=1:nrow(mp),.combine="rbind") %do% { return(mp[i,]-mpm) }
-      }
-      save(m, file=paste0(feat_dir,"/", feat_type,"-paired.Rdata"))
-      if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
-      
+    cat("\n", feat_type, " ",sep="")
+    start2 = Sys.time()
+    
+    m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
+    meta_file = meta_file0#[match(rownames(m0),meta_file0$id),]
+    
+    for (pi in meta_file$patient) {
+      pii = meta_file$patient==pi
+      mp = m[pii,]
+      mpm = colMeans(as.matrix(mp))
+      m[pii,] = foreach(i=1:nrow(mp),.combine="rbind") %do% { return(mp[i,]-mpm) }
+    }
+    save(m, file=paste0(feat_dir,"/", feat_type,"-paired.Rdata"))
+    if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
+    file.rename(paste0(feat_dir,"/", feat_type,".Rdata"), paste0(feat_dir,"/", feat_type))
+    
   }
   
   time_output(start)
