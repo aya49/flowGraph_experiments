@@ -68,6 +68,21 @@ loop_ind_f <- loopInd <- function(x,n) {
 }
 
 
+## input: flowframe or data frame; 2 columns
+## ouput: density intensity plot
+# references plotDens from flowDensity
+plot_int = function(dat, col, main, pch = ".", ...) {
+  if (missing(col)) {
+    colPalette = colorRampPalette(c("grey", "black"))
+    col = densCols(dat, colramp = colPalette)
+  }
+  if (nrow(dat) < 2) {
+    graphics::plot(1, type = "n", axes = F, ...)
+  } else {
+    graphics::plot(dat, col = col, pch = pch, ...)
+  }
+}
+
 ## input: matrix
 ## output: returns u1 (col index with only 1 unique element), ua (col index where every row is a unique element), prints colnames and its unique elements if there is less than n unique elements
 col_probe = function(m,n=15) {
