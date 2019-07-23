@@ -52,12 +52,6 @@ start = Sys.time()
 if (!exists("gs")) gs = load_gs(gs_dir)
 fslist = as(getData(gs),Class="list")
 f = fslist[[1]]
-if (!file.exists(paste0(root, "/result/pregnancy/markerdistr.png"))) {
-  png(paste0(root, "/result/pregnancy/markerdistr.png"), width=7*400, height=8*300)
-  par(mfrow=c(7,8)) #row first
-  for (i in 3:54) descdist(f@exprs[,i], discrete=F, boot=100)
-  graphics.off()
-}
 
 markers = c(# "CD11b", "CD11c", 
   "CD123", "CD14", "CD16", 
