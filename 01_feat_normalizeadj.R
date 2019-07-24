@@ -79,7 +79,12 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #prepare feat_file_cell_counts
   x = x0 = as.matrix(feat_file_cell_count)[,-1] #take out total cell count
-  if (layer_norm>0) x = as.matrix(x0[,colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel==layer_norm] & sapply(1:ncol(x0), function(y) any(x0[,y]>cellCountThres*max(x0[is.finite(x0)])))])
+  maxx = max(x0[is.finite(x0)])
+  
+  if (layer_norm>0) {
+    xli = colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel==layer_norm]
+    xci = sapply(1:ncol(x0), function(y) any(x0[,y]>cellCountThres*maxx))
+  } x = as.matrix(x0[,xli&xci])
   lib.size = feat_file_cell_count[,1]
   refColumn = which.min(abs( lib.size - median(lib.size[grepl(control,meta_file[,target_col])]) )) #reference column: median total count out of all control files
   
