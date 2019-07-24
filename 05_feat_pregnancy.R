@@ -43,8 +43,13 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   #data paths
-  feat_types = gsub(".Rdata","",list.files(path=feat_dir,pattern=glob2rx("*.Rdata")))
-  feat_types = feat_types[!grepl("paired",feat_types)]
+  feat_types = list.files(path=feat_dir)
+  for (feat_type in feat_types[grepl("-unpaired",feat_types)]) {
+    m = get(load(paste0(feat_dir, "/", feat_type)))
+    file.remove(paste0(feat_dir, "/", feat_type))
+    save(m,paste0(feat_dir, "/", gsub("-unpaired",".Rdata",feat_type)))
+  }
+  feat_types = gsub(".Rdata","",list.files(path=feat_dir, pattern=".Rdata"))
   
   
   
@@ -57,6 +62,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     start2 = Sys.time()
     
     m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
+    save(m0, file=paste0(feat_dir,"/", feat_type,"-unpaired"))
     meta_file = meta_file0#[match(rownames(m0),meta_file0$id),]
     
     for (pi in meta_file$patient) {
@@ -65,7 +71,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       mpm = colMeans(as.matrix(mp))
       m[pii,] = foreach(i=1:nrow(mp),.combine="rbind") %do% { return(mp[i,]-mpm) }
     }
-    save(m, file=paste0(feat_dir,"/", feat_type,"-paired.Rdata"))
+    save(m, file=paste0(feat_dir,"/", feat_type,".Rdata"))
     if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
     file.rename(paste0(feat_dir,"/", feat_type,".Rdata"), paste0(feat_dir,"/", feat_type))
     
