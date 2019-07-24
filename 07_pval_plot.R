@@ -73,7 +73,7 @@ plot_int = function(dat, pch='.', ...) {
 }
 
 
-## histograms
+## histograms + scatterplots
 for (data in c_datas) {
   png(paste0(pvalr_dir,"/hist_",data,".png"), height=length(pvals[[data]])*300, width=length(pvals[[data]][[1]])*length(c_ptypes)*2*300)
   mv1 = matrix(c(1,1,2,3),nrow=2,byrow=F)
@@ -116,6 +116,49 @@ for (data in c_datas) {
 }
 
 ## qq plot; log both axis
+for (data in c_datas) {
+  png(paste0(pvalr_dir,"/hist_",data,".png"), height=length(pvals[[data]])*300, width=length(pvals[[data]][[1]])*length(c_ptypes)*2*300)
+  mv1 = matrix(c(1,1,2,3),nrow=2,byrow=F)
+  for (pi in 2:length(c_ptypes))
+    mv1 = cbind(mv1, matrix(c(1,1,2,3)+max(mv1),nrow=2,byrow=F))
+  mv = mv1
+  for (fi in 1:length(pvals[[data]]))
+    mv = rbind(mv, mv1+max(mv))
+  layout(mv) # scatterplot + histograms
+  
+  mc0 = Matrix(get(load(paste0(root,"/result/",data,"/feat/", feat_count,".Rdata"))))
+  mcm = colMeans(mc0)
+  mcm = -log(mcm/max(mcm))
+  mcm = 2*mcm/max(mcm)
+  mcm[mcm<.5] = .5
+  
+  for (uc in names(pvals[[data]][[1]])) {
+    for (feat in names(pvals[[data]])) {
+      for (ptype in c_ptypes) {
+        for (adj in c_adjs) {
+          pvs = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]
+          
+          set1 = -log(pvs$train)
+          set2 = -log(pvs$test)
+          set1[set1>10] = set2[set2>10] = 10
+          
+          plot_int(cbind(set1,set2), xlim=c(0,10), ylim=c(0,10), xlab="set 1 -ln(p values)", ylab="set 2 -ln(p values)", main=paste0("set2 class: ",uc, "; feature: ", feat, "; method: ", ptype,"/",adj), cex=mcm[match(names(set1),names(mcm))])
+          abline(v=ptl,h=ptl)
+          
+          hist(set1, freq=F, main=paste0("set 1"), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlim=c(0,10), ylim=c(0,1), col=rgb(0,0,0,.5), breaks=10)
+          abline(v=ptl)
+          
+          hist(set2, freq=F, main="set 2", xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlim=c(0,10), ylim=c(0,1), col=rgb(0,0,0,.5), breaks=10)
+          abline(v=ptl)
+        }
+      }
+    }
+  }
+  graphics.off()
+}
+
+
+
         for (fi in 1:length(features)) {
           if (is.null(foldps[[fi]][[uc]][[ptype]][[adj]])) next
           p_all = foldps[[fi]][[uc]][[ptype]][[adj]]$p_all
