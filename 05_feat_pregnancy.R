@@ -30,7 +30,7 @@ overwrite = T
 writecsv = F
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  if (!grepl("pregnancy|Bodenmiller",result_dir)) next()
+  if (!grepl("pregnancy|bodenmiller",result_dir)) next()
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   print(result_dir)
   

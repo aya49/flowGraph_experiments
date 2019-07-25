@@ -55,7 +55,7 @@ gate_dir = paste0(input_dir,"/gates")
 
 
 ## ouput
-result_dir = paste0(root, "/result/HDCytoData_Bodenmiller"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/bodenmiller"); dir.create(result_dir, showWarnings=F, recursive=T)
 feat_dir = paste0(result_dir,"/feat"); dir.create(feat_dir, showWarnings=F, recursive=T)
 feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
 feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
