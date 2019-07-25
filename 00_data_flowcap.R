@@ -78,7 +78,7 @@ result = foreach (i=1:length(ftFile_dir), .combine="rbind") %dopar% {
   # meta_file = rbind(meta_file, meta_filetemp[which(as.numeric(meta_filetemp$specimen)==as.numeric(specimen) & as.numeric(meta_filetemp$tube)==as.numeric(tube)),])
   return(c(meta_filetemp[which(as.numeric(meta_filetemp$specimen)==as.numeric(specimen) & as.numeric(meta_filetemp$tube)==as.numeric(tube)),], ft@CellFreqs))
   
-  rm(ft) #save memory
+  # rm(ft) #save memory
 }
 
 #collate feat_file_cell_count
