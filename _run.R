@@ -2,8 +2,8 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
 source("source/00_data_bodenmiller.R")
-source("source/00_data_ctrl.R")
 source("source/00_data_flowcap.R")
+source("source/00_data_ctrl.R")
 source("source/00_data_pos.R")
 source("source/00_data_pregnancy.R")
 source("source/01_feat_normalizeadj.R")

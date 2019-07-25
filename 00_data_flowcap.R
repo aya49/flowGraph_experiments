@@ -66,7 +66,7 @@ meta_file = NULL
 
 result = foreach (i=1:length(ftFile_dir), .combine="rbind") %dopar% {
   ft = get(load(ftFile_dir[i]))
-  print(ft@MarkerNames)
+  # print(ft@MarkerNames)
   npheno = length(ft@CellFreqs)
   # cat("\n", i, "Loaded file: ", ftGT[i], "/", ftFileNames[i], "; # of phenotypes x samples: ", npheno, " x ", length(ft), "", sep="")
   
