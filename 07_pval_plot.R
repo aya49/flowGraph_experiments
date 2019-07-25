@@ -198,10 +198,14 @@ for (data in c_datas) {
         plens = laply(pvs, length)
         names(ys) = names(npts) = names(plens) = names(pvals[[data]])
 
-        png(paste0(root,"/", data,"/pval/num_",uc,"_",ptype,".",adj,".png"), height=400, width=800)
+        png(paste0(root,"/", data,"/pval/num_",uc,"_",ptype,".",adj,".png"), height=400, width=400)
 
         par(mar=c(10,4,5,4))
-        barplot(npts, ylim=c(0,max(.5,max(npts))), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=paste0("number of sig/features | data: ", data, ", class: ", uc, ", method: ", ptype,".",adj))
+        
+        maint = paste0("number of sig/features | data: ", data, ", class: ", uc, ", method: ", ptype,".",adj)
+
+        barplot(npts, ylim=c(0,max(.5,max(npts))), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=maint)
+        
         abline(h=pt)
         par(new=T)
         
@@ -210,6 +214,24 @@ for (data in c_datas) {
         axis(4, col="red", col.axis="red", las=1)
         
         graphics.off()
+        
+        
+        try ({
+        if (data=="pos") {
+          sbs = ldply(names(pvs), function(pvi) {
+            pv = pvs[[pvi]]
+            ssig = grepl("CD123",names(pv)) & grepl("CD14",names(pv))
+            asig = pv<pt
+            data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig),sum(ssig==asig)/sum(asig)), feature=pvi)
+          })
+          png(paste0(root,"/", data,"/pval/numpos_",uc,"_",ptype,".",adj,".png"), height=400, width=400)
+          pl = barchart(score ~ feature, data=sbs, groups=metric,
+                      main="positive control hypothetical (r) vs actual (p) significant features")
+          print(pl)
+          graphics.off()
+        }
+          
+        })
         
         
         ## other stats
