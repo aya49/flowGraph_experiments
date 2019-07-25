@@ -68,8 +68,7 @@ result = foreach (i=1:length(ftFile_dir), .combine="rbind") %dopar% {
   ft = get(load(ftFile_dir[i]))
   print(ft@MarkerNames)
   npheno = length(ft@CellFreqs)
-  # feat_file_cell_count = rbind(feat_file_cell_count, ft@CellFreqs)
-  cat("\n", i, "Loaded file: ", ftGT[i], "/", ftFileNames[i], "; # of phenotypes x samples: ", npheno, " x ", length(ft), "", sep="")
+  # cat("\n", i, "Loaded file: ", ftGT[i], "/", ftFileNames[i], "; # of phenotypes x samples: ", npheno, " x ", length(ft), "", sep="")
   
   fn = ftFileNames[i]
   fn = strsplit(fn, "\\.")[[1]][1]

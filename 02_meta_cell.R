@@ -26,7 +26,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
 
   print(result_dir)
-  start = Sys.time()
+  start1 = Sys.time()
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
@@ -199,7 +199,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
   save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
   
-  time_output(start)
+  time_output(start1, result_dir)
 }
 
 

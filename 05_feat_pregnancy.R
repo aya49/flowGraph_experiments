@@ -32,7 +32,9 @@ writecsv = F
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   if (!grepl("pregnancy|Bodenmiller",result_dir)) next()
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
+  print(result_dir)
   
+  start = Sys.time()
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta") # meta files directory
@@ -53,7 +55,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   
-  start = Sys.time()
   
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   
