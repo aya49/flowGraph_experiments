@@ -47,7 +47,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   for (feat_type in feat_types[grepl("-unpaired",feat_types)]) {
     m = get(load(paste0(feat_dir, "/", feat_type)))
     file.remove(paste0(feat_dir, "/", feat_type))
-    save(m,paste0(feat_dir, "/", gsub("-unpaired",".Rdata",feat_type)))
+    save(m,paste0(feat_dir, "/", gsub("-unpaired","",feat_type),".Rdata"))
   }
   feat_types = gsub(".Rdata","",list.files(path=feat_dir, pattern=".Rdata"))
   
@@ -73,8 +73,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     }
     save(m, file=paste0(feat_dir,"/", feat_type,".Rdata"))
     if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
-    file.rename(paste0(feat_dir,"/", feat_type,".Rdata"), paste0(feat_dir,"/", feat_type))
-    
+
   }
   
   time_output(start)

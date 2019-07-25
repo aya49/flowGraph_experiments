@@ -49,6 +49,7 @@ target_col = "class"
 order_cols = NULL
 
 control = "control"
+feat_count = "file-cell-countAdj"
 
 ## calcuate p values!
 
@@ -61,234 +62,232 @@ control = "control"
 # pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$p_all
 
 start = Sys.time()
-
 table = pvals = NULL
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-   print(result_dir)
-   data = fileNames(result_dir)
-   
-     ## input directories
-     meta_file_dir = paste(result_dir, "/meta/file", sep="") #meta for rows (sample)
-     feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
-     
-       ## output directories
-       # unlink(paste0(result_dir,"/pval"))
-       pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
-     
-        n+   #data paths
-         feat_types = list.files(path=feat_dir,pattern=".Rdata")
-         # feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
-           feat_types = gsub(".Rdata","",feat_types)
-           # feat_types = feat_types[!grepl("KO|Max",feat_types)]
-           
-             meta_file = get(load(paste0(meta_file_dir,".Rdata")))
-             
-               
-               start1 = Sys.time()
-               
-                 #load different features matrix and calculate distance matrix
-                 # for (feat_type in feat_types_) {
-                 result = llply(feat_types, function(feat_type) #for (feat_type in feat_types) 
-                   {
-                    start2 = Sys.time()
-                    
-                    # tryCatch({
-                    if (!file.exists(paste0(pvalsource_dir,"/",feat_type,".Rdata")) | overwrite) {
-                      cat("\n", feat_type, " ",sep="")
-                      
-                      ## upload and prep feature matrix + meta
-                      m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-                      sm = meta_file[match(rownames(m0),meta_file$id),]
-                      # good_sample
-                      tcl = table(sm$class); 
-                      delrow =rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=minfold]]
-                      sm = sm[!delrow,]
-                      if (all(sm$class==sm$class[1])) return(F)
-                      m = m0[!delrow,]
-                      
-                      m[is.infinite(m)] = min(m[!is.infinite(m)])
-                      m[is.nan(m) | is.na(m)] = 0
-                      
-                      controli = sm$class=="control"
-                      controln = sum(controli)
-                      
-                      
-                      foldsip = foldres = NULL # save original
-                      for (uc in unique(sm$class[!controli])) {
-                        
-                        ## make test/train(x10) indices
-                        uci = sm$class==uc
-                        if (sum(uci)<minfold) next
-                        
-                        if ("type"%in%colnames(sm)) {
-                          foldsip[[uc]]$indices$test = as.character(sm$id[sm$type=="test" & uci])
-                          foldsip[[uc]]$indices$train = as.character(sm$id[sm$type=="train" & uci])
-                        } else {
-                          testni = sample(which(uci), max(minfold,testn*sum(uci)))
-                          foldsip[[uc]]$indices$test = as.character(sm$id[testni])
-                          foldsip[[uc]]$indices$train = as.character(sm$id[!c(1:nrow(sm))%in%testni & uci])
-                        }
-                        
-                        # n-fold cv train indices; if only two folds? then still train/test; number of folds rounded
-                        trind = sample(foldsip[[uc]]$indices$train)
-                        if (length(trind)>(minfold*3)) {
-                          cvn = floor(min(cvn0,length(trind)/minfold))
-                          foldsip[[uc]]$indices$train = split(trind, cut(seq_along(trind), cvn, labels=F))
-                        }
-                        
-                        tri = foldsip[[uc]]$indices$train
-                        tei = foldsip[[uc]]$indices$test
-                        
-                        ## calculate p value
-                        pvs = llply(1:ncol(m), function(j) {
-                          # for (j in 1:ncol(m)) {
-                          cm = m[controli,j]; 
-                          cmm = m[!controli,j]; 
-                          trm = m[unlist(tri),j]; 
-                          trm2 = NULL; if (is.list(tri)) trm2 = lapply(tri, function(trii) m[trii,j])
-                          tem = m[tei,j]
-                          cmtf = !all(cm==cm[1])
-                          
-                          t = wilcox = list()
-                          t$test = t$train = t$train2 = t$all = 
-                            wilcox$test = wilcox$train = wilcox$train2 = wilcox$all = 1
-                          if (!all(tem==tem[1]) & cmtf) {
-                            t$test = t.test(cm, tem)$p.value
-                            wilcox$test = wilcox.test(cm, tem)$p.value
-                          }
-                          if (!all(trm==trm[1]) & cmtf) {
-                            t$train = t.test(cm, trm)$p.value
-                            wilcox$train = wilcox.test(cm, trm)$p.value
-                            if (!is.null(trm2)) {
-                              t$train2 = median(sapply(trm2, function(trm2i) {
-                                if (!all(trm2i==trm2i[1])) return(1)
-                                return(t.test(cm, trm2i)$p.value)
-                              }))
-                              wilcox$train2 = median(sapply(trm2, function(trm2i) {
-                                if (!all(trm2i==trm2i[1])) return(1)
-                                return(wilcox.test(cm, trm2i)$p.value)
-                              }))
-                            }
-                          }
-                          if (!all(cmm==cmm[1]) & cmtf) {
-                            t$all = t.test(cm, cmm)$p.value
-                            wilcox$all = wilcox.test(cm, cmm)$p.value
-                          }
-                          return(list(t=t, wilcox=wilcox))
-                        })
-                        
-                        for (ptype in names(pvs[[1]])) {
-                          for (adj in adjust) {
-                            for (tretype in names(pvs[[1]][[ptype]])) {
-                              pv = sapply(pvs, function(x) x[[ptype]]$train); 
-                              pv[is.nan(pv) | is.na(pv)] = 1
-                              names(pv) = colnames(m)
-                              
-                              ## adjust or combo p values
-                              if (adj%in%c("lanc","fisher")) {
-                                # if (grepl("group",feat_type)) next()
-                                
-                                phens = names(pv)
-                                if(grepl("_",phens[10])) phens = sapply(str_split(names(pv),"_"), function(x) x[1])
-                                nonp = gsub("[-]|[+]","",phens)
-                                allplus = which(grepl("[-]|[+]",phens) & !duplicated(nonp))
-                                if (length(allplus)==length(phens)) next
-                                # nonpu = unique(nonp)
-                                groupi = match(nonp, nonp)
-                                groups = llply(allplus, function(i) {
-                                  ii = which(groupi==groupi[i])
-                                  if (length(ii)>1) return(ii)
-                                  return(NULL)
-                                })
-                                names(groups) = gsub("-","+",phens[allplus])
-                                groups = plyr::compact(groups)
-                                
-                                pv_ = a = rep(1,length(groups)); names(a) = names(groups)
-                                ap = sapply(groups, function(x) any(pv[x]<1))
-                                
-                                # don't use, not sure degrees of freedom...
-                                if (adj=="lanc") {
-                                  if (any(ap)) pv_[ap] = 
-                                      laply(groups[ap],function(x) invchisq(pv[x],2)$p)
-                                }
-                                if (adj=="fisher") {
-                                  if (any(ap)) pv_[ap] = 
-                                      laply(groups[ap],function(x) sumlog(pv_[x])$p)
-                                }
-                                names(pv_) = names(groups)
-                              } else {
-                                pv_ = p.adjust(pv, method=adj)
-                              }
-                              
-                              foldsip[[uc]]$p[[ptype]][[adj]][[tretype]] = pv_
-                            } # tretype
-                            
-                            pv_tr_ = foldsip[[uc]]$p[[ptype]][[adj]]$train
-                            pv_tr2_ = foldsip[[uc]]$p[[ptype]][[adj]]$train2
-                            pv_te_ = foldsip[[uc]]$p[[ptype]][[adj]]$test
-                            pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$all
-                            
-                            ## calculate correlations between p values test & train/2
-                            pv_trl = -log(pv_tr_)
-                            pv_trl2 = -log(pv_tr2_)
-                            pv_tel = -log(pv_te_)
-                            # pv_alll
-                            pcorr = cor(pv_trl,pv_tel, method="spearman")
-                            pcorrp = cor.test(pv_trl,pv_tel, method="spearman")$p.value
-                            pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
-                            pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
-                            
-                            
-                            # save table
-                            tr_sig = pv_tr_<pthres
-                            tr2_sig = pv_tr2_<pthres
-                            te_sig = pv_te_<pthres
-                            all_sig = pv_all_<pthres
-                            
-                            overlap = sum(tr_sig & te_sig)
-                            rec = overlap/sum(te_sig)
-                            prec = overlap/sum(tr_sig)
-                            overlap2 = sum(tr2_sig & te_sig)
-                            rec2 = overlap2/sum(te_sig)
-                            prec2 = overlap2/sum(tr2_sig)
-                            foldres = 
-                              rbind(
-                                foldres, data.frame(
-                                  data=data, feature=feat_type, class=uc, sig_test=ptype, adjust.combine=adj, p_thres=pthres, 
-                                  n_train_folds=ifelse(is.list(tri),1,length(tri)), n_samples_train=length(unlist(tri)), n_samples_test=length(tei), n_samples_control=sum(controln),
-                                  
-                                  m_test_sig=sum(te_sig), m_test=length(te_sig), 
-                                  m_test_perc=sum(te_sig)/length(te_sig),
-                                  m_train_sig=sum(tr_sig), m_train_sig2=sum(tr2_sig), m_train=length(tr_sig), 
-                                  m_train_perc=sum(tr_sig)/length(tr_sig), m_train_perc2=sum(tr2_sig)/length(tr2_sig),
-                                  m_overlap_sig=overlap, m_overlap_sig2=overlap2, 
-                                  
-                                  corr_spear=pcorr, corr_spear_p=pcorrp,
-                                  corr_spear2=pcorr2, corr_spear_p2=pcorrp2,
-                                  recall=rec, precision=prec, f=2*((prec*rec)/(prec+rec)),
-                                  recall2=rec2, precision2=prec2, f2=2*((prec2*rec2)/(prec2+rec2))
-                                ))
-                          } # adj
-                        } # ptype
-                      }
-                      save(foldsip, file=paste0(pvalsource_dir,"/",feat_type,".Rdata"))
-                      save(foldres, file=paste0(pvalsource_dir,"/",feat_type,"_table.Rdata"))
-                    } # if
-                    foldsip = get(load(paste0(pvalsource_dir,"/",feat_type,".Rdata")))
-                    foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
-                    a = list(foldsip=foldsip, foldres=foldres)
-                    
-                    time_output(start2)
-                    return(a)
-                     }, .parallel=T)
-                 pvals[[data]] = llply(result, function(x) x$foldsip)
-                 names(pvals[[data]]) = feat_types
-                 table = rbind(table, ldply(result, function(x) x$foldres))
-                 
-                   time_output(start1)
-               } # result
+  print(result_dir)
+  data = fileNames(result_dir)
+  
+  ## input directories
+  meta_file_dir = paste(result_dir, "/meta/file", sep="") #meta for rows (sample)
+  feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
+  
+  ## output directories
+  # unlink(paste0(result_dir,"/pval"))
+  pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
+
+  #data paths
+  feat_types = list.files(path=feat_dir,pattern=".Rdata")
+  # feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
+  feat_types = gsub(".Rdata","",feat_types)
+  # feat_types = feat_types[!grepl("KO|Max",feat_types)]
+
+  meta_file = get(load(paste0(meta_file_dir,".Rdata")))
+  
+  
+  start1 = Sys.time()
+  
+  #load different features matrix and calculate distance matrix
+  # for (feat_type in feat_types_) {
+  result = llply(feat_types, function(feat_type) #for (feat_type in feat_types) 
+  {
+    start2 = Sys.time()
+    
+    # tryCatch({
+    if (!file.exists(paste0(pvalsource_dir,"/",feat_type,".Rdata")) | overwrite) {
+      cat("\n", feat_type, " ",sep="")
+      
+      ## upload and prep feature matrix + meta
+      m0 = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
+      sm = meta_file[match(rownames(m0),meta_file$id),]
+      # good_sample
+      tcl = table(sm$class); 
+      delrow =rownames(m0)%in%sm$id[sm$class%in%names(tcl)[tcl<=minfold]]
+      sm = sm[!delrow,]
+      if (all(sm$class==sm$class[1])) return(F)
+      m = m0[!delrow,]
+      
+      m[is.infinite(m)] = min(m[!is.infinite(m)])
+      m[is.nan(m) | is.na(m)] = 0
+      
+      controli = sm$class=="control"
+      controln = sum(controli)
+      
+      
+      foldsip = foldres = NULL # save original
+      for (uc in unique(sm$class[!controli])) {
+        
+        ## make test/train(x10) indices
+        uci = sm$class==uc
+        if (sum(uci)<minfold) next
+        
+        if ("type"%in%colnames(sm)) {
+          foldsip[[uc]]$indices$test = as.character(sm$id[sm$type=="test" & uci])
+          foldsip[[uc]]$indices$train = as.character(sm$id[sm$type=="train" & uci])
+        } else {
+          testni = sample(which(uci), max(minfold,testn*sum(uci)))
+          foldsip[[uc]]$indices$test = as.character(sm$id[testni])
+          foldsip[[uc]]$indices$train = as.character(sm$id[!c(1:nrow(sm))%in%testni & uci])
+        }
+        
+        # n-fold cv train indices; if only two folds? then still train/test; number of folds rounded
+        trind = sample(foldsip[[uc]]$indices$train)
+        if (length(trind)>(minfold*3)) {
+          cvn = floor(min(cvn0,length(trind)/minfold))
+          foldsip[[uc]]$indices$train = split(trind, cut(seq_along(trind), cvn, labels=F))
+        }
+        
+        tri = foldsip[[uc]]$indices$train
+        tei = foldsip[[uc]]$indices$test
+        
+        ## calculate p value
+        pvs = llply(1:ncol(m), function(j) {
+          # for (j in 1:ncol(m)) {
+          cm = m[controli,j]; 
+          cmm = m[!controli,j]; 
+          trm = m[unlist(tri),j]; 
+          trm2 = NULL; if (is.list(tri)) trm2 = lapply(tri, function(trii) m[trii,j])
+          tem = m[tei,j]
+          cmtf = !all(cm==cm[1])
+          
+          t = wilcox = list()
+          t$test = t$train = t$train2 = t$all = 
+            wilcox$test = wilcox$train = wilcox$train2 = wilcox$all = 1
+          if (!all(tem==tem[1]) & cmtf) {
+            t$test = t.test(cm, tem)$p.value
+            wilcox$test = wilcox.test(cm, tem)$p.value
+          }
+          if (!all(trm==trm[1]) & cmtf) {
+            t$train = t.test(cm, trm)$p.value
+            wilcox$train = wilcox.test(cm, trm)$p.value
+            if (!is.null(trm2)) {
+              t$train2 = median(sapply(trm2, function(trm2i) {
+                if (!all(trm2i==trm2i[1])) return(1)
+                return(t.test(cm, trm2i)$p.value)
+              }))
+              wilcox$train2 = median(sapply(trm2, function(trm2i) {
+                if (!all(trm2i==trm2i[1])) return(1)
+                return(wilcox.test(cm, trm2i)$p.value)
+              }))
+            }
+          }
+          if (!all(cmm==cmm[1]) & cmtf) {
+            t$all = t.test(cm, cmm)$p.value
+            wilcox$all = wilcox.test(cm, cmm)$p.value
+          }
+          return(list(t=t, wilcox=wilcox))
+        })
+        
+        for (ptype in names(pvs[[1]])) {
+          for (adj in adjust) {
+            for (tretype in names(pvs[[1]][[ptype]])) {
+              pv = sapply(pvs, function(x) x[[ptype]][[tretype]]); 
+              pv[is.nan(pv) | is.na(pv)] = 1
+              names(pv) = colnames(m)
+              
+              ## adjust or combo p values
+              if (adj%in%c("lanc","fisher")) {
+                # if (grepl("group",feat_type)) next()
+                
+                phens = names(pv)
+                if(grepl("_",phens[10])) phens = sapply(str_split(names(pv),"_"), function(x) x[1])
+                nonp = gsub("[-]|[+]","",phens)
+                allplus = which(grepl("[-]|[+]",phens) & !duplicated(nonp))
+                if (length(allplus)==length(phens)) next
+                # nonpu = unique(nonp)
+                groupi = match(nonp, nonp)
+                groups = llply(allplus, function(i) {
+                  ii = which(groupi==groupi[i])
+                  if (length(ii)>1) return(ii)
+                  return(NULL)
+                })
+                names(groups) = gsub("-","+",phens[allplus])
+                groups = plyr::compact(groups)
+                
+                pv_ = a = rep(1,length(groups)); names(a) = names(groups)
+                ap = sapply(groups, function(x) any(pv[x]<1))
+                
+                # don't use, not sure degrees of freedom...
+                if (adj=="lanc") {
+                  if (any(ap)) pv_[ap] = 
+                      laply(groups[ap],function(x) invchisq(pv[x],2)$p)
+                }
+                if (adj=="fisher") {
+                  if (any(ap)) pv_[ap] = 
+                      laply(groups[ap],function(x) sumlog(pv_[x])$p)
+                }
+                names(pv_) = names(groups)
+              } else {
+                pv_ = p.adjust(pv, method=adj)
+              }
+              
+              foldsip[[uc]]$p[[ptype]][[adj]][[tretype]] = pv_
+            } # tretype
+            
+            pv_tr_ = foldsip[[uc]]$p[[ptype]][[adj]]$train
+            pv_tr2_ = foldsip[[uc]]$p[[ptype]][[adj]]$train2
+            pv_te_ = foldsip[[uc]]$p[[ptype]][[adj]]$test
+            pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$all
+            
+            ## calculate correlations between p values test & train/2
+            pv_trl = -log(pv_tr_)
+            pv_trl2 = -log(pv_tr2_)
+            pv_tel = -log(pv_te_)
+            # pv_alll
+            pcorr = cor(pv_trl,pv_tel, method="spearman")
+            pcorrp = cor.test(pv_trl,pv_tel, method="spearman")$p.value
+            pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
+            pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
+            
+            
+            # save table
+            tr_sig = pv_tr_<pthres
+            tr2_sig = pv_tr2_<pthres
+            te_sig = pv_te_<pthres
+            all_sig = pv_all_<pthres
+            
+            overlap = sum(tr_sig & te_sig)
+            rec = overlap/sum(te_sig)
+            prec = overlap/sum(tr_sig)
+            overlap2 = sum(tr2_sig & te_sig)
+            rec2 = overlap2/sum(te_sig)
+            prec2 = overlap2/sum(tr2_sig)
+            foldres = 
+              rbind(
+                foldres, data.frame(
+                  data=data, feature=feat_type, class=uc, sig_test=ptype, adjust.combine=adj, p_thres=pthres, 
+                  n_train_folds=ifelse(is.list(tri),1,length(tri)), n_samples_train=length(unlist(tri)), n_samples_test=length(tei), n_samples_control=sum(controln),
+                  
+                  m_test_sig=sum(te_sig), m_test=length(te_sig), 
+                  m_test_perc=sum(te_sig)/length(te_sig),
+                  m_train_sig=sum(tr_sig), m_train_sig2=sum(tr2_sig), m_train=length(tr_sig), 
+                  m_train_perc=sum(tr_sig)/length(tr_sig), m_train_perc2=sum(tr2_sig)/length(tr2_sig),
+                  m_overlap_sig=overlap, m_overlap_sig2=overlap2, 
+                  
+                  corr_spear=pcorr, corr_spear_p=pcorrp,
+                  corr_spear2=pcorr2, corr_spear_p2=pcorrp2,
+                  recall=rec, precision=prec, f=2*((prec*rec)/(prec+rec)),
+                  recall2=rec2, precision2=prec2, f2=2*((prec2*rec2)/(prec2+rec2))
+              ))
+          } # adj
+        } # ptype
+      }
+      save(foldsip, file=paste0(pvalsource_dir,"/",feat_type,".Rdata"))
+      save(foldres, file=paste0(pvalsource_dir,"/",feat_type,"_table.Rdata"))
+    } # if
+    foldsip = get(load(paste0(pvalsource_dir,"/",feat_type,".Rdata")))
+    foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
+    a = list(foldsip=foldsip, foldres=foldres)
+    
+    time_output(start2)
+    return(a)
+  }, .parallel=T)
+  pvals[[data]] = llply(result, function(x) x$foldsip)
+  names(pvals[[data]]) = feat_types
+  table = rbind(table, ldply(result, function(x) x$foldres))
+  
+  time_output(start1)
+} # result
 save(table, file=paste0(root,"/pval_table.Rdata"))
 save(pvals, file=paste0(root,"/pval.Rdata"))
-
 time_output(start)
 
