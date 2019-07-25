@@ -126,6 +126,7 @@ meta_file <- meta_file[rowIndex,]
 ## split data by tube/panel and save; also randomly pick same controls to be a non-control class so to make features-------------------------
 controli = NULL
 for (tube in unique(meta_file$tube)) {
+  if (tube!=6) next
   tubei = meta_file$tube==tube
   
   meta_file_ = meta_file[tubei,]
@@ -141,7 +142,8 @@ for (tube in unique(meta_file$tube)) {
   # }
   # meta_file_$class[controli] = "control"
   
-  meta_dir = paste(result_dir, "_p", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+  meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+  # meta_dir = paste(result_dir, "_p", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   meta_cell_dir = paste(meta_dir, "/cell", sep="")
   meta_file_dir = paste(meta_dir, "/file", sep="")
   save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
