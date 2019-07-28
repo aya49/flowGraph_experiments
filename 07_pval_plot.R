@@ -33,9 +33,6 @@ options(na.rm=T)
 overwrite = F #overwrite?
 writecsv = F
 
-readcsv = F
-
-adjust = c("BY")#,"fisher","none","BH","bonferroni") #pvalue adjustment; "lanc",
 pthres = .05 # p value sig threshold for t test
 good_count = 5
 # minfold = 5 # minimum number of samples in each fold/class
@@ -55,17 +52,18 @@ feat_count = "file-cell-countAdj"
 table = get(load(paste0(root,"/pval_table.Rdata")))
 pvals = get(load(paste0(root,"/pval.Rdata")))
 
-# data and uc together, ptype and adj together, 
-c_datas = names(pvals)
-c_feats = unique(table$feature)
-# uc, p
-c_ptypes = unique(table$sig_test)
-c_adjs = unique(table$adjust.combine)
-
 tbl = table
 tbl$pmethod_adj = paste(table$sig_test, table$adjust.combine)
+tbl = tbl[!grepl("group",tbl$feature) & tbl$feature!="file-cell-count",]
 pt = table$p_thres[1]
 ptl = -log(table$p_thres[1])
+
+# data and uc together, ptype and adj together, 
+c_datas = names(pvals)
+c_feats = unique(tbl$feature)
+# uc, p
+c_ptypes = unique(tbl$sig_test)
+c_adjs = unique(tbl$adjust.combine)
 
 plot_int = function(dat, pch='.', ...) {
   colPalette = colorRampPalette(c("blue", "green", "yellow", "red"))
@@ -87,15 +85,19 @@ for (data in c_datas) {
   
   mc0 = Matrix(get(load(paste0(root,"/result/",data,"/feat/", feat_count,".Rdata"))))
   mcm = colMeans(mc0)
-  mcm = -log(mcm/max(mcm))
-  mcm = 2*mcm/max(mcm)
-  mcm[mcm<.5] = .5
+  mcm = mcm - min(mcm)
+  mcm = mcm/max(mcm)
+  mcm = mcm*2
 
+  dir.create(paste0(root,"/result/", data,"/pval"), showWarnings=F, recursive=T)
+  # dir.create(paste0(root,"/result/", data,"/pvalp"), showWarnings=F, recursive=T)
   for (uc in names(pvals[[data]][[1]])) {
-    for (feat in names(pvals[[data]])) {
+    classn = paste0(uc,"_")
+    if (length(pvals[[data]][[1]])==1) classn = ""
+    for (feat in c_feats) {
       for (ptype in c_ptypes) {
         for (adj in c_adjs) {
-          png(paste0(root,"/", data,"/pval/hist_",uc,"_",ptype,".",adj,"_",feat,".png"), height=400, width=400)
+          png(paste0(root,"/result/", data,"/pval/hist_",classn,ptype,".",adj,"_",feat,".png"), height=400, width=800)
           mv1 = matrix(c(1,1,2,3),nrow=2,byrow=F)
           layout(mv1) # scatterplot + histograms
           
@@ -103,16 +105,19 @@ for (data in c_datas) {
           
           set1 = -log(pvs$train)
           set2 = -log(pvs$test)
-          set1[set1> 10] = set2[set2> 10] = 10
+          # set1[set1> 10] = set2[set2> 10] = 10
           
-          plot_int(cbind(set1,set2), xlim=c(0,10), ylim=c(0,10), xlab="set 1 -ln(p values)", ylab="set 2 -ln(p values)", main=paste0("set2 class: ",uc, "; feature: ", feat, "; method: ", ptype,"/",adj), cex=mcm[match(names(set1),names(mcm))])
-          abline(v=ptl,h=ptl)
+          if (grepl("-cell-",feat)) mcmind = match(names(set1),names(mcm))
+          if (!grepl("-cell-",feat)) mcmind = match(sapply(strsplit(names(set1),"_"), function(x) x[1]),names(mcm))
+          mcm1 = mcm[mcmind]
+          plot_int(cbind(set1,set2), pch=1, xlim=c(0,10), ylim=c(0,10), xlab="set 1 -ln(p values)", ylab="set 2 -ln(p values)", main=paste0("set2 class: ",uc, "; feature: ", feat, "; method: ", ptype,"/",adj), cex=mcm)
+          abline(v=ptl,h=ptl, col="red")
           
-          hist(set1, freq=F, main=paste0("set 1"), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlim=c(0,10), ylim=c(0,1), col=rgb(0,0,0,.5), breaks=10)
-          abline(v=ptl)
+          hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,max(4,max(set1))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+          abline(v=ptl, col="red")
           
-          hist(set2, freq=F, main="set 2", xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlim=c(0,10), ylim=c(0,1), col=rgb(0,0,0,.5), breaks=10)
-          abline(v=ptl)
+          hist(set2, freq=F, main="set 2", xlim=c(0,max(4,max(set2))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+          abline(v=ptl, col="red")
           graphics.off()
           
         }
@@ -122,30 +127,30 @@ for (data in c_datas) {
   # graphics.off()
 }
 
+
 ## qq plot; log both axis
 for (data in c_datas) {
   for (uc in names(pvals[[data]][[1]])) {
+    classn = paste0(uc,"_")
+    if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
         # n =100
         # y = runif(n)
-        ys = llply(names(pvals[[data]]), function(feat)
+        ys = llply(c_feats, function(feat)
           pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all)
         nqs = llply(sapply(ys,length), function(n) 1:n/(n+1))
         cs = rainbow(length(ys))
-        names(ys) = names(nqs) = names(cs) = names(pvals[[data]]) # feats
+        names(ys) = names(nqs) = names(cs) = c_feats # feats
         
-        png(paste0(root,"/", data,"/pval/qqpl_",uc,"_",ptype,".",adj,".png"), height=400, width=800)
+        png(paste0(root,"/result/", data,"/pval/qqpl_",classn,ptype,".",adj,".png"), height=400, width=800)
         par(mfrow=c(1,2))
         
         plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main=paste0("qq plot | data: ", data, ", class: ", uc, ", method: ", ptype,".",adj))
         for (i in 1:length(ys)) {
-          # seq(0.05,1,length(y))
-          # for(i in 1:1000)
-          #   points(sort(runif(length(y))),sort(y),pch=".")
-          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=.5, col=cs[i])#,col="red",pch=16)
+          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=.1, col=cs[i])
         }
-        abline(coef = c(0,1))
+        abline(h=pt, col="red")
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
         
         
@@ -161,7 +166,7 @@ for (data in c_datas) {
           # set1[set1< -10] = set2[set2< -10] = -10
           points(set1, sort(set2), pch=16, cex=.5, col=cs[i])#,col="red",pch=16)
         }
-        # abline(coef = c(0,1))
+        abline(h=pt, col="red")
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
         
         graphics.off()
@@ -172,44 +177,36 @@ for (data in c_datas) {
 }
 
 
-
-
-
-
 ## number of significant features
-
-
 ## other metrics
-
 for (data in c_datas) {
-  mcm = colMeans(mc0)
-  mcm = -log(mcm/max(mcm))
-  mcm = 2*mcm/max(mcm)
-  mcm[mcm<.5] = .5
-  
   for (uc in names(pvals[[data]][[1]])) {
+    classn = paste0(uc,"_")
+    if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
-
         ## number of significant features
-        pvs = llply(names(pvals[[data]]), function(feat)
+        pvs = llply(c_feats, function(feat)
           pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all)
-        npts = laply(pvs, function(pv) sum(pv<pt)/length(pv))
+        npts = laply(pvs, function(pv) {
+          a = sum(pv<pt)
+          if (a==0) return(0)
+          return(a/length(pv))
+        })
         plens = laply(pvs, length)
-        names(ys) = names(npts) = names(plens) = names(pvals[[data]])
+        names(pvs) = names(npts) = names(plens) = c_feats
 
-        png(paste0(root,"/", data,"/pval/num_",uc,"_",ptype,".",adj,".png"), height=400, width=400)
-
+        png(paste0(root,"/result/", data,"/pval/num_",classn,ptype,".",adj,".png"), height=400, width=400)
         par(mar=c(10,4,5,4))
         
-        maint = paste0("number of sig/features | data: ", data, ", class: ", uc, ", method: ", ptype,".",adj)
-
+        maint = paste0("# of sig/features | data: ", data, "/", uc, ", method: ", ptype,".",adj)
+        
         barplot(npts, ylim=c(0,max(.5,max(npts))), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=maint)
         
-        abline(h=pt)
+        abline(h=pt, col="green")
         par(new=T)
         
-        plot(plens, pch=15, xlab="",ylab="",axes=F,type="b", col="red")
+        plot(plens, pch=15, xlab="",ylab="",axes=F,type="b", col="red", ylim=c(0, max(plens)))
         mtext("number of features",side=4,col="red",line=4)
         axis(4, col="red", col.axis="red", las=1)
         
@@ -217,20 +214,23 @@ for (data in c_datas) {
         
         
         try ({
-        if (data=="pos") {
-          sbs = ldply(names(pvs), function(pvi) {
-            pv = pvs[[pvi]]
-            ssig = grepl("CD123",names(pv)) & grepl("CD14",names(pv))
-            asig = pv<pt
-            data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig),sum(ssig==asig)/sum(asig)), feature=pvi)
-          })
-          png(paste0(root,"/", data,"/pval/numpos_",uc,"_",ptype,".",adj,".png"), height=400, width=400)
-          pl = barchart(score ~ feature, data=sbs, groups=metric,
-                      main="positive control hypothetical (r) vs actual (p) significant features")
-          print(pl)
-          graphics.off()
-        }
-          
+          if (data=="pos") {
+            sbs = ldply(c_feats, function(pvi) {
+              pv = pvs[[pvi]]
+              ssig = grepl("CD123",names(pv)) & grepl("CD14",names(pv))
+              # a = unlist(strsplit(names(pv),"[-]|[+]"))
+              asig = pv<pt
+              # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
+              data.frame(metric=c("recall","precision"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
+            })
+            png(paste0(root,"/result/", data,"/pval/numpos_",classn,ptype,".",adj,".png"), height=400, width=400)
+            pl = barchart(score~feature, data=sbs, groups=metric, las=1,
+                          main="positive control hypothetical (r) vs actual (p) significant features",
+                          auto.key = list(space = "top"),
+                          scales = list(x = list(rot = 45)))
+            print(pl)
+            graphics.off()
+          }
         })
         
         
@@ -239,33 +239,31 @@ for (data in c_datas) {
         
         pls = fr$recall
         names(pls) = fr$feature
-        png(paste0(root,"/", data,"/pval/r_",uc,"_",ptype,".",adj,".png"))
+        png(paste0(root,"/result/", data,"/pval/r_",classn,ptype,".",adj,".png"))
         par(mar=c(10,4,5,4))
-        barplot(pls, las=2, main=paste0("data: ", data, ", class: ", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="recall")
+        barplot(pls, las=2, main=paste0("recall | data: ", data, "/", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="recall")
         graphics.off()
         
         pls = fr$precision
         names(pls) = fr$feature
-        png(paste0(root,"/", data,"/pval/p_",uc,"_",ptype,".",adj,".png"))
+        png(paste0(root,"/result/", data,"/pval/p_",classn,ptype,".",adj,".png"))
         par(mar=c(10,4,5,4))
-        barplot(pls, las=2, main=paste0("data: ", data, ", class: ", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="precision")
+        barplot(pls, las=2, main=paste0("precision | data: ", data, "/", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="precision")
         graphics.off()
         
         pls = fr$f
         names(pls) = fr$feature
-        png(paste0(root,"/", data,"/pval/f_",uc,"_",ptype,".",adj,".png"))
+        png(paste0(root,"/result/", data,"/pval/f_",classn,ptype,".",adj,".png"))
         par(mar=c(10,4,5,4))
-        barplot(pls, las=2, main=paste0("data: ", data, ", class: ", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="f measure")
+        barplot(pls, las=2, main=paste0("f | data: ", data, "/", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="f measure")
         graphics.off()
         
         pls = fr$corr_spear
         names(pls) = fr$feature
-        png(paste0(root,"/", data,"/pval/c_",uc,"_",ptype,".",adj,".png"))
+        png(paste0(root,"/result/", data,"/pval/c_",classn,ptype,".",adj,".png"))
         par(mar=c(10,4,5,4))
-        barplot(pls, las=2, main=paste0("data: ", data, ", class: ", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="spearman correlation")
+        barplot(pls, las=2, main=paste0("spearman corr | data: ", data, "/", uc, ", method: ", ptype,".",adj), ylim=c(0,1), ylab="spearman correlation")
         graphics.off()
-        
-        
       }
     }
   }

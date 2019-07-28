@@ -30,12 +30,12 @@ options(na.rm=T)
 
 # cvn-fold cross validation
 
-overwrite = F #overwrite?
+overwrite = T #overwrite?
 writecsv = F
 
 readcsv = F
 
-adjust = c("BY")#,"fisher","none","BH","bonferroni") #pvalue adjustment; "lanc",
+adjust = c("BY", "none")#,"fisher","none","BH","bonferroni") #pvalue adjustment; "lanc",
 pthres = .05 # p value sig threshold for t test
 good_count = 5
 # minfold = 5 # minimum number of samples in each fold/class

@@ -39,8 +39,7 @@ layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 i
 cellCountThres = .01 # MAYBE USE PERCENTAAGE!!!!! #don't use phenotypes with cell count lower than cellCountThres
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  if (result_dir!="ctrl" & result_dir!="pos")
-    
+
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   if (grepl("artificial",result_dir)) next
   print(result_dir)
