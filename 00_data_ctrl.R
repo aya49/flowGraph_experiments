@@ -80,7 +80,7 @@ for (jj in 1:length(markers)) {
   # a = 
   # a = a-min(a)
   # a = a*(max(f@exprs[,j])-max(a))
-  f@exprs[,j] = rexp(nrow(f@exprs))
+  f@exprs[,j] = rnorm(nrow(f@exprs),2,1)
   thress[[gthresm[jj]]] = mean(f@exprs[,j])
 }
 
