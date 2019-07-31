@@ -101,6 +101,11 @@ gthresm = c("cd3.gate","cd4.gate","cd20.gate","cd33.gate","cd14.gate","igm.gate"
 gatesfd = gates = get(load(paste0(gate_dir,"/gates.Rdata"))) #gates
 load(paste0(fcs_dir,".Rdata")) #fslist
 
+for (i in 1:length(fslist)) {
+  f = fslist[[i]]
+  print(f@exprs[1:10,1])
+}
+
 # # alternative gates
 # for (ei in names(selist)) {
 #   pop = meta_file$population_id[meta_file$sample_id==ei]

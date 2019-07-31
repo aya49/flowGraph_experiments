@@ -12,6 +12,7 @@ source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
        "lattice", "gridExtra",# libr(proxy)
        "metap",
+       "igraph",
        "foreach","doMC",
        "kernlab"))
 
@@ -68,13 +69,25 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   data = fileNames(result_dir)
   
   ## input directories
-  meta_file_dir = paste(result_dir, "/meta/file", sep="") #meta for rows (sample)
+  meta_dir = paste0(result_dir,"/meta")
+  meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
+  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
+  # meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
   
   ## output directories
   # unlink(paste0(result_dir,"/pval"))
   pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
 
+  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
+  meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
+    to = unlist(meta_cell_childpn_names[[x]])
+    data.frame(from=rep(x,length(to)), to=to) 
+  })
+  gr0 = graph_from_edgelist(as.matrix(meta_cell_childpn_names_))
+  gr0_v = names(V(gr0)[[]])
+  # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  
   #data paths
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
   # feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
@@ -238,8 +251,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
             pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
             
-            
-            # save table
+            # get sig
             tr_sig = pv_tr_<pthres
             tr2_sig = pv_tr2_<pthres
             te_sig = pv_te_<pthres
@@ -251,6 +263,46 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             overlap2 = sum(tr2_sig & te_sig)
             rec2 = overlap2/sum(te_sig)
             prec2 = overlap2/sum(tr2_sig)
+            
+            # calculate connectedness
+            all_sig_ = names(all_sig)[all_sig]
+            gr = NULL
+            if (length(all_sig_)>2) {
+              # make edge list & graph
+              etf = grepl("_",all_sig_[1])
+              if (etf) {
+                elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+                colnames(elist) = c("from","to")
+                gr = graph_from_data_frame(elist)
+              } else {
+                gr = gr0 - setdiff(gr0_v, all_sig_)
+                
+                # all_sig_ = all_sig_[order(sapply(all_sig_, str_count, "[+-]"))]
+                # elist = ldply(all_sig_, function(node) {
+                #     parent = meta_cell_parent_names[[node]]
+                #     if (!is.null(parent)) {
+                #       parent = parent[parent%in%all_sig_]
+                #       if (length(parent)>0) 
+                #         return( ldply(parent, function(x) data.frame(from=x, to=node)) )
+                #     }
+                #     return(NULL)
+                # })
+                # if (nrow(elist)>0) { # if there are edges
+                #   if (length(V(gr)[[]])<all_sig_) { # if there is unconnected nodes
+                #     all_sig_rest = all_sig_[!all_sig_%in%]
+                #     gr = graph_from_data_frame(d=elist, vertices=all_sig_rest, directed=T)
+                #   } else {
+                #     gr = graph_from_edgelist(as.matrix(elist))
+                #   }
+                # } else { # no edges
+                # }
+                
+              }
+            }
+            foldsip[[uc]]$p[[ptype]][[adj]]$graph = gr
+            
+            
+            # save table
             foldres = 
               rbind(
                 foldres, data.frame(

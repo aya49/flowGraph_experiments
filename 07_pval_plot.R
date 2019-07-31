@@ -128,6 +128,28 @@ for (data in c_datas) {
 }
 
 
+## graph stats
+for (data in c_datas) {
+  for (uc in names(pvals[[data]][[1]])) {
+    classn = paste0(uc,"_")
+    if (length(pvals[[data]][[1]])==1) classn = ""
+    for (feat in c_feats) {
+      for (ptype in c_ptypes) {
+        for (adj in c_adjs) {
+          png(paste0(root,"/result/", data,"/pval/gr_",classn,ptype,".",adj,"_",feat,".png"), height=400, width=800)
+
+          gr = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$graph
+          
+          graphics.off()
+
+        }
+      }
+    }
+  }
+}
+
+
+
 ## qq plot; log both axis
 for (data in c_datas) {
   for (uc in names(pvals[[data]][[1]])) {
