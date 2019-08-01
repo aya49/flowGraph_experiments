@@ -162,12 +162,13 @@ for (data in c_datas) {
           # seq(0.05,1,length(y))
           # for(i in 1:1000)
           #   points(sort(runif(length(y))),sort(y),pch=".")
-          set1 = log(nqs[[i]])
-          set2 = log(ys[[i]])
+          set1 = -log(nqs[[i]])
+          set2 = -log(ys[[i]])
           # set1[set1< -10] = set2[set2< -10] = -10
           points(set1, sort(set2), pch=16, cex=.5, col=cs[i])#,col="red",pch=16)
         }
         abline(h=pt, col="red")
+        abline(h=ptl, col="red")
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
         
         graphics.off()
@@ -222,7 +223,7 @@ for (data in c_datas) {
               m2 = markers[j]
               sbs = ldply(c_feats, function(pvi) {
                 pv = pvs[[pvi]]
-                ssig = grepl(m1,names(pv)) & grepl(m2,names(pv))
+                ssig = grepl(m1,names(pv)) | grepl(m2,names(pv))
                 # a = unlist(strsplit(names(pv),"[-]|[+]"))
                 asig = pv<pt
                 # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
