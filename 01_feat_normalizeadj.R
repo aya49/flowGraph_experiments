@@ -35,7 +35,7 @@ target_col = "class" #column with control/experiment
 control = "control" #control value in target_col column
 
 cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
-layer_norm = 4 #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
+layer_norm = c(2,4) #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
 cellCountThres = .01 # MAYBE USE PERCENTAAGE!!!!! #don't use phenotypes with cell count lower than cellCountThres
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
@@ -77,14 +77,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_file = meta_file0
   
   #prepare feat_file_cell_counts
-  x0 = as.matrix(feat_file_cell_count)[,-1] #take out total cell count
+  x = x0 = as.matrix(feat_file_cell_count)[,-1] #take out total cell count
   maxx = max(x0[is.finite(x0)])
   
-  if (layer_norm>0) {
-    xli = colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel==layer_norm]
-    xci = sapply(1:ncol(x0), function(y) any(x0[,y]>cellCountThres*maxx))
+  if (layer_norm[1]>0) {
+    xli = colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel>=layer_norm[1] & meta_cell$phenolevel<=layer_norm[2]]
+    x0 = as.matrix(x0[,xli])
   } 
-  x = as.matrix(x0[,xli&xci])
+  xci = sapply(1:ncol(x0), function(y) any(x0[,y]>cellCountThres*maxx))
+  x = as.matrix(x0[,xci])
   lib.size = feat_file_cell_count[,1]
   refColumn = which.min(abs( lib.size - median(lib.size[grepl(control,meta_file[,target_col])]) )) #reference column: median total count out of all control files
   

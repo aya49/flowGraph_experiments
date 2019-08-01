@@ -85,7 +85,7 @@ for (data in c_datas) {
   
   mc0 = Matrix(get(load(paste0(root,"/result/",data,"/feat/", feat_count,".Rdata"))))
   mc0 = mc0 - min(mc0)
-  mcm = colMeans(mc0)
+  mcm = colMeans(as.matrix(mc0))
   mcm = mcm/max(mcm)
   mcm = mcm*2
 

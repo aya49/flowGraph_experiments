@@ -31,7 +31,7 @@ options(na.rm=T)
 
 # cvn-fold cross validation
 
-overwrite = F #overwrite?
+overwrite = T #overwrite?
 writecsv = F
 
 readcsv = F
