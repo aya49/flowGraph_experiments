@@ -344,8 +344,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   lnpropexpectshort = lnpropexpect[,!grepl("[-]",colnames(lnpropexpect)) & grepl("[+]",colnames(lnpropexpect))]
   
-  save(lnpropexpectshort, file=paste0(gsub("cell","group",feat_file_cell_lnpropexpect_dir),".Rdata"))
-  if (writecsv) write.csv(lnpropexpectshort, file=paste0(gsub("cell","group",feat_file_cell_lnpropexpect_dir),".csv"))
+  save(lnpropexpectshort, file=paste0(feat_file_cell_lnpropexpect_dir,"-short.Rdata"))
+  if (writecsv) write.csv(lnpropexpectshort, file=paste0(feat_file_cell_lnpropexpect_dir,"-short.csv"))
   
   time_output(start1)
   

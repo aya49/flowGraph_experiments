@@ -10,7 +10,7 @@ setwd(root)
 ## libraries
 source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
-       "lattice", "gridExtra",# libr(proxy)
+       "lattice", "gridExtra", # libr(proxy)
        "metap",
        "igraph",
        "foreach","doMC",
@@ -31,7 +31,7 @@ options(na.rm=T)
 
 # cvn-fold cross validation
 
-overwrite = T #overwrite?
+overwrite = F #overwrite?
 writecsv = F
 
 readcsv = F
@@ -42,7 +42,7 @@ good_count = 5
 # minfold = 5 # minimum number of samples in each fold/class
 good_sample = minfold = 5 # each class must have more thatn good_sample amount of samples or else prune
 cvn0 = 10 # cvn-fold cross validation
-testn = 1/5 #proportion of samples to make into test sample if none specified
+testn = 1/2 #proportion of samples to make into test sample if none specified
 # countThres = 1000 #insignificant if count under
 
 id_col = "id"
@@ -79,14 +79,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # unlink(paste0(result_dir,"/pval"))
   pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
 
-  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-  meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
-    to = unlist(meta_cell_childpn_names[[x]])
-    data.frame(from=rep(x,length(to)), to=to) 
-  })
-  gr0 = graph_from_edgelist(as.matrix(meta_cell_childpn_names_))
-  gr0_v = names(V(gr0)[[]])
-  # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  # ## make graph base
+  # meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
+  # meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
+  #   to = unlist(meta_cell_childpn_names[[x]])
+  #   data.frame(from=rep(x,length(to)), to=to) 
+  # })
+  # gr0 = graph_from_edgelist(as.matrix(meta_cell_childpn_names_))
+  # gr0_v = names(V(gr0)[[]])
+  # # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
   
   #data paths
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
@@ -264,42 +265,49 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             rec2 = overlap2/sum(te_sig)
             prec2 = overlap2/sum(tr2_sig)
             
-            # calculate connectedness
-            all_sig_ = names(all_sig)[all_sig]
-            gr = NULL
-            if (length(all_sig_)>2) {
-              # make edge list & graph
-              etf = grepl("_",all_sig_[1])
-              if (etf) {
-                elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
-                colnames(elist) = c("from","to")
-                gr = graph_from_data_frame(elist)
-              } else {
-                gr = gr0 - setdiff(gr0_v, all_sig_)
-                
-                # all_sig_ = all_sig_[order(sapply(all_sig_, str_count, "[+-]"))]
-                # elist = ldply(all_sig_, function(node) {
-                #     parent = meta_cell_parent_names[[node]]
-                #     if (!is.null(parent)) {
-                #       parent = parent[parent%in%all_sig_]
-                #       if (length(parent)>0) 
-                #         return( ldply(parent, function(x) data.frame(from=x, to=node)) )
-                #     }
-                #     return(NULL)
-                # })
-                # if (nrow(elist)>0) { # if there are edges
-                #   if (length(V(gr)[[]])<all_sig_) { # if there is unconnected nodes
-                #     all_sig_rest = all_sig_[!all_sig_%in%]
-                #     gr = graph_from_data_frame(d=elist, vertices=all_sig_rest, directed=T)
-                #   } else {
-                #     gr = graph_from_edgelist(as.matrix(elist))
-                #   }
-                # } else { # no edges
-                # }
-                
-              }
-            }
-            foldsip[[uc]]$p[[ptype]][[adj]]$graph = gr
+            # # calculate connectedness
+            # all_sig_ = names(all_sig)[all_sig]
+            # gr = NULL
+            # if (length(all_sig_)>2) {
+            #   # make edge list & graph
+            #   etf = grepl("_",all_sig_[1])
+            #   if (etf) {
+            #     elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+            #     colnames(elist) = c("from","to")
+            #     gr = graph_from_data_frame(elist)
+            #   } else {
+            #     gr = gr0 - setdiff(gr0_v, all_sig_)
+            #     
+            #     # all_sig_ = all_sig_[order(sapply(all_sig_, str_count, "[+-]"))]
+            #     # elist = ldply(all_sig_, function(node) {
+            #     #     parent = meta_cell_parent_names[[node]]
+            #     #     if (!is.null(parent)) {
+            #     #       parent = parent[parent%in%all_sig_]
+            #     #       if (length(parent)>0) 
+            #     #         return( ldply(parent, function(x) data.frame(from=x, to=node)) )
+            #     #     }
+            #     #     return(NULL)
+            #     # })
+            #     # if (nrow(elist)>0) { # if there are edges
+            #     #   if (length(V(gr)[[]])<all_sig_) { # if there is unconnected nodes
+            #     #     all_sig_rest = all_sig_[!all_sig_%in%]
+            #     #     gr = graph_from_data_frame(d=elist, vertices=all_sig_rest, directed=T)
+            #     #   } else {
+            #     #     gr = graph_from_edgelist(as.matrix(elist))
+            #     #   }
+            #     # } else { # no edges
+            #     # }
+            #     
+            #   }
+            #   
+            #   # # graph stats
+            #   # con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)	
+            #   # 
+            #   # cl_no = con$no
+            #   # out_no = sum(con$csize<3)
+            #   # out_no2 = sum(con$csize<3)
+            # }
+            # foldsip[[uc]]$p[[ptype]][[adj]]$graph = gr
             
             
             # save table
