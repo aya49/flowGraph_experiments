@@ -77,7 +77,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   ## output directories
   # unlink(paste0(result_dir,"/pval"))
-  pvalsource_dir = paste0(result_dir,"/pval/source"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
+  pvalsource_dir = paste0(result_dir,"/pval/src"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
 
   # ## make graph base
   # meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
@@ -154,8 +154,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         tei = foldsip[[uc]]$indices$test
         
         ## calculate p value
-        pvs = llply(1:ncol(m), function(j) {
-          # for (j in 1:ncol(m)) {
+        # pvs = llply(1:ncol(m), function(j) {
+          pvs = llply(loopInd(1:ncol(m),no_cores), function(jj) {
+          llply(jj, function(j) {
           cm = m[controli,j]; 
           cmm = m[!controli,j]; 
           trm = m[unlist(tri),j]; 
@@ -190,6 +191,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           }
           return(list(t=t, wilcox=wilcox))
         })
+      },.parallel=T)
+      pvs = unlist(pvs, recursive=F)
+        # })
         
         for (ptype in names(pvs[[1]])) {
           for (adj in adjust) {

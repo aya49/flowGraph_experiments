@@ -81,7 +81,7 @@ ftl = llply(1:length(fslist), function(i) {
            verbose=F, MemLimit=60)
 }, .parallel=T)
 ft = ldply(ftl, function(ft) ft@CellFreqs)
-ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
+ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x) decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) ))
 meta_cell = getPhen(ftcell)
 ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) }
 colnames(ft) = colnames(ftp) = ftcell
