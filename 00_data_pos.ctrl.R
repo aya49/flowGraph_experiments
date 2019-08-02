@@ -104,11 +104,13 @@ save.image(paste0(root,"/temp.Rdata"))
 for (ds in c("ctrl","pos1","pos2","pos4")) {
   start2 = Sys.time()
   # clear/load memory
-  a = ls(all=T); a = a[!a%in%c("ds","root","start")]
+  a = ls(all=T); a = a[!a%in%c("ds","root","start","start2")]
   rm(list=a); gc()
   load(paste0(root,"/temp.Rdata"))
   setwd(root)
   registerDoMC(no_cores)
+  
+  # nsample=10
   
   ## ouput
   result_dir = paste0(root, "/result/",ds)
