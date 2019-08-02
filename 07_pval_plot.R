@@ -148,27 +148,19 @@ for (data in c_datas) {
         par(mfrow=c(1,2))
         
         plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main=paste0("qq plot | data: ", data, ", class: ", uc, ", method: ", ptype,"-",adj))
-        for (i in 1:length(ys)) {
-          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=.1, col=cs[i])
-        }
-        abline(h=pt, col="red")
+        for (i in 1:length(ys)) 
+          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=.5, col=cs[i])
+        abline(h=pt)
+        lines(x = c(-100,100), y = c(-100,100))
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
-        
         
         yls = llply(ys, log)
         nqls = llply(nqs, log)
         plot(NULL, xlim=c(min(unlist(nqls)),0), ylim=c(min(unlist(yls)),0), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main="ln(qq plot)")
-        for (i in 1:length(ys)) {
-          # seq(0.05,1,length(y))
-          # for(i in 1:1000)
-          #   points(sort(runif(length(y))),sort(y),pch=".")
-          set1 = -log(nqs[[i]])
-          set2 = -log(ys[[i]])
-          # set1[set1< -10] = set2[set2< -10] = -10
-          points(set1, sort(set2), pch=16, cex=.5, col=cs[i])#,col="red",pch=16)
-        }
-        abline(h=pt, col="red")
-        abline(h=ptl, col="red")
+        for (i in 1:length(ys)) 
+          points(nqls[[i]], sort(yls[[i]]), pch=16, cex=.5, col=cs[i])
+        abline(h=-ptl)
+        lines(x = c(-100,100), y = c(-100,100))
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
         
         graphics.off()
@@ -201,7 +193,7 @@ for (data in c_datas) {
         png(paste0(root,"/pval/",data,"/num_",classn,ptype,"-",adj,".png"), height=400, width=400)
         par(mar=c(10,4,5,4))
         
-        maint = paste0("# of sig/features | data: ", data, "/", uc, ", method: ", ptype,"-",adj)
+        maint = paste0("%/# of sig/features (bar/line) \n data: ", data, "/", uc, ", method: ", ptype,"-",adj)
         
         barplot(npts, ylim=c(0,max(.5,max(npts))), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=maint)
         

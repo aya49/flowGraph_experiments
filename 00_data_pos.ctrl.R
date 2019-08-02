@@ -12,12 +12,12 @@ setwd(root)
 
 ## input
 input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy"
-meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
+# meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
 gs_dir = paste0(input_dir, "/gs")
-channelsind_dir = paste0(input_dir, "/channels_ind.Rdata")
+# channelsind_dir = paste0(input_dir, "/channels_ind.Rdata")
 # gthres_dir = paste0(input_dir, "/gthres.Rdata")
 gthres_dir = paste0(input_dir, "/gates_flowLearn.Rdata")
-filters_dir = paste0(input_dir, "/filters.Rdata")
+# filters_dir = paste0(input_dir, "/filters.Rdata")
 
 ## ouput
 # see for loop below
@@ -33,20 +33,18 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr"))
 
 ## cores
-no_cores = 8#detectCores()-1
+no_cores = 10#detectCores()-1
 registerDoMC(no_cores)
 
 
 writecsv = F
+nsample = 1000
+nctrl = .5
 
-meta_file = get(load(meta_file_dir))
+# meta_file = get(load(meta_file_dir))
 gthres = get(load(gthres_dir))
-filters = get(load(filters_dir))
-channels.ind = get(load(channelsind_dir))
-
-# make a control class and experiment class
-meta_file$class[meta_file$class%in%c(1,2)] = "control"
-meta_file$class[meta_file$class%in%c(3,4)] = "exp"
+# filters = get(load(filters_dir))
+# channels.ind = get(load(channelsind_dir))
 
 
 
@@ -57,44 +55,61 @@ if (!exists("gs")) gs = load_gs(gs_dir)
 fslist = as(getData(gs),Class="list")
 f = fslist[[1]]
 
+# number of cells in each sample
+ncell0 = laply(fslist, function(x) nrow(x@exprs))
+ncells = floor(rnorm(nsample,mean(ncell0),sd(ncell0))) # number of cells for each sample
+meta_file = data.frame(id=paste0("a",1:nsample),class="exp")
+meta_file$class[1:(nctrl*nsample)] = "control"
+rm(fslist,gs); gc()
+
+# markers
 markers = c(# "CD11b", "CD11c", 
   "CD123", "CD14", "CD16", 
   # "CD19", 
   # "CD25",
   # "CD3", "CD4","CD45", "CD45RA", "CD56", 
   "CD66", 
-  "CD7", "CD8", 
+  "CD7", "CD8"#, 
   # "FoxP3", 
   # "HLADR", 
-  "Tbet", "TCRgd")
+  #"Tbet", "TCRgd"
+  )
 gthresm = c(# "cd11b", "cd11c", 
   "cd123", "cd14.low", "cd16.gate.mid", 
   # "cd19", 
   # "cd25...",# slanted
   # "cd3", "cd4","cd45", "cd45ra.cd8", "cd56.gate.mid", 
   "cd66", #.low
-  "cd7", "cd8a", 
+  "cd7", "cd8a"#, 
   # "foxp3...", # slanted
   # "hladr.MMDSCs", 
-  "tbet.cd8t", "tcrd")
+  #"tbet.cd8t", "tcrd"
+  )
+
+# marker thresholds
+cvd = rnorm(nrow(f@exprs),2,1)
 thress = as.list(gthres[[1]][gthresm])
-f = fslist[[1]]
-for (jj in 1:length(markers)) {
-  j = channels.ind[markers[jj]]
-  # a = 
-  # a = a-min(a)
-  # a = a*(max(f@exprs[,j])-max(a))
-  f@exprs[,j] = rnorm(nrow(f@exprs),2,1)
-  thress[[gthresm[jj]]] = mean(f@exprs[,j])
-}
-thress1 = thress2 = thress
-for (jj in 1:2) {
-  j = channels.ind[markers[jj]]
-  thress2[[gthresm[jj]]] = quantile(f@exprs[,j], .75)
-}
+for (jj in 1:length(markers)) 
+  thress[[gthresm[jj]]] = mean(cvd)
+thress0 = thress1 = thress2 = thress4 = thress
+thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = quantile(cvd, .75)
+thress4[gthresm[1:4]] = quantile(cvd, .52)
+
+# marker indices in f@exprs
+ci = c(1:length(markers)); names(ci) = markers 
+
+save.image(paste0(root,"/temp.Rdata"))
 
 # start = Sys.time()
-for (ds in c("ctrl","pos")) {
+for (ds in c("ctrl","pos1","pos2","pos4")) {
+  start2 = Sys.time()
+  # clear/load memory
+  a = ls(all=T); a = a[!a%in%c("ds","root","start")]
+  rm(list=a); gc()
+  load(paste0(root,"/temp.Rdata"))
+  setwd(root)
+  registerDoMC(no_cores)
+  
   ## ouput
   result_dir = paste0(root, "/result/",ds)
   meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
@@ -102,42 +117,25 @@ for (ds in c("ctrl","pos")) {
   feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   
-  
-  if (ds=="pos") {
-    ftl = llply(1:length(fslist), function(i) {
-      ii = names(fslist)[i]
-      f = fslist[[i]]
-      if (grepl("_1_|_2_",ii)) {
-        thress = thress1
-      } else {
-        thress = thress2
+  ftl = llply(loopInd(1:nsample,no_cores), function(ii) {
+    llply(ii, function(i) {
+      f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+      thress = thress0
+      if (ds!="ctrl" & i>(nsample*nctrl)) {
+        thress = switch(ds, 
+                        pos1 = thress1,
+                        pos2 = thress2,
+                        pos4 = thress4)
       }
-      for (jj in 1:length(markers)) {
-        j = channels.ind[markers[jj]]
-        f@exprs[,j] = rexp(nrow(f@exprs))
-      }
-      flowType(Frame=f, 
-               PropMarkers=channels.ind[markers], MarkerNames=markers, 
-               MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
+      flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+               MaxMarkersPerPop=6, PartitionsPerMarker=2, 
                Thresholds=thress, 
-               verbose=F, MemLimit=60)
-    }, .parallel=T)
-  } else if (ds=="ctrl") {
-    ftl = llply(1:length(fslist), function(i) {
-      f = fslist[[i]]
-      for (jj in 1:length(markers)) {
-        j = channels.ind[markers[jj]]
-        f@exprs[,j] = rexp(nrow(f@exprs))
-      }
-      flowType(Frame=f, 
-               PropMarkers=channels.ind[markers], MarkerNames=markers, 
-               MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds', 
-               Thresholds=thress, 
-               verbose=F, MemLimit=60)
-    }, .parallel=T)
-  }
-  ft = ldply(ftl, function(ft) ft@CellFreqs)
-  ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
+               Methods='Thresholds', verbose=F, MemLimit=60)
+    })
+  }, .parallel=T)
+  ftl = unlist(ftl,recursive=F)
+  ft = ldply(ftl, function(ft) ft@CellFreqs)[,-1]
+  ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, LETTERS[1:length(markers)], ftl[[1]]@PartitionsPerMarker) )}))
   meta_cell = getPhen(ftcell)
   ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) }
   colnames(ft) = colnames(ftp) = ftcell
@@ -156,6 +154,8 @@ for (ds in c("ctrl","pos")) {
   ftp_ = as.matrix(ftp)
   save(ftp_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
   if (writecsv) write.csv(ftp_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  
+  time_output(start2, ds)
 }
 time_output(start)
 

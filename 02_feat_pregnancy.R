@@ -1,6 +1,6 @@
 ## input: features + meta_file
 ## output: features normalized for patient; 
-## process: for each feature,
+## process: for the countAdj feature (prop made afterwards),
 ## - note: each patient has 4 classes or is sampled at 4 time points throughout pregnancy, we use the first time point as our control to calculate p values in the previous p value script
 ## - take each patient and calculate the mean feature vector of her 4 fcm files
 ## - get the difference between her 4 fcm files and the mean; save this as her new fcm file features
@@ -29,6 +29,8 @@ options(na.rm=T)
 overwrite = T
 writecsv = F
 
+count_feature = "file-cell-countAdj"
+
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   if (!grepl("pregnancy|bodenmiller",result_dir)) next()
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
@@ -41,43 +43,35 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
-  ## output directories
   
+  # meta
+  meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   
   #data paths
-  feat_types = list.files(path=feat_dir)
-  for (feat_type in feat_types[grepl("-unpaired",feat_types)]) {
-    m = get(load(paste0(feat_dir, "/", feat_type)))
-    file.remove(paste0(feat_dir, "/", feat_type))
-    save(m,paste0(feat_dir, "/", gsub("-unpaired","",feat_type),".Rdata"))
-  }
-  feat_types = gsub(".Rdata","",list.files(path=feat_dir, pattern=".Rdata"))
-  
-  
-  
-  
-  meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
+  feat_types = gsub(".Rdata","",list.files(path=feat_dir, full.names=F, pattern=".Rdata"))
   
   for (feat_type in feat_types) {
     cat("\n", feat_type, " ",sep="")
     start2 = Sys.time()
     
+    if (file.exists(paste0(feat_dir,"/",feat_type,"-unpaired")))
+      file.rename(paste0(feat_dir,"/",feat_type,"-unpaired"),paste0(feat_dir,"/",feat_type,".Rdata"))
+    
     m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
     save(m0, file=paste0(feat_dir,"/", feat_type,"-unpaired"))
-    meta_file = meta_file0#[match(rownames(m0),meta_file0$id),]
+    meta_file = meta_file0[match(rownames(m0),meta_file0$id),]
+    
     
     for (pi in meta_file$patient) {
       pii = meta_file$patient==pi
       mp = m[pii,]
       mpm = colMeans(as.matrix(mp))
-      m[pii,] = foreach(i=1:nrow(mp),.combine="rbind") %do% { return(mp[i,]-mpm) }
+      m[pii,] = ldply(1:nrow(mp), function(i) mp[i,]-mpm )
     }
     save(m, file=paste0(feat_dir,"/", feat_type,".Rdata"))
     if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
-
   }
-  
-  time_output(start)
+  time_output(start, result_dir)
   
 }
 
