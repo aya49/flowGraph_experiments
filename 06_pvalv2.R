@@ -159,6 +159,20 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       foldsip = foldres = NULL # save original
       for (uc in unique(sm$class[!controli])) {
         
+        
+        ## save grph
+        all_sig_me = colMeans(m[sm$class==uc,])
+        gr_e = gr_e0
+        gr_v = gr_v0
+        if (etf) {
+          gr_e$mean_uc = all_sig_me
+        } else {
+          gr_v$mean_uc = all_sig_me
+        }
+        a = list(e=gr_e,v=gr_v)
+        save(a, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,".Rdata"))
+        
+        
         ## make test/train(x10) indices
         uci = sm$class==uc
         if (sum(uci)<minfold) next
@@ -392,18 +406,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
           } # adj
         } # ptype
         
-        ## save grph
-        all_sig_me = colMeans(m[sm$class==uc,])
-        gr_e = gr_e0
-        gr_v = gr_v0
-        if (etf) {
-          gr_e$mean_uc = all_sig_me
-        } else {
-          gr_v$mean_uc = all_sig_me
-        }
-        a = list(e=gr_e,v=gr_v)
-        save(a, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,".Rdata"))
-        
       }
       save(foldsip, file=paste0(pvalsource_dir,"/",feat_type,".Rdata"))
       save(foldres, file=paste0(pvalsource_dir,"/",feat_type,"_table.Rdata"))
@@ -413,7 +415,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
     
     return(list(foldsip=foldsip, foldres=foldres))
-  }, .parallel=T)
+  }, .parallel=F)
   pvals[[data]] = llply(result, function(x) x$foldsip)
   names(pvals[[data]]) = feat_types
   table = rbind(table, ldply(result, function(x) x$foldres))
