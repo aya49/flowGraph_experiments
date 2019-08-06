@@ -145,8 +145,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # gr_e$mean_uc[match0e] = all_sig_me
         # gr_e$mean_ctrl[match0e] = all_sig_mc
         gr_e0 = as.data.frame(Reduce("rbind",str_split(colnames(m),"_")))
-        gr_e0$mean_ct = all_sig_mc
         colnames(gr_e0) = c("from","to")
+        gr_e0$mean_ct = all_sig_mc
         gr_v0 = data.frame(name=append("",unique(as.vector(gr_e0))))
       } else {
         # gr = gr0 - setdiff(gr_v0, names(all_sig))
