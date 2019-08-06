@@ -93,7 +93,7 @@ for (jj in 1:length(markers))
   thress[[gthresm[jj]]] = mean(cvd)
 thress0 = thress1 = thress2 = thress4 = thress
 thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = quantile(cvd, .75)
-thress4[gthresm[1:4]] = quantile(cvd, .52)
+thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # marker indices in f@exprs
 ci = c(1:length(markers)); names(ci) = markers 

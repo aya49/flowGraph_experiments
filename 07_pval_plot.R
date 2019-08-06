@@ -16,6 +16,8 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
        "kernlab"))
 
 pvalr_dir = paste0(root,"/pval"); dir.create(pvalr_dir, showWarnings=F, recursive=T)
+graph_dir = paste0(root,"/pval_graphs.Rdata")
+
 
 #Setup Cores
 no_cores = detectCores()-1
@@ -88,7 +90,7 @@ for (data in c_datas) {
   mcm = colMeans(as.matrix(mc0))
   mcm = mcm/max(mcm)
   mcm = mcm*2
-
+  
   dir.create(paste0(root,"/pval/",data), showWarnings=F, recursive=T)
   # dir.create(paste0(root,"/pval/",data), showWarnings=F, recursive=T)
   for (uc in names(pvals[[data]][[1]])) {
@@ -103,8 +105,8 @@ for (data in c_datas) {
           
           pvs = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]
           
-          set1 = -log(pvs$train)
-          set2 = -log(pvs$test)
+          set1 = -log(pvs$train); set1[set1==Inf] = max(max(set1[set1!=Inf]),ptl+1)
+          set2 = -log(pvs$test); set2[set2==Inf] = max(max(set2[set2!=Inf]),ptl+1)
           # set1[set1> 10] = set2[set2> 10] = 10
           
           if (grepl("-cell-",feat)) mcmind = match(names(set1),names(mcm))
@@ -154,9 +156,12 @@ for (data in c_datas) {
         lines(x = c(-100,100), y = c(-100,100))
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
         
-        yls = llply(ys, log)
         nqls = llply(nqs, log)
-        plot(NULL, xlim=c(min(unlist(nqls)),0), ylim=c(min(unlist(yls)),0), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main="ln(qq plot)")
+        yls = llply(1:length(ys), function(xi) {
+          a = log(ys[[xi]]); 
+          a[a<nqls[[xi]][1]] = nqls[[xi]][1]; 
+          return(a) })
+        plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main="-ln(qq plot)")
         for (i in 1:length(ys)) 
           points(nqls[[i]], sort(yls[[i]]), pch=16, cex=.5, col=cs[i])
         abline(h=-ptl)
@@ -189,7 +194,7 @@ for (data in c_datas) {
         })
         plens = laply(pvs, length)
         names(pvs) = names(npts) = names(plens) = c_feats
-
+        
         png(paste0(root,"/pval/",data,"/num_",classn,ptype,"-",adj,".png"), height=400, width=400)
         par(mar=c(10,4,5,4))
         
@@ -233,7 +238,7 @@ for (data in c_datas) {
           }
         }
         
-
+        
         
         ## other stats
         fr = tbl[tbl$data==data & tbl$class==uc & tbl$sig_test==ptype & tbl$adjust.combine==adj,]
@@ -274,52 +279,31 @@ for (data in c_datas) {
 ## graph stats
 start1 = Sys.time()
 for (data in c_datas) {
-  start2 = Sys.time()
-  result_dir = paste0(root,"/result/",data)
-  
-  # make base graph
-  meta_dir = paste0(result_dir,"/meta")
-  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
-  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-  meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
-    to = unlist(meta_cell_childpn_names[[x]])
-    data.frame(from=rep(x,length(to)), to=to) 
-  })
-  gr0 = graph_from_edgelist(as.matrix(meta_cell_childpn_names_))
-  gr0_v = names(V(gr0)[[]])
-  # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
-  
+  pvalgr_dir = paste0(root,"/result/",data,"/pval/graph")
   for (uc in names(pvals[[data]][[1]])) {
     classn = paste0(uc,"_")
     if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
-        png(paste0(root,"/pval/",data,"/gr_",classn,ptype,"-",adj,".png"), height=10*250, width=2*500)
-        mv = matrix(c(1,1,2,2,3,4,5,6,7,8,8,9,9,10,11,12,13,14),ncol=2,byrow=F)
+        mv = mvv = c(rep(1,2),rep(2,2),c(3:(2+max(sapply(c_featnes, function(x) sum(grepl(x,c_feats)))))))
+        if (length(c_featnes)>0) {
+          for (fni in 2:length(c_featnes)) {
+            mv = cbind(mv,mvv+max(mv))
+          }
+        }
+        # mv = matrix(c(1,1,2,2,3,4,5,6,7,8,8,9,9,10,11,12,13,14),ncol=2,byrow=F)
+        png(paste0(root,"/pval/",data,"/gr_",classn,ptype,"-",adj,".png"), height=nrow(mv)*250, width=ncol(mv)*500)
         layout(mv) # scatterplot + histograms
         par(cex=1.2)
         for (featne in c_featnes) {
           grt = grclusthist = grhubhist = NULL
           for (feat in c_feats[grepl(featne,c_feats)]) {
             
-            ## make graph
-            pv_all_ = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all
-            all_sig = pv_all_<pthres
-            all_sig_ = names(all_sig)[all_sig]
-            gr = NULL
-            if (length(all_sig_)>2) {
-              # make edge list & graph
-              etf = grepl("_",all_sig_[1])
-              if (etf) {
-                elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
-                colnames(elist) = c("from","to")
-                gr = graph_from_data_frame(elist)
-              } else {
-                gr = gr0 - setdiff(gr0_v, all_sig_)
-              }
-            }
-            if (is.null(gr)) next
-            
+            grlink = paste0(pvalgr_dir,"/",feat,"_",uc,"_",ptype,"_",adj,".Rdata")
+            if (!file.exists(grlink)) next
+            gr = get(load(grlink))
+            if (length(V(gr)[[]])==0) next
+
             con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)
             grs = decompose.graph(gr)
             vertex_connectivity(grs[[1]])
@@ -356,10 +340,58 @@ for (data in c_datas) {
           }
         }
         graphics.off()
+        
+        for (featne in c_featnes) {
+          grt = grclusthist = grhubhist = NULL
+          for (feat in c_feats[grepl(featne,c_feats)]) {
+            
+            grlink = paste0(pvalgr_dir,"/",feat,"_",uc,"_",ptype,"_",adj,".Rdata")
+            if (!file.exists(grlink)) next
+            gr = get(load(grlink))
+            if (length(V(gr)[[]])==0) next
+            
+            # plot graph
+            palblue = colorRampPalette(brewer.pal(3, "Blues"))
+            if (featne%in%c("cell","group")) {
+              # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
+              # V(gr)$color = ifelse(V(gr)$name=='CA', 'blue', 'red')
+              # V(gr)$size = degree(gr)/10
+              V(gr)$color = palblue(30)[as.numeric(cut(V(gr)$mean_uc,breaks=30))]
+              V(gr)$size = ifelse(V(gr)$p<pt,1,.5)
+              E(gr)$color = ifelse(E(gr)$p==0, "black", "grey")
+
+              par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
+              plot(gr, layout=layout.reingold.tilford,#layout.fruchterman.reingold,
+                   main='Organizational network example',
+                   vertex.label.dist=0.5,
+                   vertex.frame.color=palblue(30)[as.numeric(cut(V(gr)$mean_ctrl,breaks=30))],
+                   vertex.label.color='black',
+                   vertex.label.font=2, # label font
+                   vertex.label=V(gr)$name,
+                   vertex.label.cex=1 # label size
+              )
+              
+            } else if (featne=="edge") {
+              
+            }
+
+# Save and export the plot. The plot can be copied as a metafile to the clipboard, or it can be saved as a pdf or png (and other formats).
+# For example, we can save it as a png:
+png(filename="org_network.png", height=800, width=600) #call the png writer
+#run the plot
+dev.off() #dont forget to close the device
+#And that's the end for now.
+
+
+
+
+
+          }
+        }
+        
       }
     }
   }
-  time_output(start2,data)
 }
 time_output(start1,"graph plots")
 

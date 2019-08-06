@@ -16,6 +16,8 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
        "foreach","doMC",
        "kernlab"))
 
+graph_dir = paste0(root,"/pval_graphs.Rdata")
+
 
 
 #Setup Cores
@@ -79,22 +81,30 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # unlink(paste0(result_dir,"/pval"))
   pvalsource_dir = paste0(result_dir,"/pval/src"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
 
-  # ## make graph base
-  # meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-  # meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
-  #   to = unlist(meta_cell_childpn_names[[x]])
-  #   data.frame(from=rep(x,length(to)), to=to) 
-  # })
-  # gr0 = graph_from_edgelist(as.matrix(meta_cell_childpn_names_))
-  # gr0_v = names(V(gr0)[[]])
-  # # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  pvalgr_dir = paste0(result_dir,"/pval/graph")
+  dir.create(pvalgr_dir, recursive=T, showWarnings=F)
+  
+  # make base graph
+  meta_dir = paste0(result_dir,"/meta")
+  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
+  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
+  meta_cell_childpn_names_ = ldply(names(meta_cell_childpn_names), function(x) {
+    to = unlist(meta_cell_childpn_names[[x]])
+    data.frame(from=rep(x,length(to)), to=to) 
+  })
+  # meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  gr_e00 = as.matrix(meta_cell_childpn_names_)
+  gr_v00 = append("",unique(as.vector(gr_e00)))
+  gr_e00 = rbind(as.matrix(ldply(gr_v00[str_count(gr_v00,"[+-]")==1], function(x) c("",x))),gr_e00)
+  gr_e00 = as.data.frame(gr_e00); colnames(gr_e00) = c("from","to")
+  
   
   #data paths
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
-  # feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
+  feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
   feat_types = gsub(".Rdata","",feat_types)
   # feat_types = feat_types[!grepl("KO|Max",feat_types)]
-
+  
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
   
@@ -104,10 +114,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   # for (feat_type in feat_types_) {
   result = llply(feat_types, function(feat_type) #for (feat_type in feat_types) 
   {
-    start2 = Sys.time()
-    
     # tryCatch({
     if (!file.exists(paste0(pvalsource_dir,"/",feat_type,".Rdata")) | overwrite) {
+      start2 = Sys.time()
       cat("\n", feat_type, " ",sep="")
       
       ## upload and prep feature matrix + meta
@@ -126,6 +135,23 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       controli = sm$class=="control"
       controln = sum(controli)
       
+      # make base graph
+      etf = grepl("_",colnames(m)[1])
+      if (etf) {
+        # elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+        # match0e = match(data.frame(t(elist)), data.frame(t(gr_e0)))
+        # gr_e$p[match0e] = pv_all_
+        # gr_e$mean_uc[match0e] = all_sig_me
+        # gr_e$mean_ctrl[match0e] = all_sig_mc
+        gr_e0 = as.data.frame(Reduce("rbind",str_split(colnames(m),"_")))
+        colnames(gr_e0) = c("from","to")
+        gr_v0 = append("",unique(as.vector(gr_e0)))
+      } else {
+        # gr = gr0 - setdiff(gr_v0, names(all_sig))
+        gr_e0 = gr_e00[gr_e00[,1]%in%colnames(m) & gr_e00[,2]%in%colnames(m),]
+        gr_v0 = colnames(m)
+      }
+      
       
       foldsip = foldres = NULL # save original
       for (uc in unique(sm$class[!controli])) {
@@ -133,6 +159,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         ## make test/train(x10) indices
         uci = sm$class==uc
         if (sum(uci)<minfold) next
+        all_sig_me = colMeans(m[sm$class==uc,])
+        all_sig_mc = colMeans(m[sm$class=="control",])
         
         if ("type"%in%colnames(sm)) {
           foldsip[[uc]]$indices$test = as.character(sm$id[sm$type=="test" & uci])
@@ -332,18 +360,45 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
                   recall=rec, precision=prec, f=2*((prec*rec)/(prec+rec)),
                   recall2=rec2, precision2=prec2, f2=2*((prec2*rec2)/(prec2+rec2))
               ))
+            
+            
+            ## make graph
+            all_sig_ = names(all_sig)[all_sig]
+            
+            gr_e = gr_e0
+            # gr0 = graph_from_edgelist(gr_e0)
+            gr = NULL
+            if (length(all_sig_)>2) {
+              # make edge list & graph
+              if (etf) {
+                gr_e$p = pv_all_
+                gr_e$mean_uc = all_sig_me
+                gr_e$mean_ctrl = all_sig_mc
+                gr = graph_from_data_frame(gr_e,directed=T)
+              } else {
+                # gr = gr0 - setdiff(gr_v0, names(all_sig))
+                gr_e$p = ifelse(gr_e0[,1]%in%all_sig_ & gr_e0[,2]%in%all_sig_,0,1)
+                gr_v = data.frame(
+                  name=names(all_sig), p=pv_all_,
+                  mean_uc=all_sig_me, mean_ctrl=all_sig_mc)
+
+                gr = graph_from_data_frame(gr_e,directed=T,vertices=gr_v)
+              }
+            }
+            if (is.null(gr)) next
+            save(gr, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,"_",ptype,"_",adj,".Rdata"))
+            
           } # adj
         } # ptype
       }
       save(foldsip, file=paste0(pvalsource_dir,"/",feat_type,".Rdata"))
       save(foldres, file=paste0(pvalsource_dir,"/",feat_type,"_table.Rdata"))
+      time_output(start2)
     } # if
     foldsip = get(load(paste0(pvalsource_dir,"/",feat_type,".Rdata")))
     foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
-    a = list(foldsip=foldsip, foldres=foldres)
-    
-    time_output(start2)
-    return(a)
+
+    return(list(foldsip=foldsip, foldres=foldres))
   }, .parallel=T)
   pvals[[data]] = llply(result, function(x) x$foldsip)
   names(pvals[[data]]) = feat_types
@@ -354,4 +409,5 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 save(table, file=paste0(root,"/pval_table.Rdata"))
 save(pvals, file=paste0(root,"/pval.Rdata"))
 time_output(start)
+
 
