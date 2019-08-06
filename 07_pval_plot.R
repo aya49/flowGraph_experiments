@@ -280,7 +280,9 @@ for (data in c_datas) {
 start1 = Sys.time()
 for (data in c_datas) {
   pvalgr_dir = paste0(root,"/result/",data,"/pval/graph")
-  grs = llply(list.files(pvalgr_dir, full.names=T), function(x) get(load(x)))
+  gr_dirs = list.files(pvalgr_dir, full.names=T)
+  grs = llply(gr_dirs, function(x) get(load(x)))
+  names(grs) = gsub(".Rdata","",fileNames(gr_dirs))
   for (uc in names(pvals[[data]][[1]])) {
     classn = paste0(uc,"_")
     if (length(pvals[[data]][[1]])==1) classn = ""
@@ -299,15 +301,25 @@ for (data in c_datas) {
         for (featne in c_featnes) {
           grt = grclusthist = grhubhist = NULL
           for (feat in c_feats[grepl(featne,c_feats)]) {
+            grname = paste0(feat,"_",uc)
+            if (!grname%in%names(grs)) next
             
-            grlink = paste0(pvalgr_dir,"/",feat,"_",uc,"_",ptype,"_",adj,".Rdata")
-            if (!file.exists(grlink)) next
-            gr = get(load(grlink))
-            if (length(V(gr)[[]])==0) next
+            # build graph of sig only
+            gr0 = graph_from_data_frame(d=grs[[grname]]$e, vertices=grs[[grname]]$v, directed=T)
+            all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
+            all_sig_ = names(all_sig)[all_sig]
+            if (featne%in%c("cell","group")) {
+              gr = gr0 - setdiff(V(gr0)$name, all_sig_)
+            } else {
+              gr_e = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+              colnames(gr_e) = c("from","to")
+              gr = graph_from_data_frame(gr_e)
+            }
 
+           # get graph metrics
             con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)
-            grs = decompose.graph(gr)
-            vertex_connectivity(grs[[1]])
+            grd = decompose.graph(gr)
+            vertex_connectivity(grd[[1]])
             
             
             # page_rank
@@ -343,22 +355,21 @@ for (data in c_datas) {
         graphics.off()
         
         for (featne in c_featnes) {
-          grt = grclusthist = grhubhist = NULL
           for (feat in c_feats[grepl(featne,c_feats)]) {
             
-            grlink = paste0(pvalgr_dir,"/",feat,"_",uc,"_",ptype,"_",adj,".Rdata")
-            if (!file.exists(grlink)) next
-            gr = get(load(grlink))
-            if (length(V(gr)[[]])==0) next
+            grname = paste0(feat,"_",uc)
+            if (!grname%in%names(grs)) next
+            gr_e = grs[[grname]]$e
+            gr_v = grs[[grname]]$v
             
             # colour palette
             palblue = colorRampPalette(brewer.pal(3, "Blues"))
             
             # edit layout manually
-            grlo = layout.reingold.tilford(gr) # layout.circle
-            grlodf = as.data.frame(grlo)
-            gys = sort(unique(grlodf[,2]))
-            gxns = sapply(gys,function(y) length(grlodf[grlodf[,2]==y,1]))
+            gr_vxy_ = layout.reingold.tilford(gr = graph_from_data_frame(gr_e)) # layout.circle
+            gr_vxy = as.data.frame(gr_vxy_)
+            gys = sort(unique(gr_vxy[,2]))
+            gxns = sapply(gys,function(y) length(gr_vxy[gr_vxy[,2]==y,1]))
             names(gxns) = gys
             gxnmax = max(gxns)
             gxnmaxl = which(gxns==gxnmax)
@@ -366,11 +377,11 @@ for (data in c_datas) {
             maxwidthmid = 4
             gxnmaxwidth = gxnmax*minwidthmid-1
             gxos = unlist(llply(gys, function(gy) {
-              gxtf = which(grlodf[,2]==gy)
-              gx = grlodf[gxtf,1]
+              gxtf = which(gr_vxy[,2]==gy)
+              gx = gr_vxy[gxtf,1]
               gxtf[order(gx)]
             }))
-            grlodf[gxos,1] = unlist(llply(1:length(gys), function(gyi) {
+            gr_vxy[gxos,1] = unlist(llply(1:length(gys), function(gyi) {
               if (gyi%in%gxnmaxl) return( seq(0,gxnmaxwidth,by=minwidthmid) )
               if (gxns[gyi]==1) return( gxnmaxwidth/2 )
               by = min(maxwidthmid,(gxnmaxwidth+1)/(gxns[gyi]+1))
@@ -379,13 +390,10 @@ for (data in c_datas) {
             }))
             
             # get edge
-            E(gr)$from.x <- grlodf$x[match(E(gr)$from, V(gr)$name]  #  match the from locations from the node data.frame we previously connected
-            E(gr)$from.y <- grlodf$y[match(E(gr)$from, V(gr)$name]
-            E(gr)$to.x <- grlodf$x[match(E(gr)$to, V(gr)$name]  #  match the to locations from the node data.frame we previously connected
-            E(gr)$to.y <- grlodf$y[match(E(gr)$to, V(gr)$name]
-            
-            
-            
+            gr_e$from.x <- gr_vxy$x[match(gr_e$from, gr_v$name)]
+            gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
+            gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
+            gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
             
             if (featne%in%c("cell","group")) {
               # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
@@ -393,15 +401,35 @@ for (data in c_datas) {
               # V(gr)$size = degree(gr)/10
               cols = as.numeric(cut(append(V(gr)$mean_uc,V(gr)$mean_ctrl),breaks=breaks))
               
-              V(gr)$color = grlodf$color = palblue(breaks)[cols[1:(length(cols)/2)]]
-              V(gr)$frame.color = grlodf$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
-              V(gr)$size = grlodf$size = 5#ifelse(V(gr)$p<pt,3,1)
+              ggplot() +
+                geom_segment(data=gr_e,aes(x=from.x,xend = to.x, y=from.y,yend = to.y,size=weight),colour=ifelse(gr_e$p==0, "gray80", "grey")) +
+                geom_point(data=gr_v,aes(x=x,y=y),size=8,colour="black") +  # adds a black border around the nodes
+                geom_point(data=gr_v,aes(x=x,y=y),size=5,colour="lightgrey") +
+                geom_text(data=gr_v,aes(x=x,y=y,label=name)) + # add the node labels
+                scale_x_continuous(expand=c(0,1))+  # expand the x limits 
+                scale_y_continuous(expand=c(0,1))+ # expand the y limits
+                theme_bw()+  # use the ggplot black and white theme
+                theme(
+                  axis.text.x = element_blank(),  # remove x-axis text
+                  axis.text.y = element_blank(), # remove y-axis text
+                  axis.ticks = element_blank(),  # remove axis ticks
+                  axis.title.x = element_blank(), # remove x-axis labels
+                  axis.title.y = element_blank(), # remove y-axis labels
+                  panel.background = element_blank(), 
+                  panel.border =element_blank(), 
+                  panel.grid.major = element_blank(),  #remove major-grid labels
+                  panel.grid.minor = element_blank(),  #remove minor-grid labels
+                  plot.background = element_blank())
+              
+              V(gr)$color = gr_vxy$color = palblue(breaks)[cols[1:(length(cols)/2)]]
+              V(gr)$frame.color = gr_vxy$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
+              V(gr)$size = gr_vxy$size = 5#ifelse(V(gr)$p<pt,3,1)
               # V(gr)$vertex.shape="none"
-              V(gr)$label = grlodf$label = V(gr)$name
+              V(gr)$label = gr_vxy$label = V(gr)$name
               V(gr)$label.dist = 1
-              V(gr)$label.color = grlodf$label.color = ifelse(V(gr)$p<pt,"black","grey")
+              V(gr)$label.color = gr_vxy$label.color = ifelse(V(gr)$p<pt,"black","grey")
               V(gr)$label.font = 2
-              V(gr)$label.cex = grlodf$label.cex = 1
+              V(gr)$label.cex = gr_vxy$label.cex = 1
               E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
               # E(net)$width <- E(net)$weight/6
               E(gr)$arrow.size <- .5
