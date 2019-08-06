@@ -80,7 +80,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   ## output directories
   # unlink(paste0(result_dir,"/pval"))
   pvalsource_dir = paste0(result_dir,"/pval/src"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
-
+  
   pvalgr_dir = paste0(result_dir,"/pval/graph")
   dir.create(pvalgr_dir, recursive=T, showWarnings=F)
   
@@ -136,6 +136,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       controln = sum(controli)
       
       # make base graph
+      all_sig_mc = colMeans(m[sm$class=="control",])
       etf = grepl("_",colnames(m)[1])
       if (etf) {
         # elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
@@ -144,13 +145,15 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         # gr_e$mean_uc[match0e] = all_sig_me
         # gr_e$mean_ctrl[match0e] = all_sig_mc
         gr_e0 = as.data.frame(Reduce("rbind",str_split(colnames(m),"_")))
+        gr_e0$mean_ct = all_sig_mc
         colnames(gr_e0) = c("from","to")
-        gr_v0 = append("",unique(as.vector(gr_e0)))
+        gr_v0 = data.frame(name=append("",unique(as.vector(gr_e0))))
       } else {
         # gr = gr0 - setdiff(gr_v0, names(all_sig))
         gr_e0 = gr_e00[gr_e00[,1]%in%colnames(m) & gr_e00[,2]%in%colnames(m),]
-        gr_v0 = colnames(m)
+        gr_v0 = data.frame(name=colnames(m), mean_ct=all_sig_mc)
       }
+      
       
       
       foldsip = foldres = NULL # save original
@@ -159,8 +162,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         ## make test/train(x10) indices
         uci = sm$class==uc
         if (sum(uci)<minfold) next
-        all_sig_me = colMeans(m[sm$class==uc,])
-        all_sig_mc = colMeans(m[sm$class=="control",])
         
         if ("type"%in%colnames(sm)) {
           foldsip[[uc]]$indices$test = as.character(sm$id[sm$type=="test" & uci])
@@ -183,44 +184,44 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         
         ## calculate p value
         # pvs = llply(1:ncol(m), function(j) {
-          pvs = llply(loopInd(1:ncol(m),no_cores), function(jj) {
+        pvs = llply(loopInd(1:ncol(m),no_cores), function(jj) {
           llply(jj, function(j) {
-          cm = m[controli,j]; 
-          cmm = m[!controli,j]; 
-          trm = m[unlist(tri),j]; 
-          trm2 = NULL; if (is.list(tri)) trm2 = lapply(tri, function(trii) m[trii,j])
-          tem = m[tei,j]
-          cmtf = !all(cm==cm[1])
-          
-          t = wilcox = list()
-          t$test = t$train = t$train2 = t$all = 
-            wilcox$test = wilcox$train = wilcox$train2 = wilcox$all = 1
-          if (!all(tem==tem[1]) & cmtf) {
-            t$test = t.test(cm, tem)$p.value
-            wilcox$test = wilcox.test(cm, tem)$p.value
-          }
-          if (!all(trm==trm[1]) & cmtf) {
-            t$train = t.test(cm, trm)$p.value
-            wilcox$train = wilcox.test(cm, trm)$p.value
-            if (!is.null(trm2)) {
-              t$train2 = median(sapply(trm2, function(trm2i) {
-                if (!all(trm2i==trm2i[1])) return(1)
-                return(t.test(cm, trm2i)$p.value)
-              }))
-              wilcox$train2 = median(sapply(trm2, function(trm2i) {
-                if (!all(trm2i==trm2i[1])) return(1)
-                return(wilcox.test(cm, trm2i)$p.value)
-              }))
+            cm = m[controli,j]; 
+            cmm = m[!controli,j]; 
+            trm = m[unlist(tri),j]; 
+            trm2 = NULL; if (is.list(tri)) trm2 = lapply(tri, function(trii) m[trii,j])
+            tem = m[tei,j]
+            cmtf = !all(cm==cm[1])
+            
+            t = wilcox = list()
+            t$test = t$train = t$train2 = t$all = 
+              wilcox$test = wilcox$train = wilcox$train2 = wilcox$all = 1
+            if (!all(tem==tem[1]) & cmtf) {
+              t$test = t.test(cm, tem)$p.value
+              wilcox$test = wilcox.test(cm, tem)$p.value
             }
-          }
-          if (!all(cmm==cmm[1]) & cmtf) {
-            t$all = t.test(cm, cmm)$p.value
-            wilcox$all = wilcox.test(cm, cmm)$p.value
-          }
-          return(list(t=t, wilcox=wilcox))
-        })
-      },.parallel=T)
-      pvs = unlist(pvs, recursive=F)
+            if (!all(trm==trm[1]) & cmtf) {
+              t$train = t.test(cm, trm)$p.value
+              wilcox$train = wilcox.test(cm, trm)$p.value
+              if (!is.null(trm2)) {
+                t$train2 = median(sapply(trm2, function(trm2i) {
+                  if (!all(trm2i==trm2i[1])) return(1)
+                  return(t.test(cm, trm2i)$p.value)
+                }))
+                wilcox$train2 = median(sapply(trm2, function(trm2i) {
+                  if (!all(trm2i==trm2i[1])) return(1)
+                  return(wilcox.test(cm, trm2i)$p.value)
+                }))
+              }
+            }
+            if (!all(cmm==cmm[1]) & cmtf) {
+              t$all = t.test(cm, cmm)$p.value
+              wilcox$all = wilcox.test(cm, cmm)$p.value
+            }
+            return(list(t=t, wilcox=wilcox))
+          })
+        },.parallel=T)
+        pvs = unlist(pvs, recursive=F)
         # })
         
         for (ptype in names(pvs[[1]])) {
@@ -359,37 +360,50 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
                   corr_spear2=pcorr2, corr_spear_p2=pcorrp2,
                   recall=rec, precision=prec, f=2*((prec*rec)/(prec+rec)),
                   recall2=rec2, precision2=prec2, f2=2*((prec2*rec2)/(prec2+rec2))
-              ))
+                ))
             
             
-            ## make graph
-            all_sig_ = names(all_sig)[all_sig]
-            
-            gr_e = gr_e0
-            # gr0 = graph_from_edgelist(gr_e0)
-            gr = NULL
-            if (length(all_sig_)>2) {
-              # make edge list & graph
-              if (etf) {
-                gr_e$p = pv_all_
-                gr_e$mean_uc = all_sig_me
-                gr_e$mean_ctrl = all_sig_mc
-                gr = graph_from_data_frame(gr_e,directed=T)
-              } else {
-                # gr = gr0 - setdiff(gr_v0, names(all_sig))
-                gr_e$p = ifelse(gr_e0[,1]%in%all_sig_ & gr_e0[,2]%in%all_sig_,0,1)
-                gr_v = data.frame(
-                  name=names(all_sig), p=pv_all_,
-                  mean_uc=all_sig_me, mean_ctrl=all_sig_mc)
-
-                gr = graph_from_data_frame(gr_e,directed=T,vertices=gr_v)
-              }
-            }
-            if (is.null(gr)) next
-            save(gr, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,"_",ptype,"_",adj,".Rdata"))
+            # ## make graph
+            # all_sig_ = names(all_sig)[all_sig]
+            # 
+            # gr_e = gr_e0
+            # # gr0 = graph_from_edgelist(gr_e0)
+            # gr = NULL
+            # if (length(all_sig_)>2) {
+            #   # make edge list & graph
+            #   if (etf) {
+            #     gr_e$p = pv_all_
+            #     gr_e$mean_uc = all_sig_me
+            #     gr_e$mean_ctrl = all_sig_mc
+            #     gr = graph_from_data_frame(gr_e,directed=T)
+            #   } else {
+            #     # gr = gr0 - setdiff(gr_v0, names(all_sig))
+            #     gr_e$p = ifelse(gr_e0[,1]%in%all_sig_ & gr_e0[,2]%in%all_sig_,0,1)
+            #     gr_v = data.frame(
+            #       name=names(all_sig), p=pv_all_,
+            #       mean_uc=all_sig_me, mean_ctrl=all_sig_mc)
+            # 
+            #     gr = graph_from_data_frame(gr_e,directed=T,vertices=gr_v)
+            #   }
+            # }
+            # if (is.null(gr)) next
+            # save(gr, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,"_",ptype,"_",adj,".Rdata"))
             
           } # adj
         } # ptype
+        
+        ## save grph
+        all_sig_me = colMeans(m[sm$class==uc,])
+        gr_e = gr_e0
+        gr_v = gr_v0
+        if (etf) {
+          gr_e$mean_uc = all_sig_me
+        } else {
+          gr_v$mean_uc = all_sig_me
+        }
+        a = list(e=gr_e,v=gr_v)
+        save(a, file=paste0(pvalgr_dir,"/",feat_type,"_",uc,".Rdata"))
+        
       }
       save(foldsip, file=paste0(pvalsource_dir,"/",feat_type,".Rdata"))
       save(foldres, file=paste0(pvalsource_dir,"/",feat_type,"_table.Rdata"))
@@ -397,7 +411,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     } # if
     foldsip = get(load(paste0(pvalsource_dir,"/",feat_type,".Rdata")))
     foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
-
+    
     return(list(foldsip=foldsip, foldres=foldres))
   }, .parallel=T)
   pvals[[data]] = llply(result, function(x) x$foldsip)

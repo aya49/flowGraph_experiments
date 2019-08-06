@@ -10,7 +10,7 @@ setwd(root)
 ## libraries
 source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
-       "lattice", "gridExtra", "plotly", "RColorBrewer", "plotrix",# libr(proxy)
+       "lattice", "gridExtra", "plotly", "RColorBrewer", "plotrix", "ggrepel", "ggplot2",# libr(proxy)
        "metap",
        "foreach","doMC",
        "kernlab"))
@@ -30,7 +30,7 @@ options(stringsAsFactors=FALSE)
 # options(device="cairo")
 options(na.rm=T)
 
-# cvn-fold cross validation
+breaks = 30# colour breaks
 
 overwrite = F #overwrite?
 writecsv = F
@@ -280,6 +280,7 @@ for (data in c_datas) {
 start1 = Sys.time()
 for (data in c_datas) {
   pvalgr_dir = paste0(root,"/result/",data,"/pval/graph")
+  grs = llply(list.files(pvalgr_dir, full.names=T), function(x) get(load(x)))
   for (uc in names(pvals[[data]][[1]])) {
     classn = paste0(uc,"_")
     if (length(pvals[[data]][[1]])==1) classn = ""
@@ -350,26 +351,68 @@ for (data in c_datas) {
             gr = get(load(grlink))
             if (length(V(gr)[[]])==0) next
             
-            # plot graph
+            # colour palette
             palblue = colorRampPalette(brewer.pal(3, "Blues"))
+            
+            # edit layout manually
+            grlo = layout.reingold.tilford(gr) # layout.circle
+            grlodf = as.data.frame(grlo)
+            gys = sort(unique(grlodf[,2]))
+            gxns = sapply(gys,function(y) length(grlodf[grlodf[,2]==y,1]))
+            names(gxns) = gys
+            gxnmax = max(gxns)
+            gxnmaxl = which(gxns==gxnmax)
+            minwidthmid = 2
+            maxwidthmid = 4
+            gxnmaxwidth = gxnmax*minwidthmid-1
+            gxos = unlist(llply(gys, function(gy) {
+              gxtf = which(grlodf[,2]==gy)
+              gx = grlodf[gxtf,1]
+              gxtf[order(gx)]
+            }))
+            grlodf[gxos,1] = unlist(llply(1:length(gys), function(gyi) {
+              if (gyi%in%gxnmaxl) return( seq(0,gxnmaxwidth,by=minwidthmid) )
+              if (gxns[gyi]==1) return( gxnmaxwidth/2 )
+              by = min(maxwidthmid,(gxnmaxwidth+1)/(gxns[gyi]+1))
+              a = seq(0,gxns[gyi]-1)*by
+              a + (gxnmaxwidth-(a[length(a)]-1))/2
+            }))
+            
+            # get edge
+            E(gr)$from.x <- grlodf$x[match(E(gr)$from, V(gr)$name]  #  match the from locations from the node data.frame we previously connected
+            E(gr)$from.y <- grlodf$y[match(E(gr)$from, V(gr)$name]
+            E(gr)$to.x <- grlodf$x[match(E(gr)$to, V(gr)$name]  #  match the to locations from the node data.frame we previously connected
+            E(gr)$to.y <- grlodf$y[match(E(gr)$to, V(gr)$name]
+            
+            
+            
+            
             if (featne%in%c("cell","group")) {
               # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
               # V(gr)$color = ifelse(V(gr)$name=='CA', 'blue', 'red')
               # V(gr)$size = degree(gr)/10
-              V(gr)$color = palblue(30)[as.numeric(cut(V(gr)$mean_uc,breaks=30))]
-              V(gr)$size = ifelse(V(gr)$p<pt,1,.5)
-              E(gr)$color = ifelse(E(gr)$p==0, "black", "grey")
-
+              cols = as.numeric(cut(append(V(gr)$mean_uc,V(gr)$mean_ctrl),breaks=breaks))
+              
+              V(gr)$color = grlodf$color = palblue(breaks)[cols[1:(length(cols)/2)]]
+              V(gr)$frame.color = grlodf$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
+              V(gr)$size = grlodf$size = 5#ifelse(V(gr)$p<pt,3,1)
+              # V(gr)$vertex.shape="none"
+              V(gr)$label = grlodf$label = V(gr)$name
+              V(gr)$label.dist = 1
+              V(gr)$label.color = grlodf$label.color = ifelse(V(gr)$p<pt,"black","grey")
+              V(gr)$label.font = 2
+              V(gr)$label.cex = grlodf$label.cex = 1
+              E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
+              # E(net)$width <- E(net)$weight/6
+              E(gr)$arrow.size <- .5
+              # E(net)$width <- 1+E(net)$weight/12
+              
               par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
-              plot(gr, layout=layout.reingold.tilford,#layout.fruchterman.reingold,
-                   main='Organizational network example',
-                   vertex.label.dist=0.5,
-                   vertex.frame.color=palblue(30)[as.numeric(cut(V(gr)$mean_ctrl,breaks=30))],
-                   vertex.label.color='black',
-                   vertex.label.font=2, # label font
-                   vertex.label=V(gr)$name,
-                   vertex.label.cex=1 # label size
+              plot(gr, layout=grlo,#, layout.circle
+                   main=paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
               )
+              par(mar=c(3,1,1,1))
+              image.scale(cols, col=palblue(length(breaks)-1), breaks=breaks, horiz=TRUE)
               
             } else if (featne=="edge") {
               
