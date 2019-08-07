@@ -93,6 +93,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   pngnames = sapply(1:nrow(x), function(i) {
     paste0(norm_factor_dir,"/", meta_file[i,target_col], "_", meta_file[i,id_col],".png")
   })
+  pngnames = gsub("%","",pngnames)
   mains = sapply(1:nrow(x), function(i) paste0("mean count vs. ln fold change:\n", meta_file[i,target_col]," over refColumn ", meta_file[refColumn,target_col], "___layer-",layer_norm))
   
   ## calculate absolute count TMM, mostly taken from TMM
