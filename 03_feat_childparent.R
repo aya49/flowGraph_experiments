@@ -407,7 +407,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_cell_parent_names_ = Filter(Negate(is.null), meta_cell_parent_names_)
   
   expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
-    expect1 = foreach(i=ii, .combine="cbind") %do% {
+    expect1 = foreach(ic=ii, .combine="cbind") %do% {
       i = cellis[ic]
       il = cellisn[ic]
       pnames = meta_cell_parent_names_[[i]]
