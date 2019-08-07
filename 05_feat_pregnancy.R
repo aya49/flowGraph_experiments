@@ -11,6 +11,8 @@
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
+feat_dir_ = paste0(feat_dir,"_unpaired"); dir.create(feat_dir_, showWarnings=F)
+
 ## libraries
 source("source/_func.R")
 libr(c("foreach","doMC",
@@ -49,16 +51,20 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #data paths
   feat_types = gsub(".Rdata","",list.files(path=feat_dir, full.names=F, pattern=".Rdata"))
+  if (length(list.files(feat_dir_))>0)
+  feat_types = gsub(".Rdata","",list.files(path=feat_dir_, full.names=F, pattern=".Rdata"))
+  
   
   a= llply (feat_types, function(feat_type) {
     cat("\n", feat_type, " ",sep="")
     start2 = Sys.time()
     
-    if (file.exists(paste0(feat_dir,"/",feat_type,"-unpaired")))
-      file.rename(paste0(feat_dir,"/",feat_type,"-unpaired"),paste0(feat_dir,"/",feat_type,".Rdata"))
-    
-    m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-    save(m0, file=paste0(feat_dir,"/", feat_type,"-unpaired"))
+    if (file.exists(paste0(feat_dir_,"/", feat_type,".Rdata"))) {
+      m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir_,"/", feat_type,".Rdata")))))
+    } else {
+      m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
+      save(m0, file=paste0(feat_dir_,"/", feat_type,".Rdata"))
+    }
     meta_file = meta_file0[match(rownames(m0),meta_file0$id),]
     
     
