@@ -60,6 +60,7 @@ ptl = -log(table$p_thres[1])
 
 # data and uc together, ptype and adj together, 
 c_datas = names(pvals)
+for (data in c_datas) dir.create(paste0(root,"/result/",data,"/pval/plot"), showWarnings=F)
 c_feats = unique(tbl$feature)
 c_feats = c_feats[!grepl("_",c_feats)]
 # uc, p
@@ -91,8 +92,6 @@ for (data in c_datas) {
   mcm = colMeans(as.matrix(mc0))
   mcm = mcm/max(mcm)
   mcm = mcm*2
-  
-  dir.create(paste0(root,"/pval/",data), showWarnings=F, recursive=T)
   # dir.create(paste0(root,"/pval/",data), showWarnings=F, recursive=T)
   for (uc in names(pvals[[data]][[1]])) {
     classn = paste0(uc,"_")
@@ -100,7 +99,7 @@ for (data in c_datas) {
     for (feat in c_feats) {
       for (ptype in c_ptypes) {
         for (adj in c_adjs) {
-          png(paste0(root,"/pval/",data,"/hist_",classn,ptype,"-",adj,"_",feat,".png"), height=400, width=800)
+          png(paste0(root,"/result/",data,"/pval/plot/hist_",classn,ptype,"-",adj,"_",feat,".png"), height=400, width=800)
           mv1 = matrix(c(1,1,2,3),nrow=2,byrow=F)
           layout(mv1) # scatterplot + histograms
           
@@ -147,7 +146,7 @@ for (data in c_datas) {
         cs = rainbow(length(ys))
         names(ys) = names(nqs) = names(cs) = c_feats # feats
         
-        png(paste0(root,"/pval/",data,"/qqpl_",classn,ptype,"-",adj,".png"), height=400, width=800)
+        png(paste0(root,"/result/",data,"/pval/plot/qqpl_",classn,ptype,"-",adj,".png"), height=400, width=800)
         par(mfrow=c(1,2))
         
         plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main=paste0("qq plot | data: ", data, ", class: ", uc, ", method: ", ptype,"-",adj))
@@ -196,7 +195,7 @@ for (data in c_datas) {
         plens = laply(pvs, length)
         names(pvs) = names(npts) = names(plens) = c_feats
         
-        png(paste0(root,"/pval/",data,"/num_",classn,ptype,"-",adj,".png"), height=400, width=400)
+        png(paste0(root,"/result/",data,"/pval/plot/num_",classn,ptype,"-",adj,".png"), height=400, width=400)
         par(mar=c(10,4,5,4))
         
         maint = paste0("%/# of sig/features (bar/line) \n data: ", data, "/", uc, ", method: ", ptype,"-",adj)
@@ -227,7 +226,7 @@ for (data in c_datas) {
                 # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
                 data.frame(metric=c("recall","precision"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
               })
-              png(paste0(root,"/pval/",data,"/numpos_",m1,"-",m2,"_",classn,ptype,"-",adj,".png"), height=400, width=400)
+              png(paste0(root,"/result/",data,"/pval/plot/numpos_",m1,"-",m2,"_",classn,ptype,"-",adj,".png"), height=400, width=400)
               pl = barchart(score~feature, data=sbs, groups=metric, las=1,
                             main="overlap / hypothetical (r) vs actual (p) actual sig",
                             auto.key = list(space = "top"),
@@ -246,28 +245,28 @@ for (data in c_datas) {
         
         pls = fr$recall
         names(pls) = fr$feature
-        png(paste0(root,"/pval/",data,"/r_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/r_",classn,ptype,"-",adj,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("recall | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="recall")
         graphics.off()
         
         pls = fr$precision
         names(pls) = fr$feature
-        png(paste0(root,"/pval/",data,"/p_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/p_",classn,ptype,"-",adj,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("precision | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="precision")
         graphics.off()
         
         pls = fr$f
         names(pls) = fr$feature
-        png(paste0(root,"/pval/",data,"/f_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/f_",classn,ptype,"-",adj,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("f | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="f measure")
         graphics.off()
         
         pls = fr$corr_spear
         names(pls) = fr$feature
-        png(paste0(root,"/pval/",data,"/c_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/c_",classn,ptype,"-",adj,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("spearman corr | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="spearman correlation")
         graphics.off()
@@ -312,7 +311,7 @@ for (data in c_datas) {
           }
         }
         # mv = matrix(c(1,1,2,2,3,4,5,6,7,8,8,9,9,10,11,12,13,14),ncol=2,byrow=F)
-        png(paste0(root,"/pval/",data,"/gr_",classn,ptype,"-",adj,".png"), height=nrow(mv)*250, width=ncol(mv)*500)
+        png(paste0(root,"/result/",data,"/pval/plot/gr_",classn,ptype,"-",adj,".png"), height=nrow(mv)*250, width=ncol(mv)*500)
         layout(mv) # scatterplot + histograms
         par(cex=1.2)
         for (featne in c_featnes) {
@@ -468,7 +467,7 @@ for (data in c_datas) {
                 data=gr_v[gr_vsig,],
                 aes(x=x,y=y,label=name, color=mean_uc), nudge_y = .3)
             
-            ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,".png"), plot=gp_sigmarker, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+            ggsave(paste0(root,"/result/",data,"/pval/plot/grpl_",classn,ptype,"-",adj,"_",feat,".png"), plot=gp_sigmarker, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
             if (!is.null(feat_)) { # more plots, only change label
               gp_allmean = gp0 + ggtitle(paste0(main,"\nlabel=mean exp value"))
               if (grepl("short",feat)) {
@@ -487,7 +486,7 @@ for (data in c_datas) {
                     data=gr_v[gr_vsig,], nudge_y = .3,
                     aes(x=x,y=y,label=label, color=label))
               }
-              ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = 11, height = 7.5, units = c("in"), dpi = 300, limitsize = TRUE)
+              ggsave(paste0(root,"/result/",data,"/pval/plot/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = 11, height = 7.5, units = c("in"), dpi = 300, limitsize = TRUE)
               
             }
             
@@ -515,10 +514,10 @@ for (data in c_datas) {
             
             # Save and export the plot. The plot can be copied as a metafile to the clipboard, or it can be saved as a pdf or png (and other formats).
             # For example, we can save it as a png:
-            png(filename="org_network.png", height=800, width=600) #call the png writer
-            #run the plot
-            dev.off() #dont forget to close the device
-            #And that's the end for now.
+            # png(filename="org_network.png", height=800, width=600) #call the png writer
+            # #run the plot
+            # dev.off() #dont forget to close the device
+            # #And that's the end for now.
             
             
             

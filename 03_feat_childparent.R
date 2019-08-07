@@ -424,8 +424,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     }
     return(expect1)
   }, .parallel=T)
-  expec1 = Reduce("cbind", expec)
-  colnames(expec1) = colnames(expec) = cellis
+  expec = Reduce("cbind", expec)
+  colnames(expec) = cellis
   exp1 = cbind(expe1,expec)
   lnpropexpect1 = log(mpe/exp1)
   lnpropexpect1[exp1==0] = log(mpe[exp1==0])
