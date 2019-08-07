@@ -34,9 +34,10 @@ create_parent_entropy = T
 writecsv = F
 
 feat_count = "file-cell-countAdj"
+result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 
 start = Sys.time()
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in result_dirs) {
   print(result_dir)
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
@@ -316,8 +317,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   cellis = meta_cell$phenotype[meta_cell$phenolevel>1]
   cellis = cellis[cellis%in%names(meta_cell_parent_names)]
-  cellisn = str_count(cellis,"[+-]")
-  
+
   mpe = mp
   mpe[mpe==0] = min(mp[mp!=0])
   mpe = mpe[,match(append(cellis1,cellis),colnames(mpe))]
@@ -329,6 +329,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     return(a)
   })
   meta_cell_parent_names_ = Filter(Negate(is.null), meta_cell_parent_names_)
+  
+  goodind = cellis%in%names(meta_cell_parent_names_)
+  cellis = cellis[goodind]
+  mpe = mpe[,goodind]
+  cellisn = str_count(cellis,"[+-]")
   
   expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
     # expect1 = foreach(ic=ii, .combine="cbind") %do% {
@@ -392,7 +397,6 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   cellis = meta_cell$phenotype[meta_cell$phenolevel>1 & pmnegi]
   cellis = cellis[cellis%in%names(meta_cell_parent_names)]
-  cellisn = str_count(cellis,"[+-]")
   
   mpe = mp
   mpe[mpe==0] = min(mp[mp!=0])
@@ -406,15 +410,22 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   })
   meta_cell_parent_names_ = Filter(Negate(is.null), meta_cell_parent_names_)
   
+  goodind = cellis%in%names(meta_cell_parent_names_)
+  cellis = cellis[goodind]
+  mpe = mpe[,goodind]
+  cellisn = str_count(cellis,"[+-]")
+  
   expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
     expect1 = foreach(ic=ii, .combine="cbind") %do% {
       i = cellis[ic]
       il = cellisn[ic]
-      pnames = meta_cell_parent_names_[[i]]
+      pnames = meta_cell_parent_names[[i]]
+      pnames = pnames[pnames%in%colnames(mpe)]
       parent = mpe[,pnames,drop=F]
       numrtr = apply(parent, 1, function(x) prod(x^(il-1)))
       
-      gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+      gnames = unique(unlist(meta_cell_parent_names[pnames]))
+      gnames = gnames[gnames%in%colnames(mpe)]
       if (gnames=="") gnames = colnames(mpe)==""
       grprnt = mpe[,gnames,drop=F]
       denmtr = apply(grprnt, 1, prod)
