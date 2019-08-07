@@ -365,7 +365,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   }, .parallel=T)
   expec = Reduce("cbind", expec)
   colnames(expec) = cellis
-  exp1 = cbind(expe1,expec)
+  exp1 = as.matrix(cbind(expe1,expec))
   lnpropexpect1 = log(mpe/exp1)
   lnpropexpect1[exp1==0] = log(mpe[exp1==0])
 
