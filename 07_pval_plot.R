@@ -371,11 +371,12 @@ for (data in c_datas) {
         }
         graphics.off()
         
-        # do only for controls
-        if (!grepl("pos",data) & data!="ctrl") next
+        # do only for cell feature types and nodes<1000 see below
+        c_feats_ = c_feats
+        c_feats_ = c_feats[!grepl("edge",c_feats_)]
         
         for (featne in c_featnes) {
-          for (feat in c_feats[grepl(featne,c_feats)]) {
+          for (feat in c_feats_[grepl(featne,c_feats_)]) {
             feat_ = NULL # contains original values
             if (grepl("lnpropexpect",feat)) {
               lno = str_extract(feat,"lnpropexpect[0-9]")
@@ -391,6 +392,7 @@ for (data in c_datas) {
             if (!grname%in%names(grs)) next
             gr_e = grs[[grname]]$e
             gr_v = grs[[grname]]$v
+            if (nrow(gr_v)>1000) next
             
             all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
             all_sig_ = names(all_sig)[all_sig]
