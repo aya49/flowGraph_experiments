@@ -60,20 +60,29 @@ ptl = -log(table$p_thres[1])
 
 # data and uc together, ptype and adj together, 
 c_datas = names(pvals)
-for (data in c_datas) dir.create(paste0(root,"/result/",data,"/pval/plot"), showWarnings=F)
 c_feats = unique(tbl$feature)
 c_feats = c_feats[!grepl("_",c_feats)]
+c_feats = c_feats[!grepl("edge|group",c_feats)]
 # uc, p
 c_ptypes = unique(tbl$sig_test)
 c_adjs = unique(tbl$adjust.combine)
 
-c_featnes = c("cell","edge")
+c_featnes = c("cell")
 
 plot_int = function(dat, pch='.', ...) {
   colPalette = colorRampPalette(c("blue", "green", "yellow", "red"))
   col = densCols(dat, colramp=colPalette)
   graphics::plot(dat, col=col, pch=pch, ...)
 }
+
+for (data in c_datas) {
+  for (ptype in c_ptypes) {
+    for (adj in c_adjs) {
+      dir.create(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj), showWarnings=F, recursive=T)
+    }
+  }
+}
+
 
 
 ## histograms + scatterplots
@@ -94,12 +103,12 @@ for (data in c_datas) {
   mcm = mcm*2
   # dir.create(paste0(root,"/pval/",data), showWarnings=F, recursive=T)
   for (uc in names(pvals[[data]][[1]])) {
-    classn = paste0(uc,"_")
+    classn = gsub("%","",paste0(uc,"_"))
     if (length(pvals[[data]][[1]])==1) classn = ""
     for (feat in c_feats) {
       for (ptype in c_ptypes) {
         for (adj in c_adjs) {
-          png(paste0(root,"/result/",data,"/pval/plot/hist_",classn,ptype,"-",adj,"_",feat,".png"), height=400, width=800)
+          png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/hist",classn,"_",feat,".png"), height=400, width=800)
           mv1 = matrix(c(1,1,2,3),nrow=2,byrow=F)
           layout(mv1) # scatterplot + histograms
           
@@ -134,7 +143,7 @@ for (data in c_datas) {
 ## qq plot; log both axis
 for (data in c_datas) {
   for (uc in names(pvals[[data]][[1]])) {
-    classn = paste0(uc,"_")
+    classn = gsub("%","",paste0(uc,"_"))
     if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
@@ -146,12 +155,12 @@ for (data in c_datas) {
         cs = rainbow(length(ys))
         names(ys) = names(nqs) = names(cs) = c_feats # feats
         
-        png(paste0(root,"/result/",data,"/pval/plot/qqpl_",classn,ptype,"-",adj,".png"), height=400, width=800)
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/qqpl",classn,".png"), height=400, width=800)
         par(mfrow=c(1,2))
         
         plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main=paste0("qq plot | data: ", data, ", class: ", uc, ", method: ", ptype,"-",adj))
         for (i in 1:length(ys)) 
-          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=.5, col=cs[i])
+          points(nqs[[i]], sort(ys[[i]]), pch=16, cex=1, col=cs[i])
         abline(h=pt)
         lines(x = c(-100,100), y = c(-100,100))
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
@@ -159,11 +168,11 @@ for (data in c_datas) {
         nqls = llply(nqs, log)
         yls = llply(1:length(ys), function(xi) {
           a = log(ys[[xi]]); 
-          a[a<nqls[[xi]][1]] = nqls[[xi]][1]; 
+          # a[a<nqls[[xi]][1]] = nqls[[xi]][1]; 
           return(a) })
         plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(ptype," test + ", adj, " p values"), xlab="theoretical quantile", main="-ln(qq plot)")
         for (i in 1:length(ys)) 
-          points(nqls[[i]], sort(yls[[i]]), pch=16, cex=.5, col=cs[i])
+          points(nqls[[i]], sort(yls[[i]]), pch=16, cex=1, col=cs[i])
         abline(h=-ptl)
         lines(x = c(-100,100), y = c(-100,100))
         legend("topleft", legend=names(ys), fill=cs, bg="transparent")
@@ -180,7 +189,7 @@ for (data in c_datas) {
 ## other metrics
 for (data in c_datas) {
   for (uc in names(pvals[[data]][[1]])) {
-    classn = paste0(uc,"_")
+    classn = gsub("%","",paste0(uc,"_"))
     if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
@@ -195,7 +204,7 @@ for (data in c_datas) {
         plens = laply(pvs, length)
         names(pvs) = names(npts) = names(plens) = c_feats
         
-        png(paste0(root,"/result/",data,"/pval/plot/num_",classn,ptype,"-",adj,".png"), height=400, width=400)
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/num",classn,".png"), height=400, width=400)
         par(mar=c(10,4,5,4))
         
         maint = paste0("%/# of sig/features (bar/line) \n data: ", data, "/", uc, ", method: ", ptype,"-",adj)
@@ -212,32 +221,99 @@ for (data in c_datas) {
         graphics.off()
         
         
-        if (data=="pos") {
-          markers = unique(unlist(str_split(names(pvs[[1]]),"[+-]")))[-1]
-          for (i in 1:(length(markers)-1)) {
-            for (j in (i+1):length(markers)) {
-              m1 = markers[i]
-              m2 = markers[j]
-              sbs = ldply(c_feats, function(pvi) {
-                pv = pvs[[pvi]]
-                ssig = grepl(m1,names(pv)) | grepl(m2,names(pv))
-                # a = unlist(strsplit(names(pv),"[-]|[+]"))
-                asig = pv<pt
-                # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
-                data.frame(metric=c("recall","precision"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
-              })
-              png(paste0(root,"/result/",data,"/pval/plot/numpos_",m1,"-",m2,"_",classn,ptype,"-",adj,".png"), height=400, width=400)
-              pl = barchart(score~feature, data=sbs, groups=metric, las=1,
-                            main="overlap / hypothetical (r) vs actual (p) actual sig",
-                            auto.key = list(space = "top"),
-                            scales = list(x = list(rot = 45)))
-              print(pl)
-              graphics.off()
+        if (grepl("pos",data)) {
+          markers = sort(unique(unlist(str_split(names(pvs[[1]]),"[+-]")))[-1])
+          if (grepl("pos2",data)) {
+            sbs = ldply(c_feats, function(pvi) {
+              pv = pvs[[pvi]]
+              ssig = grepl("A",names(pv)) | grepl("B",names(pv))
+              # a = unlist(strsplit(names(pv),"[-]|[+]"))
+              asig = pv<pt
+              # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
+              a = data.frame(metric=c("recall_all","precision_all"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
+              ssig = names(pv)%in%c("A+","B+","A-","B-")
+              # a = unlist(strsplit(names(pv),"[-]|[+]"))
+              asig = pv<pt
+              a = rbind(a,
+                        data.frame(metric=c("recall_ab","precision_ab"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
+              ssig = !names(pv)%in%c("A+","B+","A-","B-") &
+                grepl("A",names(pv)) | grepl("B",names(pv))
+              # a = unlist(strsplit(names(pv),"[-]|[+]"))
+              asig = pv<pt
+              a = rbind(a,
+                        data.frame(metric=c("recall_rest","precision_rest"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
               
-            }
+              
+            })
+
+            
+            
           }
         }
         
+        if (grepl("pos1",data)) {
+          sbs = ldply(c_feats, function(pvi) {
+            pv = pvs[[pvi]]
+            ssig = grepl("A",names(pv))
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
+            a = data.frame(metric=c("recall_all","precision_all"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
+            ssig = names(pv)%in%c("A+","A-")
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            a = rbind(a,
+                      data.frame(metric=c("recall_ab","precision_ab"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
+            ssig = !names(pv)%in%c("A+","A-") &
+              grepl("A",names(pv))
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            a = rbind(a,
+                      data.frame(metric=c("recall_rest","precision_rest"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
+            
+            
+          })
+          
+          
+          
+        }
+        
+        
+        if (grepl("pos3",data)) {
+          sbs = ldply(c_feats, function(pvi) {
+            pv = pvs[[pvi]]
+            ssig = grepl("A[+]B[+]C[+]|A[-]B[+]C[+]|A[+]B[-]C[+]|A[+]B[+]C[-]|A[-]B[-]C[+]|A[+]B[-]C[-]|A[-]B[+]C[-]|A[-]B[-]C[-]",names(pv))
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            # data.frame(metric=c("recall","precision"), score=c(sum(ssig==asig)/sum(ssig), sum(ssig==asig)/sum(asig)), feature=pvi)
+            a = data.frame(metric=c("recall_all","precision_all"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi)
+            ssig = str_count(names(pv),"[+-]")==3 &
+              grepl("A[+]B[+]C[+]|A[-]B[+]C[+]|A[+]B[-]C[+]|A[+]B[+]C[-]|A[-]B[-]C[+]|A[+]B[-]C[-]|A[-]B[+]C[-]|A[-]B[-]C[-]",names(pv))
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            a = rbind(a,
+                      data.frame(metric=c("recall_ab","precision_ab"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
+            ssig = str_count(names(pv),"[+-]")>3 &
+              grepl("A[+]B[+]C[+]|A[-]B[+]C[+]|A[+]B[-]C[+]|A[+]B[+]C[-]|A[-]B[-]C[+]|A[+]B[-]C[-]|A[-]B[+]C[-]|A[-]B[-]C[-]",names(pv))
+            # a = unlist(strsplit(names(pv),"[-]|[+]"))
+            asig = pv<pt
+            a = rbind(a,
+                      data.frame(metric=c("recall_rest","precision_rest"), score=c(sum(ssig & asig)/sum(ssig), sum(ssig & asig)/sum(asig)), feature=pvi))
+            
+            
+          })
+          
+          
+          
+        }
+        
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/numpos",classn,".png"), height=400, width=400)
+        pl = barchart(score~feature, data=sbs, groups=metric, las=1,
+                      main="overlap / hypothetical (r) vs actual (p) actual sig",
+                      auto.key = list(space = "top"),
+                      scales = list(x = list(rot = 45)))
+        print(pl)
+        graphics.off()
         
         
         ## other stats
@@ -245,28 +321,28 @@ for (data in c_datas) {
         
         pls = fr$recall
         names(pls) = fr$feature
-        png(paste0(root,"/result/",data,"/pval/plot/r_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/r",classn,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("recall | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="recall")
         graphics.off()
         
         pls = fr$precision
         names(pls) = fr$feature
-        png(paste0(root,"/result/",data,"/pval/plot/p_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/p",classn,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("precision | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="precision")
         graphics.off()
         
         pls = fr$f
         names(pls) = fr$feature
-        png(paste0(root,"/result/",data,"/pval/plot/f_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/f",classn,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("f | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="f measure")
         graphics.off()
         
         pls = fr$corr_spear
         names(pls) = fr$feature
-        png(paste0(root,"/result/",data,"/pval/plot/c_",classn,ptype,"-",adj,".png"))
+        png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/c",classn,".png"))
         par(mar=c(10,4,5,4))
         barplot(pls, las=2, main=paste0("spearman corr | data: ", data, "/", uc, ", method: ", ptype,"-",adj), ylim=c(0,1), ylab="spearman correlation")
         graphics.off()
@@ -300,7 +376,7 @@ for (data in c_datas) {
   grs = llply(gr_dirs, function(x) get(load(x)))
   names(grs) = gsub(".Rdata","",fileNames(gr_dirs))
   for (uc in names(pvals[[data]][[1]])) {
-    classn = paste0(uc,"_")
+    classn = gsub("%","",paste0(uc,"_"))
     if (length(pvals[[data]][[1]])==1) classn = ""
     for (ptype in c_ptypes) {
       for (adj in c_adjs) {
@@ -311,80 +387,83 @@ for (data in c_datas) {
           }
         }
         # mv = matrix(c(1,1,2,2,3,4,5,6,7,8,8,9,9,10,11,12,13,14),ncol=2,byrow=F)
-        png(paste0(root,"/result/",data,"/pval/plot/gr_",classn,ptype,"-",adj,".png"), height=nrow(mv)*250, width=ncol(mv)*500)
-        layout(mv) # scatterplot + histograms
-        par(cex=1.2)
-        for (featne in c_featnes) {
-          grt = grclusthist = grhubhist = NULL
-          for (feat in c_feats[grepl(featne,c_feats)]) {
-            grname = paste0(feat,"_",uc)
-            if (!grname%in%names(grs)) next
-            
-            # build graph of sig only
-            gr0 = graph_from_data_frame(d=grs[[grname]]$e, vertices=grs[[grname]]$v, directed=T)
-            all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
-            all_sig_ = names(all_sig)[all_sig]
-            if (featne%in%c("cell","group")) {
-              gr = gr0 - setdiff(V(gr0)$name, all_sig_)
-            } else {
-              gr_e = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
-              colnames(gr_e) = c("from","to")
-              gr = graph_from_data_frame(gr_e)
-            }
-            
-            # get graph metrics
-            con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)
-            grd = decompose.graph(gr)
-            vertex_connectivity(grd[[1]])
-            
-            
-            # page_rank
-            # authority_score: principal eigenvector of t(A)*A
-            # eigen_centrality: first eigenvector of A (vertices with high eigenvector centralities are those which are connected to many other vertices which are, in turn, connected to many others (and so on))
-            grhubhist[[feat]] = hub_score(gr)$vector # A*t(A); vector (Scores), value (eigenvalue of principle eigenvector)
-            grclusthist[[feat]] = component_distribution(gr) # histogram for the maximal connected component sizes
-            grt[feat] = con$no
-          }
-          if (is.null(grt)) next
-          
-          ## plot
-          par(mar=c(10,5,3,3))
-          barplot(grt,las=2, main="number of connected components")
-          clusthistmax = max(sapply(grclusthist, function(x) max(which(x>0))))
-          
-          par(mar=c(5,5,3,3))
-          plot(NULL,ylim=c(0,1.5), xlim=c(0,clusthistmax), ylab="% of cc", xlab="size of cc", main="size of connected comp cc (0=#sig/nodes)")
-          cs = rainbow(length(grclusthist))
-          for (i in 1:length(grclusthist)) {
-            lines(grclusthist[[i]], col=cs[i])
-            points(length(grhubhist[[i]]),1,col=cs[i])
-          }
-          legend("topleft", legend=names(grclusthist), fill=cs, bg="transparent")
-          
-          # get percentage histogram
-          for (i in 1:length(grhubhist)) {
-            h = hist(grhubhist[[i]],plot=FALSE)
-            h$density = h$counts/sum(h$counts)
-            plot(h,freq=F,ylim=c(0,1), ylab="% frequency of features", xlab="kleinberg's hub centrality score", main=paste0(names(grhubhist)[i], "\nhistogram of hubness scores"))
-          }
-        }
-        graphics.off()
+        # png(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/gr",classn,".png"), height=nrow(mv)*250, width=ncol(mv)*500)
+        # layout(mv) # scatterplot + histograms
+        # par(cex=1.2)
+        # for (featne in c_featnes) {
+        #   grt = grclusthist = grhubhist = NULL
+        #   for (feat in c_feats[grepl(featne,c_feats)]) {
+        #     grname = paste0(feat,"_",uc)
+        #     if (!grname%in%names(grs)) next
+        #     
+        #     # build graph of sig only
+        #     gr0 = graph_from_data_frame(d=grs[[grname]]$e, vertices=grs[[grname]]$v, directed=T)
+        #     all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
+        #     all_sig_ = names(all_sig)[all_sig]
+        #     if (featne%in%c("cell","group")) {
+        #       gr = gr0 - setdiff(V(gr0)$name, all_sig_)
+        #     } else {
+        #       gr_e = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+        #       colnames(gr_e) = c("from","to")
+        #       gr = graph_from_data_frame(gr_e)
+        #     }
+        #     
+        #     # get graph metrics
+        #     con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)
+        #     # grd = decompose.graph(gr)
+        #     # vertex_connectivity(grd[[1]])
+        #     
+        #     
+        #     # page_rank
+        #     # authority_score: principal eigenvector of t(A)*A
+        #     # eigen_centrality: first eigenvector of A (vertices with high eigenvector centralities are those which are connected to many other vertices which are, in turn, connected to many others (and so on))
+        #     grhubhist[[feat]] = hub_score(gr)$vector # A*t(A); vector (Scores), value (eigenvalue of principle eigenvector)
+        #     grclusthist[[feat]] = component_distribution(gr) # histogram for the maximal connected component sizes
+        #     grt[feat] = con$no
+        #   }
+        #   if (is.null(grt)) next
+        #   
+        #   ## plot
+        #   par(mar=c(10,5,3,3))
+        #   barplot(grt,las=2, main="number of connected components")
+        #   clusthistmax = max(sapply(grclusthist, function(x) max(which(x>0))))
+        #   
+        #   par(mar=c(5,5,3,3))
+        #   plot(NULL,ylim=c(0,1.5), xlim=c(0,clusthistmax), ylab="% of cc", xlab="size of cc", main="size of connected comp cc (0=#sig/nodes)")
+        #   cs = rainbow(length(grclusthist))
+        #   for (i in 1:length(grclusthist)) {
+        #     lines(grclusthist[[i]], col=cs[i])
+        #     points(length(grhubhist[[i]]),1,col=cs[i])
+        #   }
+        #   legend("topleft", legend=names(grclusthist), fill=cs, bg="transparent")
+        #   
+        #   # get percentage histogram
+        #   for (i in 1:length(grhubhist)) {
+        #     h = hist(grhubhist[[i]],plot=FALSE)
+        #     h$density = h$counts/sum(h$counts)
+        #     plot(h,freq=F,ylim=c(0,1), ylab="% frequency of features", xlab="kleinberg's hub centrality score", main=paste0(names(grhubhist)[i], "\nhistogram of hubness scores"))
+        #   }
+        # }
+        # graphics.off()
         
         # do only for cell feature types and nodes<1000 see below
         c_feats_ = c_feats
-        c_feats_ = c_feats[!grepl("edge",c_feats_)]
+        c_feats_ = c_feats[!grepl("edge|entropy",c_feats_)]
         
-        for (featne in c_featnes) {
-          for (feat in c_feats_[grepl(featne,c_feats_)]) {
+        
+          for (feat in c_feats_) {
             feat_ = NULL # contains original values
             if (grepl("lnpropexpect",feat)) {
-              lno = str_extract(feat,"lnpropexpect[0-9]")
+              lno = str_extract(feat,"lnpropexpect")
               feat_ = gsub(lno,paste0(lno,"_"),feat)
               
               grname = paste0(feat_,"_",uc)
-              if (!grname%in%names(grs)) next
-              gr_e_ = grs[[grname]]$e
-              gr_v_ = grs[[grname]]$v
+              if (!grname%in%names(grs)) {
+                feat_ = NULL
+              } else {
+                gr_e_ = grs[[grname]]$e
+                gr_v_ = grs[[grname]]$v
+              }
             }
             
             grname = paste0(feat,"_",uc)
@@ -446,6 +525,7 @@ for (data in c_datas) {
             
             # sig indices
             gr_vsig = gr_v$name %in% all_sig_
+            gr_vhigh = str_count(gr_v[,1],"[+-]")<5
             gr_esig = gr_e[,1] %in% all_sig_ & gr_e[,1] %in% all_sig_
             
             gp0 = gpbase + 
@@ -464,10 +544,10 @@ for (data in c_datas) {
             
             gp_sigmarker = gp0 + ggtitle(paste0(main,"\nlabel=sig; colour=mean exp value")) +
               geom_label_repel(
-                data=gr_v[gr_vsig,],
+                data=gr_v[gr_vsig & gr_vhigh,],
                 aes(x=x,y=y,label=name, color=mean_uc), nudge_y = .3)
             
-            ggsave(paste0(root,"/result/",data,"/pval/plot/grpl_",classn,ptype,"-",adj,"_",feat,".png"), plot=gp_sigmarker, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+            ggsave(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/grpl",classn,"_",feat,".png"), plot=gp_sigmarker, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
             if (!is.null(feat_)) { # more plots, only change label
               gp_allmean = gp0 + ggtitle(paste0(main,"\nlabel=mean exp value"))
               if (grepl("short",feat)) {
@@ -483,10 +563,10 @@ for (data in c_datas) {
                 gr_v$label = round(gr_v_$mean_uc,3)
                 gp_allmean = gp0 + 
                   geom_label_repel(
-                    data=gr_v[gr_vsig,], nudge_y = .3,
+                    data=gr_v[gr_vsig & gr_vhigh,], nudge_y = .3,
                     aes(x=x,y=y,label=label, color=label))
               }
-              ggsave(paste0(root,"/result/",data,"/pval/plot/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = 11, height = 7.5, units = c("in"), dpi = 300, limitsize = TRUE)
+              ggsave(paste0(root,"/result/",data,"/pval/plot/",ptype,"-",adj,"/grpl",classn,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = 11, height = 7.5, units = c("in"), dpi = 300, limitsize = TRUE)
               
             }
             
@@ -524,7 +604,7 @@ for (data in c_datas) {
             
             
           }
-        }
+        
         
       }
     }

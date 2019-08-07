@@ -42,7 +42,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   if (grepl("pregnancy",result_dir)) next
 
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  if (grepl("artificial",result_dir)) next
+  if (grepl("[.]artificial|[.]ctrl",result_dir)) next
   print(result_dir)
   
   ## input directories
@@ -65,7 +65,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   feat_file_cell_count0 = get(load(paste0(feat_file_cell_count_dir,".Rdata")))
-  feat_file_cell_prop0 = get(load(paste0(feat_file_cell_prop_dir,".Rdata")))
+  feat_file_cell_prop0 = foreach(xi=1:ncol(feat_file_cell_count0), .combine='cbind') %dopar% { return(feat_file_cell_count0[,xi]/feat_file_cell_count0[,1]) }
+  dimnames(feat_file_cell_prop0) = dimnames(feat_file_cell_count0)
+
   
   
   

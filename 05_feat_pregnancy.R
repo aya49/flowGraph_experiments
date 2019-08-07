@@ -51,9 +51,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #data paths
   feat_types = gsub(".Rdata","",list.files(path=feat_dir, full.names=F, pattern=".Rdata"))
-  if (length(list.files(feat_dir_))>0)
-  feat_types = gsub(".Rdata","",list.files(path=feat_dir_, full.names=F, pattern=".Rdata"))
-  
+
   
   a= llply (feat_types, function(feat_type) {
     cat("\n", feat_type, " ",sep="")

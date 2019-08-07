@@ -33,7 +33,7 @@ options(na.rm=T)
 
 # cvn-fold cross validation
 
-overwrite = T #overwrite?
+overwrite = F #overwrite?
 writecsv = F
 
 readcsv = F
@@ -106,6 +106,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
   feat_types = gsub(".Rdata","",feat_types)
   # feat_types = feat_types[!grepl("KO|Max",feat_types)]
+  if (grepl("pregnan",result_dir)) feat_types = feat_types[!grepl("edge-prop",feat_types)] #!!!
   
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
@@ -149,7 +150,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
         gr_e0 = as.data.frame(Reduce("rbind",str_split(colnames(m),"_")))
         colnames(gr_e0) = c("from","to")
         gr_e0$mean_ct = all_sig_mc
-        gr_v0 = data.frame(name=append("",unique(as.vector(gr_e0))))
+        gr_v0 = data.frame(name=append("",unique(unlist(gr_e0[,1:2]))))
       } else {
         # gr = gr0 - setdiff(gr_v0, names(all_sig))
         gr_e0 = gr_e00[gr_e00[,1]%in%colnames(m) & gr_e00[,2]%in%colnames(m),]

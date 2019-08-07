@@ -73,7 +73,7 @@ markers = c(# "CD11b", "CD11c",
   # "FoxP3", 
   # "HLADR", 
   #"Tbet", "TCRgd"
-  )
+)
 gthresm = c(# "cd11b", "cd11c", 
   "cd123", "cd14.low", "cd16.gate.mid", 
   # "cd19", 
@@ -84,15 +84,18 @@ gthresm = c(# "cd11b", "cd11c",
   # "foxp3...", # slanted
   # "hladr.MMDSCs", 
   #"tbet.cd8t", "tcrd"
-  )
+)
 
 # marker thresholds
 cvd = rnorm(nrow(f@exprs),2,1)
+p60 = quantile(cvd,.6)
+p75 = quantile(cvd, .75)
+p25 = quantile(cvd, .25)
 thress = as.list(gthres[[1]][gthresm])
 for (jj in 1:length(markers)) 
   thress[[gthresm[jj]]] = mean(cvd)
 thress0 = thress1 = thress2 = thress4 = thress
-thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = quantile(cvd, .75)
+thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = p75
 thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # marker indices in f@exprs
@@ -101,7 +104,7 @@ ci = c(1:length(markers)); names(ci) = markers
 save.image(paste0(root,"/temp.Rdata"))
 
 # start = Sys.time()
-for (ds in c("ctrl","pos1","pos2","pos4")) {
+for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
   start2 = Sys.time()
   # clear/load memory
   a = ls(all=T); a = a[!a%in%c("ds","root","start","start2")]
@@ -119,15 +122,54 @@ for (ds in c("ctrl","pos1","pos2","pos4")) {
   feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   
+  p75 = quantile(cvd, .75)
+  p25 = quantile(cvd, .25)
   ftl = llply(loopInd(1:nsample,no_cores), function(ii) {
     llply(ii, function(i) {
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
       thress = thress0
-      if (ds!="ctrl" & i>(nsample*nctrl)) {
-        thress = switch(ds, 
-                        pos1 = thress1,
-                        pos2 = thress2,
-                        pos4 = thress4)
+      if (i>(nsample*nctrl)) {
+        if (ds=="pos3") {
+          # .125 -> .19 a+b+c+
+          f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+          ap = f@exprs[,1]>thress[[1]]
+          bp = f@exprs[,2]>thress[[2]]
+          cp = f@exprs[,3]>thress[[3]]
+          ab = (ap & bp)
+          ac = (ap & cp)
+          bc = (bp & cp)
+          triple = (ap & bp & cp)
+          # print(sapply(list(triple,ab,(!ap & !bp),ac,bc,ap,!ap,bp,cp), function(x) round(sum(x)/nrow(f@exprs),3)))
+          all = ap | bp | cp
+          non = !all
+          doublea = bc & cp & !ap
+          doubleb = ap & cp & !bp
+          doublec = ap & bp & !cp
+          singlea = ap & !bp & !cp
+          singleb = bp & !ap & !cp
+          singlec = cp & !ab & !bp
+          
+          # single = singlea | singleb | singlec
+          # double = (ab | bc | ac) & !triple
+          tm = sum(triple)/2
+          f@exprs[sample(which(doublea),tm),1] = p75
+          f@exprs[sample(which(doubleb),tm),1] = p25
+          f@exprs[sample(which(doublec),tm),1] = p25
+          f@exprs[sample(which(non),tm),1] = p75
+          f@exprs[sample(which(doublea),tm),2] = p25
+          f@exprs[sample(which(doubleb),tm),2] = p75
+          f@exprs[sample(which(doublec),tm),2] = p25
+          f@exprs[sample(which(non),tm),2] = p75
+          f@exprs[sample(which(doublea),tm),3] = p25
+          f@exprs[sample(which(doubleb),tm),3] = p25
+          f@exprs[sample(which(doublec),tm),3] = p75
+          f@exprs[sample(which(non),tm),3] = p75
+        } else if (ds!="ctrl") {
+          thress = switch(ds, 
+                          pos1 = thress1,
+                          pos2 = thress2,
+                          pos4 = thress4)
+        }
       }
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                MaxMarkersPerPop=6, PartitionsPerMarker=2, 
