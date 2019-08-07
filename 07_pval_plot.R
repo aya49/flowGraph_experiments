@@ -332,8 +332,8 @@ for (data in c_datas) {
               colnames(gr_e) = c("from","to")
               gr = graph_from_data_frame(gr_e)
             }
-
-           # get graph metrics
+            
+            # get graph metrics
             con = components(gr) # membership (cluster id/feat), csize (cluster sizes), no (of clusers)
             grd = decompose.graph(gr)
             vertex_connectivity(grd[[1]])
@@ -391,7 +391,7 @@ for (data in c_datas) {
             if (!grname%in%names(grs)) next
             gr_e = grs[[grname]]$e
             gr_v = grs[[grname]]$v
-
+            
             all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
             all_sig_ = names(all_sig)[all_sig]
             
@@ -435,100 +435,93 @@ for (data in c_datas) {
             gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
             gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
             gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
-
+            
             main = paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
-            if (featne%in%c("cell","group")) {
-              # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
-              # V(gr)$color = ifelse(V(gr)$name=='CA', 'blue', 'red')
-              # V(gr)$size = degree(gr)/10
-              # cols = as.numeric(cut(append(gr_v$mean_uc,gr_v$mean_ctrl),breaks=breaks))
-              
-              gr_vsig = gr_v$name %in% all_sig_
-              gr_esig = gr_e[,1] %in% all_sig_ & gr_e[,1] %in% all_sig_
-                
-              gp0 = gpbase + 
-                geom_segment(
+            
+            # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
+            # V(gr)$color = ifelse(V(gr)$name=='CA', 'blue', 'red')
+            # V(gr)$size = degree(gr)/10
+            # cols = as.numeric(cut(append(gr_v$mean_uc,gr_v$mean_ctrl),breaks=breaks))
+            
+            # sig indices
+            gr_vsig = gr_v$name %in% all_sig_
+            gr_esig = gr_e[,1] %in% all_sig_ & gr_e[,1] %in% all_sig_
+            
+            gp0 = gpbase + 
+              geom_segment(
                 data=gr_e, 
                 aes(x=from.x,xend = to.x, y=from.y,yend = to.y),
                 colour=ifelse(gr_e[,1]%in%all_sig_ & gr_e[,2]%in%all_sig_, "grey40", "grey")) +
-                geom_point(
-                  data=gr_v,aes(x=x,y=y),colour='grey',size=1) +
-                geom_point(
-                  data=gr_v[gr_vsig,],   # adds node border
-                  aes(x=x,y=y, colour=mean_uc), size=2)
-                # geom_point(
-                #   data=gr_v[gr_vsig,], 
-                #   aes(x=x,y=y, colour=mean_ct), size=2)
-                
-              gp_sigmarker = gp0 + ggtitle(paste0(main,"\nlabel=sig; colour=mean exp value")) +
-                geom_label_repel(
-                  data=gr_v[gr_vsig,],
-                  aes(x=x,y=y,label=name, color=mean_uc), nudge_y = .3)
-                
-              ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,".pdf"), plot=gp_sigmarker, scale = 1, width = NA, height = NA, units = c("in", "cm", "mm"), dpi = 300, limitsize = TRUE)
-              if (!is.null(feat_)) { # more plots, only change label
-                gp_allmean = gp0 + ggtitle(paste0(main,"\nlabel=mean exp value"))
-                if (grepl("short",feat)) {
-                  gr_v$label = paste0(gr_v_$name,":",round(gr_v_$mean_uc,3))
-                  gp_allmean = gp0 + geom_label_repel(
-                    data=gr_v[!gr_vsig,],
-                    aes(x=x,y=y,label=label), nudge_y = .3,
-                    color="grey") +
-                    geom_label_repel(
-                      data=gr_v[gr_vsig,], nudge_y = .3,
-                      aes(x=x,y=y,label=label, color=mean_uc))
-                } else {
-                  gr_v$label = round(gr_v_$mean_uc,3)
-                  gp_allmean = gp0 + 
-                    geom_label_repel(
-                      data=gr_v[gr_vsig,], nudge_y = .3,
-                      aes(x=x,y=y,label=label, color=label))
-                }
-                ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = NA, height = NA, units = c("in", "cm", "mm"), dpi = 300, limitsize = TRUE)
-                
+              geom_point(
+                data=gr_v,aes(x=x,y=y),colour='grey',size=1) +
+              geom_point(
+                data=gr_v[gr_vsig,],   # adds node border
+                aes(x=x,y=y, colour=mean_uc), size=2)
+            # geom_point(
+            #   data=gr_v[gr_vsig,], 
+            #   aes(x=x,y=y, colour=mean_ct), size=2)
+            
+            gp_sigmarker = gp0 + ggtitle(paste0(main,"\nlabel=sig; colour=mean exp value")) +
+              geom_label_repel(
+                data=gr_v[gr_vsig,],
+                aes(x=x,y=y,label=name, color=mean_uc), nudge_y = .3)
+            
+            ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,".png"), plot=gp_sigmarker, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+            if (!is.null(feat_)) { # more plots, only change label
+              gp_allmean = gp0 + ggtitle(paste0(main,"\nlabel=mean exp value"))
+              if (grepl("short",feat)) {
+                gr_v$label = paste0(gr_v_$name,":",round(gr_v_$mean_uc,3))
+                gp_allmean = gp0 + geom_label_repel(
+                  data=gr_v[!gr_vsig,],
+                  aes(x=x,y=y,label=label), nudge_y = .3,
+                  color="grey") +
+                  geom_label_repel(
+                    data=gr_v[gr_vsig,], nudge_y = .3,
+                    aes(x=x,y=y,label=label, color=mean_uc))
+              } else {
+                gr_v$label = round(gr_v_$mean_uc,3)
+                gp_allmean = gp0 + 
+                  geom_label_repel(
+                    data=gr_v[gr_vsig,], nudge_y = .3,
+                    aes(x=x,y=y,label=label, color=label))
               }
-                
-              # V(gr)$color = gr_vxy$color = palblue(breaks)[cols[1:(length(cols)/2)]]
-              # V(gr)$frame.color = gr_vxy$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
-              # V(gr)$size = gr_vxy$size = 5#ifelse(V(gr)$p<pt,3,1)
-              # # V(gr)$vertex.shape="none"
-              # V(gr)$label = gr_vxy$label = V(gr)$name
-              # V(gr)$label.dist = 1
-              # V(gr)$label.color = gr_vxy$label.color = ifelse(V(gr)$p<pt,"black","grey")
-              # V(gr)$label.font = 2
-              # V(gr)$label.cex = gr_vxy$label.cex = 1
-              # E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
-              # # E(net)$width <- E(net)$weight/6
-              # E(gr)$arrow.size <- .5
-              # # E(net)$width <- 1+E(net)$weight/12
-              
-              # par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
-              # plot(gr, layout=grlo,#, layout.circle
-              #      main=paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
-              # )
-              # par(mar=c(3,1,1,1))
-              # image.scale(cols, col=palblue(length(breaks)-1), breaks=breaks, horiz=TRUE)
-              
-            } else if (featne=="edge") {
-              elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
-              gr_esig = match(data.frame(t(elist)), 
-                              data.frame(t(gr_e[,1:2])))
-              gr_vsig = gr_v$name %in% unique(unlist(elist))
-
+              ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = 11, height = 7.5, units = c("in"), dpi = 300, limitsize = TRUE)
               
             }
-
-# Save and export the plot. The plot can be copied as a metafile to the clipboard, or it can be saved as a pdf or png (and other formats).
-# For example, we can save it as a png:
-png(filename="org_network.png", height=800, width=600) #call the png writer
-#run the plot
-dev.off() #dont forget to close the device
-#And that's the end for now.
-
-
-
-
-
+            
+            # V(gr)$color = gr_vxy$color = palblue(breaks)[cols[1:(length(cols)/2)]]
+            # V(gr)$frame.color = gr_vxy$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
+            # V(gr)$size = gr_vxy$size = 5#ifelse(V(gr)$p<pt,3,1)
+            # # V(gr)$vertex.shape="none"
+            # V(gr)$label = gr_vxy$label = V(gr)$name
+            # V(gr)$label.dist = 1
+            # V(gr)$label.color = gr_vxy$label.color = ifelse(V(gr)$p<pt,"black","grey")
+            # V(gr)$label.font = 2
+            # V(gr)$label.cex = gr_vxy$label.cex = 1
+            # E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
+            # # E(net)$width <- E(net)$weight/6
+            # E(gr)$arrow.size <- .5
+            # # E(net)$width <- 1+E(net)$weight/12
+            
+            # par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
+            # plot(gr, layout=grlo,#, layout.circle
+            #      main=paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
+            # )
+            # par(mar=c(3,1,1,1))
+            # image.scale(cols, col=palblue(length(breaks)-1), breaks=breaks, horiz=TRUE)
+            
+            
+            # Save and export the plot. The plot can be copied as a metafile to the clipboard, or it can be saved as a pdf or png (and other formats).
+            # For example, we can save it as a png:
+            png(filename="org_network.png", height=800, width=600) #call the png writer
+            #run the plot
+            dev.off() #dont forget to close the device
+            #And that's the end for now.
+            
+            
+            
+            
+            
           }
         }
         

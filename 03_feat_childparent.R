@@ -346,7 +346,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     #   expect = (numrtr/denmtr)^(1/choose(il,2))
     #   return(expect)
     # }
-    expect2 = foreach(i=ii, .combine="cbind") %do% {
+    expect2 = foreach(ic=ii, .combine="cbind") %do% {
       i = cellis[ic]
       il = cellisn[ic]
       pnames = meta_cell_parent_names_[[i]]
