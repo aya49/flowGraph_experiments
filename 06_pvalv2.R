@@ -66,7 +66,7 @@ feat_count = "file-cell-countAdj"
 
 start = Sys.time()
 table = pvals = NULL
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)){#[c(2,6,7,8)]) {
   print(result_dir)
   data = fileNames(result_dir)
   
@@ -234,7 +234,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
             }
             return(list(t=t, wilcox=wilcox))
           })
-        },.parallel=T)
+        },.parallel=F)
         pvs = unlist(pvs, recursive=F)
         # })
         
@@ -415,7 +415,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     foldres = get(load(paste0(pvalsource_dir,"/",feat_type,"_table.Rdata")))
     
     return(list(foldsip=foldsip, foldres=foldres))
-  }, .parallel=F)
+  }, .parallel=T)
   pvals[[data]] = llply(result, function(x) x$foldsip)
   names(pvals[[data]]) = feat_types
   table = rbind(table, ldply(result, function(x) x$foldres))

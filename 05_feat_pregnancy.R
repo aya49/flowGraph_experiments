@@ -50,7 +50,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   #data paths
   feat_types = gsub(".Rdata","",list.files(path=feat_dir, full.names=F, pattern=".Rdata"))
   
-  for (feat_type in feat_types) {
+  a= llply (feat_types, function(feat_type) {
     cat("\n", feat_type, " ",sep="")
     start2 = Sys.time()
     
@@ -66,11 +66,11 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
       pii = meta_file$patient==pi
       mp = m[pii,]
       mpm = colMeans(as.matrix(mp))
-      m[pii,] = ldply(1:nrow(mp), function(i) mp[i,]-mpm )
+      m[pii,] = as.matrix(ldply(1:nrow(mp), function(i) mp[i,]-mpm ))
     }
     save(m, file=paste0(feat_dir,"/", feat_type,".Rdata"))
     if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
-  }
+  }, .parallel=T)
   time_output(start, result_dir)
   
 }

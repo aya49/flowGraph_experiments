@@ -11,7 +11,7 @@ setwd(root)
 source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
        "lattice", "gridExtra", "plotly", "RColorBrewer", "plotrix", "ggrepel", "ggplot2",# libr(proxy)
-       "metap",
+       "metap", "igraph",
        "foreach","doMC",
        "kernlab"))
 
@@ -61,6 +61,7 @@ ptl = -log(table$p_thres[1])
 # data and uc together, ptype and adj together, 
 c_datas = names(pvals)
 c_feats = unique(tbl$feature)
+c_feats = c_feats[!grepl("_",c_feats)]
 # uc, p
 c_ptypes = unique(tbl$sig_test)
 c_adjs = unique(tbl$adjust.combine)
@@ -278,6 +279,22 @@ for (data in c_datas) {
 
 ## graph stats
 start1 = Sys.time()
+gpbase = ggplot() +
+  scale_x_continuous(expand=c(0,1)) +  # expand x limits
+  scale_y_continuous(expand=c(0,1)) + # expand y limits
+  # theme_bw()+  # use the ggplot black and white theme
+  theme(
+    axis.text.x = element_blank(),  # rm x-axis text
+    axis.text.y = element_blank(), # rm y-axis text
+    axis.ticks = element_blank(),  # rm axis ticks
+    axis.title.x = element_blank(), # rm x-axis labels
+    axis.title.y = element_blank(), # rm y-axis labels
+    panel.background = element_blank(), 
+    panel.border = element_blank(), 
+    panel.grid.major = element_blank(),  #rm grid labels
+    panel.grid.minor = element_blank(),  #rm grid labels
+    plot.background = element_blank())
+
 for (data in c_datas) {
   pvalgr_dir = paste0(root,"/result/",data,"/pval/graph")
   gr_dirs = list.files(pvalgr_dir, full.names=T)
@@ -354,20 +371,38 @@ for (data in c_datas) {
         }
         graphics.off()
         
+        # do only for controls
+        if (!grepl("pos",data) & data!="ctrl") next
+        
         for (featne in c_featnes) {
           for (feat in c_feats[grepl(featne,c_feats)]) {
+            feat_ = NULL # contains original values
+            if (grepl("lnpropexpect",feat)) {
+              lno = str_extract(feat,"lnpropexpect[0-9]")
+              feat_ = gsub(lno,paste0(lno,"_"),feat)
+              
+              grname = paste0(feat_,"_",uc)
+              if (!grname%in%names(grs)) next
+              gr_e_ = grs[[grname]]$e
+              gr_v_ = grs[[grname]]$v
+            }
             
             grname = paste0(feat,"_",uc)
             if (!grname%in%names(grs)) next
             gr_e = grs[[grname]]$e
             gr_v = grs[[grname]]$v
+
+            all_sig = pvals[[data]][[feat]][[uc]]$p[[ptype]][[adj]]$all<pt
+            all_sig_ = names(all_sig)[all_sig]
             
             # colour palette
-            palblue = colorRampPalette(brewer.pal(3, "Blues"))
+            # palblue = colorRampPalette(brewer.pal(3, "Blues"))
             
-            # edit layout manually
+            # edit layout
             gr_vxy_ = layout.reingold.tilford(gr = graph_from_data_frame(gr_e)) # layout.circle
             gr_vxy = as.data.frame(gr_vxy_)
+            
+            # edit layout manually
             gys = sort(unique(gr_vxy[,2]))
             gxns = sapply(gys,function(y) length(gr_vxy[gr_vxy[,2]==y,1]))
             names(gxns) = gys
@@ -389,60 +424,97 @@ for (data in c_datas) {
               a + (gxnmaxwidth-(a[length(a)]-1))/2
             }))
             
+            # get node
+            colnames(gr_vxy) = c("x","y")
+            gr_v = cbind(gr_vxy,gr_v)
+            gr_v$label_uc = paste0(gr_v$name, ": ", round(gr_v$mean_uc,3))
+            gr_v$label_ct = paste0(gr_v$name, ": ", round(gr_v$mean_ct,3))
+            
             # get edge
             gr_e$from.x <- gr_vxy$x[match(gr_e$from, gr_v$name)]
             gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
             gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
             gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
-            
+
+            main = paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
             if (featne%in%c("cell","group")) {
               # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph
               # V(gr)$color = ifelse(V(gr)$name=='CA', 'blue', 'red')
               # V(gr)$size = degree(gr)/10
-              cols = as.numeric(cut(append(V(gr)$mean_uc,V(gr)$mean_ctrl),breaks=breaks))
+              # cols = as.numeric(cut(append(gr_v$mean_uc,gr_v$mean_ctrl),breaks=breaks))
               
-              ggplot() +
-                geom_segment(data=gr_e,aes(x=from.x,xend = to.x, y=from.y,yend = to.y,size=weight),colour=ifelse(gr_e$p==0, "gray80", "grey")) +
-                geom_point(data=gr_v,aes(x=x,y=y),size=8,colour="black") +  # adds a black border around the nodes
-                geom_point(data=gr_v,aes(x=x,y=y),size=5,colour="lightgrey") +
-                geom_text(data=gr_v,aes(x=x,y=y,label=name)) + # add the node labels
-                scale_x_continuous(expand=c(0,1))+  # expand the x limits 
-                scale_y_continuous(expand=c(0,1))+ # expand the y limits
-                theme_bw()+  # use the ggplot black and white theme
-                theme(
-                  axis.text.x = element_blank(),  # remove x-axis text
-                  axis.text.y = element_blank(), # remove y-axis text
-                  axis.ticks = element_blank(),  # remove axis ticks
-                  axis.title.x = element_blank(), # remove x-axis labels
-                  axis.title.y = element_blank(), # remove y-axis labels
-                  panel.background = element_blank(), 
-                  panel.border =element_blank(), 
-                  panel.grid.major = element_blank(),  #remove major-grid labels
-                  panel.grid.minor = element_blank(),  #remove minor-grid labels
-                  plot.background = element_blank())
+              gr_vsig = gr_v$name %in% all_sig_
+              gr_esig = gr_e[,1] %in% all_sig_ & gr_e[,1] %in% all_sig_
+                
+              gp0 = gpbase + 
+                geom_segment(
+                data=gr_e, 
+                aes(x=from.x,xend = to.x, y=from.y,yend = to.y),
+                colour=ifelse(gr_e[,1]%in%all_sig_ & gr_e[,2]%in%all_sig_, "grey40", "grey")) +
+                geom_point(
+                  data=gr_v,aes(x=x,y=y),colour='grey',size=1) +
+                geom_point(
+                  data=gr_v[gr_vsig,],   # adds node border
+                  aes(x=x,y=y, colour=mean_uc), size=2)
+                # geom_point(
+                #   data=gr_v[gr_vsig,], 
+                #   aes(x=x,y=y, colour=mean_ct), size=2)
+                
+              gp_sigmarker = gp0 + ggtitle(paste0(main,"\nlabel=sig; colour=mean exp value")) +
+                geom_label_repel(
+                  data=gr_v[gr_vsig,],
+                  aes(x=x,y=y,label=name, color=mean_uc), nudge_y = .3)
+                
+              ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,".pdf"), plot=gp_sigmarker, scale = 1, width = NA, height = NA, units = c("in", "cm", "mm"), dpi = 300, limitsize = TRUE)
+              if (!is.null(feat_)) { # more plots, only change label
+                gp_allmean = gp0 + ggtitle(paste0(main,"\nlabel=mean exp value"))
+                if (grepl("short",feat)) {
+                  gr_v$label = paste0(gr_v_$name,":",round(gr_v_$mean_uc,3))
+                  gp_allmean = gp0 + geom_label_repel(
+                    data=gr_v[!gr_vsig,],
+                    aes(x=x,y=y,label=label), nudge_y = .3,
+                    color="grey") +
+                    geom_label_repel(
+                      data=gr_v[gr_vsig,], nudge_y = .3,
+                      aes(x=x,y=y,label=label, color=mean_uc))
+                } else {
+                  gr_v$label = round(gr_v_$mean_uc,3)
+                  gp_allmean = gp0 + 
+                    geom_label_repel(
+                      data=gr_v[gr_vsig,], nudge_y = .3,
+                      aes(x=x,y=y,label=label, color=label))
+                }
+                ggsave(paste0(root,"/pval/",data,"/grpl_",classn,ptype,"-",adj,"_",feat,"_.png"), plot=gp_allmean, scale = 1, width = NA, height = NA, units = c("in", "cm", "mm"), dpi = 300, limitsize = TRUE)
+                
+              }
+                
+              # V(gr)$color = gr_vxy$color = palblue(breaks)[cols[1:(length(cols)/2)]]
+              # V(gr)$frame.color = gr_vxy$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
+              # V(gr)$size = gr_vxy$size = 5#ifelse(V(gr)$p<pt,3,1)
+              # # V(gr)$vertex.shape="none"
+              # V(gr)$label = gr_vxy$label = V(gr)$name
+              # V(gr)$label.dist = 1
+              # V(gr)$label.color = gr_vxy$label.color = ifelse(V(gr)$p<pt,"black","grey")
+              # V(gr)$label.font = 2
+              # V(gr)$label.cex = gr_vxy$label.cex = 1
+              # E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
+              # # E(net)$width <- E(net)$weight/6
+              # E(gr)$arrow.size <- .5
+              # # E(net)$width <- 1+E(net)$weight/12
               
-              V(gr)$color = gr_vxy$color = palblue(breaks)[cols[1:(length(cols)/2)]]
-              V(gr)$frame.color = gr_vxy$frame.color = palblue(breaks)[cols[(length(cols)/2+1):length(cols)]]
-              V(gr)$size = gr_vxy$size = 5#ifelse(V(gr)$p<pt,3,1)
-              # V(gr)$vertex.shape="none"
-              V(gr)$label = gr_vxy$label = V(gr)$name
-              V(gr)$label.dist = 1
-              V(gr)$label.color = gr_vxy$label.color = ifelse(V(gr)$p<pt,"black","grey")
-              V(gr)$label.font = 2
-              V(gr)$label.cex = gr_vxy$label.cex = 1
-              E(gr)$color = ifelse(E(gr)$p==0, "gray80", "grey")
-              # E(net)$width <- E(net)$weight/6
-              E(gr)$arrow.size <- .5
-              # E(net)$width <- 1+E(net)$weight/12
-              
-              par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
-              plot(gr, layout=grlo,#, layout.circle
-                   main=paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
-              )
-              par(mar=c(3,1,1,1))
-              image.scale(cols, col=palblue(length(breaks)-1), breaks=breaks, horiz=TRUE)
+              # par(mai=c(0,0,1,0)) #this specifies the size of the margins. the default settings leave too much free space on all sides (if no axes are printed)
+              # plot(gr, layout=grlo,#, layout.circle
+              #      main=paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
+              # )
+              # par(mar=c(3,1,1,1))
+              # image.scale(cols, col=palblue(length(breaks)-1), breaks=breaks, horiz=TRUE)
               
             } else if (featne=="edge") {
+              elist = as.data.frame(Reduce("rbind",str_split(all_sig_,"_")))
+              gr_esig = match(data.frame(t(elist)), 
+                              data.frame(t(gr_e[,1:2])))
+              gr_vsig = gr_v$name %in% unique(unlist(elist))
+
               
             }
 
