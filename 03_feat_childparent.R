@@ -38,6 +38,8 @@ result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 
 start = Sys.time()
 for (result_dir in result_dirs) {
+  if (grepl("pregnancy",result_dir)) next
+  
   print(result_dir)
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   
@@ -403,6 +405,8 @@ for (result_dir in result_dirs) {
   mpe = mpe[,match(append(cellis1,cellis),colnames(mpe))]
   
   meta_cell_parent_names_ = meta_cell_parent_names[names(meta_cell_parent_names)%in%colnames(mpe)]
+  print(sum(grepl("[-]",unlist(meta_cell_parent_names_))))
+  names(meta_cell_parent_names_)[sapply(meta_cell_parent_names_, function(x) any(grepl("[-]",x)))]
   meta_cell_parent_names_[cellis] = llply(meta_cell_parent_names_[cellis], function(x) {
     a = x[x%in%colnames(mpe)]
     if (length(a)==0) return(NULL)

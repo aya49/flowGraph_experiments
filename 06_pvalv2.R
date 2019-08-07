@@ -67,6 +67,8 @@ feat_count = "file-cell-countAdj"
 start = Sys.time()
 table = pvals = NULL
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)){#[c(2,6,7,8)]) {
+  if (grepl("pregnancy",result_dir)) next
+  
   print(result_dir)
   data = fileNames(result_dir)
   

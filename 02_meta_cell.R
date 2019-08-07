@@ -24,7 +24,8 @@ options(na.rm=T)
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
   # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-
+  if (grepl("pregnancy",result_dir)) next
+  
   print(result_dir)
   start1 = Sys.time()
   
@@ -57,7 +58,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   ilevel = meta_cell$phenolevel==minl
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
+  
   for (pl in unique(meta_cell$phenolevel)) {
+    # for (pl in 0:5) {
     start2 = Sys.time()
     cat(sum(ilevel)," pops ")
     
@@ -65,7 +68,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
                   
     loop_ind = loopInd(which(ilevel),no_cores)
-    result = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
+    result_ = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
       resulti = NULL
       if (pl==0) {
         pos_ind = apply(ccand,1,function(x) 2%in%x)
@@ -109,8 +112,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
       return(resulti)
     }, .parallel=T)
-    result = unlist(result, recursive=F)
-    names(result) = meta_cell$phenotype[ilevel]
+    result = Reduce("append",result_)
+    # result = unlist(result, recursive=F)
+    # names(result) = meta_cell$phenotype[which(ilevel)]
     res = append(res, result)
     
     iparen = ilevel
@@ -199,7 +203,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
   save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
   
-  time_output(start1, result_dir)
+  time_output(start1)
 }
 
 

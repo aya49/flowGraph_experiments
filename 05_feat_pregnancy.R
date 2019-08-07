@@ -11,7 +11,6 @@
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
-feat_dir_ = paste0(feat_dir,"_unpaired"); dir.create(feat_dir_, showWarnings=F)
 
 ## libraries
 source("source/_func.R")
@@ -34,7 +33,7 @@ writecsv = F
 count_feature = "file-cell-countAdj"
 
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  if (!grepl("pregnancy|bodenmiller",result_dir)) next()
+  if (!grepl("pregnant|bodenmiller",result_dir)) next()
   # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   print(result_dir)
   
@@ -45,6 +44,7 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
+  feat_dir_ = paste0(feat_dir,"_unpaired"); dir.create(feat_dir_, showWarnings=F)
   
   # meta
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
