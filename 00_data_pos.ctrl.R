@@ -147,7 +147,8 @@ for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
          ftv = ft@CellFreqs
          ftv = round(ftv/ftv[1],3)
          names(ftv) = ftcell
-         ftv
+         a = getPhenCP(cp=ftcell,no_cores=no_cores)
+         al = layout_gr(a$gr$e,a$gr$v)
          
         } else if (ds!="ctrl") {
           thress = switch(ds, 

@@ -334,14 +334,13 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   
   
   # graph edge list
-  gc = ldply(names(pchild), function(x) 
-    data.frame(from=x, to=unlist(ldply[[x]])) )
-  gp = ldply(names(pparen), function(x) 
-    data.frame(from=pparen[[x]], to=x) )
+  gc = ldply(1:length(pchild), function(x) 
+    data.frame(from=names(pchild)[x], to=unlist(pchild[[x]])) )
+  gp = ldply(1:length(pparen), function(x) 
+    data.frame(from=pparen[[x]], to=names(pparen)[x]) )
   gr_e = unique(rbind(gc,gp))
   gr_v = meta_cell$phenotype
-  gr_e = rbind(ldply(meta_cell$phenotype[meta_cell$phenolevel==1], function(x) data.frame(from="",to=x)), gr_e)
-  
+
   gr_vp = gr_v[!grepl("[-]",gr_v)]
   gr_ep = gr_e[!grepl("[-]",gr_e[,1]) & !grepl("[-]",gr_e[,2]),]
   
