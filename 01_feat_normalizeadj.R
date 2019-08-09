@@ -1,5 +1,5 @@
 ## input: original count feature matrix 
-## output: normalized countadj feature matrix
+## output: normalized countadj feature matrix, meta_cell, meta_cell_childpn/parent, and these converted into graphs (edge list /vertices) convertable into igraph with graph_from_data_frame function
 ## process:
 ## - normalize count using TMM trimmed mean normalization
 ## - reference fcm file is the one with median total count amongst the control files
@@ -13,119 +13,104 @@ setwd(root)
 
 ## libraries
 source("source/_func.R")
-libr(c("stringr", "pracma", "fitdistrplus",
-       "plyr",
+libr(c("stringr", "plyr", 
+       "pracma", "fitdistrplus",
        "foreach","doMC"))
-# libr(flowDensity)
+
 
 ## cores
 no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
-
 ## options
 writecsv = F
 options(stringsAsFactors=FALSE)
-# options(device="cairo")
 options(na.rm=T)
-
-id_col = "id"
-target_col = "class" #column with control/experiment
-control = "control" #control value in target_col column
 
 cutoff = c(Inf) #c(.6) #if TMM-peak>cutoff, then apply peak instead of TMM; run this script and look at norm_fdiffplot plot to determine this number
 layer_norm = c(2,4) #0 #calculate TMM using only phenotypes in this layer; set to 0 if do for all layers
-cellCountThres = .01 # MAYBE USE PERCENTAAGE!!!!! #don't use phenotypes with cell count lower than cellCountThres
+cellCountThres = .01 # don't use phenotypes with cell count all lower than cellCountThres
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
-  if (grepl("pregnancy",result_dir)) next
 
-  # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  if (grepl("[.]artificial|[.]ctrl",result_dir)) next
-  print(result_dir)
+
+result_dirs =list.dirs(paste0(root,"/result"),full.names=T,recursive=F)
+for (result_dir in result_dirs) {
+  if (grepl("ctrl|pos",result_dir)) next
+  print(filNames(result_dir))
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
-  meta_cell_dir = paste(meta_dir, "/cell", sep="")
   meta_file_dir = paste(meta_dir, "/file", sep="")
   feat_dir = paste(result_dir, "/feat", sep="")
-  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count",sep="")
   
   
   ## output directories
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
+  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   norm_dir = paste(result_dir, "/cell_count_norm",sep=""); dir.create(norm_dir,showWarnings=F)
   norm_factor_dir = paste(norm_dir, "/norm_factor", sep=""); dir.create(norm_factor_dir,showWarnings=F) #plot of norm factor for each file
   norm_factor_diff_dir = paste(norm_dir, "/norm_factor_diff", sep="")
+  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="")
+  meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
+  meta_cell_graph_dir = paste(meta_dir, "/cell_graph",sep="") #specifies a phenotypes parents
+  meta_cell_graphpos_dir = paste(meta_dir, "/cell_graphpos",sep="") #specifies a phenotypes parents
   
   
-  #Prepare data
+  ## load data
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
-  meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
   feat_file_cell_count0 = get(load(paste0(feat_file_cell_count_dir,".Rdata")))
-  feat_file_cell_prop0 = foreach(xi=1:ncol(feat_file_cell_count0), .combine='cbind') %dopar% { return(feat_file_cell_count0[,xi]/feat_file_cell_count0[,1]) }
+  meta_cell0 = getPhen(feat_file_cell_count0)
+  feat_file_cell_prop0 = feat_file_cell_count0/feat_file_cell_count0[,1]
   dimnames(feat_file_cell_prop0) = dimnames(feat_file_cell_count0)
 
   
   
-  
   start = Sys.time()
   
-  #calculate TMM
+  
+  ## prepare data
   
   #save original objects for testing
   feat_file_cell_count = feat_file_cell_count0
   meta_file = meta_file0
   
-  #prepare feat_file_cell_counts
-  x = x0 = as.matrix(feat_file_cell_count)[,-1] #take out total cell count
+  # prepare feat_file_cell_counts
+  x = x0 = as.matrix(feat_file_cell_count)[,-1] # take out total cell count
   maxx = max(x0[is.finite(x0)])
+  rootc = feat_file_cell_count[,1]
+  refsample = which.min(abs( rootc-median(rootc[meta_file$class=="control"]) )) #reference column: median total count out of all control files
   
-  if (layer_norm[1]>0) {
-    xli = colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel>=layer_norm[1] & meta_cell$phenolevel<=layer_norm[2]]
-    x0 = as.matrix(x0[,xli])
-  } 
-  xci = sapply(1:ncol(x0), function(y) any(x0[,y]>cellCountThres*maxx))
-  x = as.matrix(x0[,xci])
-  lib.size = feat_file_cell_count[,1]
-  refColumn = which.min(abs( lib.size - median(lib.size[grepl(control,meta_file[,target_col])]) )) #reference column: median total count out of all control files
+  # extract cell populations that would define TMM (layer/count)
+  if (layer_norm[1]>0) 
+    x = x[, colnames(x0) %in% meta_cell0$phenotype[
+      meta_cell0$phenolevel>=layer_norm[1] & 
+        meta_cell0$phenolevel<=layer_norm[2]] ]
+  x = x[,sapply(1:ncol(x), function(y) any(x[,y]>cellCountThres*maxx))]
   
-  #prepare plot paths/titles
-  pngnames = sapply(1:nrow(x), function(i) {
-    paste0(norm_factor_dir,"/", meta_file[i,target_col], "_", meta_file[i,id_col],".png")
-  })
-  pngnames = gsub("%","",pngnames)
-  mains = sapply(1:nrow(x), function(i) paste0("mean count vs. ln fold change:\n", meta_file[i,target_col]," over refColumn ", meta_file[refColumn,target_col], "___layer-",layer_norm))
+  # prepare paths to plot to
+  pngnames = paste0(norm_factor_dir,"/", meta_file$class, "_", meta_file$id,".png")
+  mains = paste0("mean count vs. ln fold change over ref sample ", 
+                 meta_file$class[refsample], " on layer ", 
+                 paste(layer_norm,collapse="-"))
   
-  ## calculate absolute count TMM, mostly taken from TMM
-  fresult = tmm(x,x0,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=pngnames,mains=mains,no_cores=no_cores,samplesOnCol=F)
+  
+  ## calculate absolute count TMM
+  fresult = tmm(x,x0,rootc,refsample,cutoff=Inf,plotimg=T,pngnames=pngnames,mains=mains,no_cores=no_cores,samplesOnCol=F)
   f0 = fresult$f
   fdiff0 = fresult$fdiff
   
-  #plot difference between TMM and peak for all files
-  pngname = paste0(norm_factor_dir,"/all.png")
-  png(file=pngname , width=700, height=700)
+  m00 = as.matrix(ldply(c(1:nrow(feat_file_cell_count0)), function(x) feat_file_cell_count0[x,]*f0[x]))
+  dimnames(m00) = dimnames(feat_file_cell_count0)
+
+  # plot difference between TMM and peak for all files
+  png(paste0(norm_factor_dir,"/all.png") , width=700, height=700)
   plot(sort(abs(fdiff0)), cex=.4, ylim=c(0,3), main="cell-count-norm-factor_f_diff_from_peak_abs")
   lines(sort(abs(fdiff0)), col="blue")
   graphics.off()
   
-  
-  
-  feat_file_cell_countAdj = t(sapply(c(1:nrow(feat_file_cell_count0)), function(x) {feat_file_cell_count0[x,]*f0[x]}))
-  colnames(feat_file_cell_countAdj) = colnames(feat_file_cell_count0)
-  rownames(feat_file_cell_countAdj) = rownames(feat_file_cell_count0)
-  
-  
-  
-  ## trim ---------------------------------------------
-  
-  #trim columns with too many 0's or low values
-  minclassn = min(table(meta_file[,target_col]))
-  col_min0 = apply(feat_file_cell_countAdj, 2, function(x) sum(x>0)>(minclassn*.5))
-  col_cnts = apply(feat_file_cell_countAdj, 2, function(x) any(x>cellCountThres*max(x[is.finite(x)])))
-  
+
   
   #trim columns with too small of a mean/sd -- not used
   # try ({
@@ -163,23 +148,27 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   
   
-  #save
+  ## trim & save
+  
+  #trim columns with too many 0's or low values
+  minclassn = min(table(meta_file$class))
+  col_min0 = apply(m00, 2, function(x) sum(x>0)>(minclassn*.5))
+  maxx = max(x[is.finite(x)])
+  col_cnts = apply(m00, 2, function(x) any(x>cellCountThres*maxx))
   finalinds = col_min0 & col_cnts
   
-  feat_file_cell_countAdj_ = feat_file_cell_countAdj[,finalinds]
-  save(feat_file_cell_countAdj_, file=paste0(feat_file_cell_countAdj_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_countAdj_, file=paste0(feat_file_cell_countAdj_dir,".csv"), row.names=T)
   
-  feat_file_cell_count_ = feat_file_cell_count0[,finalinds]
-  save(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+  m0 = m00[,finalinds]
+  save(m0, file=paste0(feat_file_cell_countAdj_dir,".Rdata"))
+  if (writecsv) write.csv(m0, file=paste0(feat_file_cell_countAdj_dir,".csv"), row.names=T)
   
-  feat_file_cell_prop_ = feat_file_cell_prop0[,finalinds]
-  save(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  c0 = feat_file_cell_count0[,finalinds]
+  save(c0, file=paste0(feat_file_cell_count_dir,".Rdata"))
+  if (writecsv) write.csv(c0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
   
-  meta_cell_ = meta_cell[finalinds,]
-  save(meta_cell_, file=paste0(meta_cell_dir,".Rdata"))
+  p0 = feat_file_cell_prop0[,finalinds]
+  save(p0, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+  if (writecsv) write.csv(p0, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
   
   
   save(f0, file=paste0(norm_factor_dir,".Rdata"))
@@ -187,10 +176,24 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   save(fdiff0, file=paste0(norm_factor_diff_dir,".Rdata"))
   if (writecsv) write.csv(fdiff0, file=paste0(norm_factor_diff_dir,".csv"), row.names=T)
   
+    
+  ## save cell populations
+  meta_cell = meta_cell0[finalinds,]
+  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
+  
+  pccell = getPhenCP(meta_cell=meta_cell,no_cores=no_cores)
+  pchild = pccell$pchild
+  pparen = pccell$pparen
+  gr = pccell$gr
+  grp = pccell$grp
+  save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
+  save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
+  save(gr, file=paste0(meta_cell_graph_dir, ".Rdata"))
+  save(grp, file=paste0(meta_cell_graphpos_dir, ".Rdata"))
+  # graphs are saved; one with all cell populations, one with only positive ones a+b+... these can be converted to igraph with graph_from_data_frame
+  
   time_output(start)
 }
-
-
 
 
 

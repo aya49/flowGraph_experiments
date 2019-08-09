@@ -25,34 +25,28 @@ registerDoMC(no_cores)
 
 ## options
 options(stringsAsFactors=FALSE)
-options(device="cairo")
 options(na.rm=T)
-
-create_child_entropy = T
-create_parent_entropy = T
 
 writecsv = F
 
 feat_count = "file-cell-countAdj"
-result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
+
+
 
 start = Sys.time()
+result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
-  if (grepl("pregnancy",result_dir)) next
-  
   print(result_dir)
-  # result_dir = paste0(root, "/result/flowcap_panel6") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
-  
+
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_cell_dir = paste(meta_dir, "/cell", sep="")
   meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
   meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
-  
-  
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
   feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
+  
   
   ## output directories
   feat_file_edge_pnratio_dir = paste(feat_dir, "/file-edge-pnratio",sep="")
@@ -61,23 +55,21 @@ for (result_dir in result_dirs) {
   feat_file_cell_entropyparent_dir = paste(feat_dir, "/file-cell-entropyparent",sep="")
   feat_file_group_entropy_dir = paste(feat_dir, "/file-group-entropy",sep="")
   feat_file_group_var_dir = paste(feat_dir, "/file-group-var",sep="")
-  
   feat_file_cell_lnpropexpect_dir = paste(feat_dir, "/file-cell-lnpropexpect",sep="")
   feat_file_cell_lnpropexpectshort_dir = paste(feat_dir, "/file-cell-lnpropexpectshort",sep="")
   
   
-  m = as.matrix(Matrix(get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))))
-  mp = foreach(xi=1:ncol(m), .combine='cbind') %dopar% { return(m[,xi]/m[,1]) }
-  dimnames(mp) = dimnames(m)
-  save(mp, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+
+  start = Sys.time()
   
+  
+  ## load data
+  m = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
+  mp = get(load(paste0(feat_file_cell_prop_dir,".Rdata")))
   meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
-  
   meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
   meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
   
-  
-  start = Sys.time()
   
   
   ## child proportion --------------------------------------------
@@ -254,7 +246,9 @@ for (result_dir in result_dirs) {
   
   time_output(start1)
   
-  ## group entropy & variance --------------------------------------------
+  
+  
+  ## group entropy & variance ---------------------------------------
   
   start1 = Sys.time()
   cat("groupentropy")
@@ -305,7 +299,7 @@ for (result_dir in result_dirs) {
   
   
   
-  ## prop/expected -----------------------------------------------------
+  ## prop/expected ---------------------------------------------------
   
   start1 = Sys.time()
   cat("ln prop/expected")
@@ -379,12 +373,11 @@ for (result_dir in result_dirs) {
   save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"_.Rdata"))
   save(lnpropexpect1, file=paste0(feat_file_cell_lnpropexpect_dir,".Rdata"))
 
-  
-  
   time_output(start1)
   
   
-  ## prop/expected short -----------------------------------------------------
+  
+  ## prop/expected short ---------------------------------------------
   
   start1 = Sys.time()
   cat("ln prop/expected short")
@@ -448,10 +441,8 @@ for (result_dir in result_dirs) {
   save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"_-short.Rdata"))
   save(lnpropexpect1, file=paste0(feat_file_cell_lnpropexpect_dir,"-short.Rdata"))
 
-  
-  
   time_output(start1)
-  
 }
+
 time_output(start)
 

@@ -1,5 +1,5 @@
 ## input: gates + fcm files,  meta data paths
-## output: feat_file_cell_count, meta_file, meta_cell
+## output: feat/file-cell-count, meta_file
 ## HDCytoDate: e.g. Levine_32dim_SE(metadata = FALSE) Levine_32dim_flowSet(metadata = FALSE) 
 ## remember to transform values! for cytof, usually use asinh with cofactor = 5 (cofactor = 150 for flow cytometry)
 ## - Clustering:
@@ -58,7 +58,6 @@ gate_dir = paste0(input_dir,"/gates")
 result_dir = paste0(root, "/result/bodenmiller"); dir.create(result_dir, showWarnings=F, recursive=T)
 feat_dir = paste0(result_dir,"/feat"); dir.create(feat_dir, showWarnings=F, recursive=T)
 feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
 meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
 meta_cell_dir = paste(meta_dir, "/cell", sep="")
 meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -66,45 +65,45 @@ meta_file_dir = paste(meta_dir, "/file", sep="")
 
 ## libraries
 source("source/_func.R")
-libr(c("HDCytoData", # requires bioconductor 3.9 which requires R 3.6
-       "flowCore", "flowDensity", "diffcyt", "flowType",
-       "MASS", "RColorBrewer",
-       "foreach", "doMC", "plyr", "stringr"))
-# BiocManager::install(version="3.9")
+libr(c(# "HDCytoData", # requires bioconductor 3.9 which requires R 3.6 # BiocManager::install(version="3.9")
+       "flowCore", "flowType", #"diffcyt",
+       "doMC", "foreach", "plyr"))
+
 
 ## cores
 no_cores = detectCores()-1
 registerDoMC(no_cores)
 
+
+## options
 writecsv = F
 
 
 
-load(paste0(input_dir,"/meta_file.Rdata"))
-load(paste0(input_dir,"/meta_mark.Rdata"))
-
-load(paste0(data_dir,"/se.Rdata")) #se
-# Transform data
-se <- transformData(se, cofactor=5)
-selist = llply(unique(meta_file$sample_id), function(x) se@assays$data$exprs[meta_file$sample_id==x,])
-names(selist) = unique(meta_file$sample_id)
-
-
-
-
-
-## flowtype ------------------------
-
 start = Sys.time()
+
+## load data
+load(paste0(fcs_dir,".Rdata")) # fslist; fcs files
+meta_file0 = get(load(paste0(input_dir,"/meta_file.Rdata")))
+load(paste0(input_dir,"/meta_mark.Rdata")) # meta_mark; markers in fcs
+# load(paste0(data_dir,"/se.Rdata")) # se; data
+
+
+
+## feat/file-count-count: flowtype
 markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
 gthresm = c("cd3.gate","cd4.gate","cd20.gate","cd33.gate","cd14.gate","igm.gate","cd7.gate")
 gatesfd = gates = get(load(paste0(gate_dir,"/gates.Rdata"))) #gates
-load(paste0(fcs_dir,".Rdata")) #fslist
 
 for (i in 1:length(fslist)) {
   f = fslist[[i]]
   print(f@exprs[1:10,1])
 }
+
+# # transform & organize data
+# se = transformData(se, cofactor=5)
+# selist = llply(unique(meta_file$sample_id), function(x) se@assays$data$exprs[meta_file$sample_id==x,])
+# names(selist) = unique(meta_file$sample_id)
 
 # # alternative gates
 # for (ei in names(selist)) {
@@ -120,7 +119,6 @@ for (i in 1:length(fslist)) {
 #   gates$cd7.gate[ei] = min(exprs[grepl("T-cells",pop) | grepl("NK cells",pop), "CD7"]) #low
 # }
 
-
 ftl = llply(1:length(fslist), function(i) {
   flowType(Frame=fslist[[i]], 
            PropMarkers=match(markers, meta_mark$marker_name), 
@@ -129,37 +127,29 @@ ftl = llply(1:length(fslist), function(i) {
            Thresholds=as.list(gates[i,gthresm]), 
            verbose=F, MemLimit=60)
 }, .parallel=T)
-ft = ldply(ftl, function(ft) ft@CellFreqs)
+m0 = as.matrix(ldply(ftl, function(ft) ft@CellFreqs))
 ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return(decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
-ftp = foreach(xi=1:ncol(ft), .combine='cbind') %dopar% { return(ft[,xi]/ft[,1]) }
-colnames(ft) = colnames(ftp) = ftcell
-rownames(ft) = rownames(ftp) = names(fslist)
+colnames(m0) = ftcell
+rownames(m0) = names(fslist)
 
-ft = as.matrix(ft)
-save(ft, file=paste0(feat_file_cell_count_dir,".Rdata"))
-if (writecsv) write.csv(ft, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
-
-ftp = as.matrix(ftp)
-save(ftp, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-if (writecsv) write.csv(ftp, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+save(m0, file=paste0(feat_file_cell_count_dir,".Rdata"))
+if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
 
 
-## meta ------------------------------
 
-meta_file_ = meta_file[!duplicated(meta_file$sample_id),-4]
-for (ci in 1:ncol(meta_file_)) 
-  meta_file_[,ci] = as.character(meta_file_[,ci])
-meta_file_ = as.data.frame(meta_file_)
-colnames(meta_file_) = c("class","patient","id")
-meta_file_$class = gsub("reference","control",meta_file_$class,ignore.case=T)
+## meta/file
+meta_file = meta_file0[!duplicated(meta_file0$sample_id),-4]
+for (ci in 1:ncol(meta_file)) 
+  meta_file[,ci] = as.character(meta_file[,ci])
+meta_file = as.data.frame(meta_file)
+colnames(meta_file) = c("class","subject","id")
+meta_file$class = gsub("reference","control",meta_file$class,ignore.case=T)
+meta_file = meta_file[match(rownames(m0),meta_file$id),]
 
-save(meta_file_, file=paste0(meta_file_dir,".Rdata"))
-if (writecsv) write.csv(meta_file_, file=paste0(meta_file_dir,".csv"), row.names=T)
-
-meta_cell = getPhen(ftcell)
-save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
-if (writecsv) write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"), row.names=T)
+save(meta_file, file=paste0(meta_file_dir,".Rdata"))
+if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=T)
 
 
-time_output(start)
+
+time_output(start, "data_bodenmiller")
 

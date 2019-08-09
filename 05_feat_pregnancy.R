@@ -17,24 +17,25 @@ source("source/_func.R")
 libr(c("foreach","doMC",
        "stringr","plyr","Matrix"))
 
-#Setup Cores
+
+## cores
 no_cores = detectCores()-1
 registerDoMC(no_cores)
 
+
 ## options for script
 options(stringsAsFactors=FALSE)
-# options(device="cairo")
 options(na.rm=T)
 
-
-overwrite = T
 writecsv = F
 
 count_feature = "file-cell-countAdj"
 
-for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)) {
+
+
+result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
+for (result_dir in result_dirs) {
   if (!grepl("pregnant|bodenmiller",result_dir)) next()
-  # result_dir = paste0(root, "/result/impc_panel1_sanger-spleen") # data sets: flowcap_panel1-7, impc_panel1_sanger-spleen
   print(result_dir)
   
   start = Sys.time()
@@ -44,29 +45,34 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   meta_file_dir = paste(meta_dir, "/file", sep="") #meta for rows (sample)
   feat_dir = paste(result_dir, "/feat", sep="") #feature files directory
   
+  
+  ## ouput directories
   feat_dir_ = paste0(feat_dir,"_unpaired"); dir.create(feat_dir_, showWarnings=F)
   
-  # meta
+  
+  ## start: take difference from mean of samples from one subject
+  
+  # load meta
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   
-  #data paths
+  # feat paths
   feat_types = gsub(".Rdata","",list.files(path=feat_dir, full.names=F, pattern=".Rdata"))
 
-  
-  a= llply (feat_types, function(feat_type) {
+  a = llply (feat_types, function(feat_type) {
     cat("\n", feat_type, " ",sep="")
     start2 = Sys.time()
     
     if (file.exists(paste0(feat_dir_,"/", feat_type,".Rdata"))) {
-      m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir_,"/", feat_type,".Rdata")))))
+      m = Matrix(as.matrix(get(load(paste0(
+        feat_dir_,"/", feat_type,".Rdata")))))
     } else {
-      m = m0 = Matrix(as.matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-      save(m0, file=paste0(feat_dir_,"/", feat_type,".Rdata"))
+      m = Matrix(as.matrix(get(load(paste0(
+        feat_dir,"/", feat_type,".Rdata")))))
+      save(m, file=paste0(feat_dir_,"/", feat_type,".Rdata"))
     }
-    meta_file = meta_file0[match(rownames(m0),meta_file0$id),]
+    meta_file = meta_file0[match(rownames(m),meta_file0$id),]
     
-    
-    for (pi in meta_file$patient) {
+    for (pi in meta_file$subject) {
       pii = meta_file$patient==pi
       mp = m[pii,]
       mpm = colMeans(as.matrix(mp))
@@ -75,8 +81,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     save(m, file=paste0(feat_dir,"/", feat_type,".Rdata"))
     if (writecsv) write.csv(m, file=paste0(feat_dir,"/", feat_type,"-paired.csv"))
   }, .parallel=T)
-  time_output(start, result_dir)
   
+  time_output(start)
 }
 
 

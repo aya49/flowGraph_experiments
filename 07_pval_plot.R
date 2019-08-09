@@ -49,8 +49,18 @@ control = "control"
 feat_count = "file-cell-countAdj"
 
 
-table = get(load(paste0(root,"/pval_table.Rdata")))
-pvals = get(load(paste0(root,"/pval.Rdata")))
+
+
+table = pvals = NULL
+for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)){
+  data = fileNames(result_dir)
+  pvalsource_dir = paste0(result_dir,"/pval/src"); suppressWarnings(dir.create (pvalsource_dir, recursive=T))
+  fdirs = list.files(pvalsource_dir, full.names=T)
+  fdirs_t = grepl("table",fdirs)
+  pvals[[data]] = llply(fdirs[!fdirs_t], function(x) get(load(x)))
+  names(pvals[[data]]) = gsub(".Rdata","",fileNames(fdirs))
+  table = rbind(table, ldply(fdirs[fdirs_t], function(x) get(load(x))))
+} # result
 
 tbl = table
 tbl$pmethod_adj = paste(table$sig_test, table$adjust.combine)
@@ -221,7 +231,7 @@ for (data in c_datas) {
         graphics.off()
         
         
-        if (grepl("pos",data)) {
+        if (grepl("pos[1-9]",data)) {
           markers = sort(unique(unlist(str_split(names(pvs[[1]]),"[+-]")))[-1])
           if (grepl("pos2",data)) {
             sbs = ldply(c_feats, function(pvi) {

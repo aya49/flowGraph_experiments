@@ -1,5 +1,5 @@
 ## input: flowtype file,  meta data paths
-## output: feat_file_cell_count, meta_file, meta_cell
+## output: feat_file_cell_count, meta_file
 ## process: 
 ## - takes flowtype output files and compiles them together to create cell count matrix
 ## - reformats meta file (meta info for fcm files)
@@ -9,25 +9,23 @@
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
-result_dir = paste0(root, "/result/flowcap") #; dir.create(result_dir, showWarnings=F, recursive=T)
-# result_dir = "results"
-# suppressWarnings(dir.create (result_dir, recursive=T))
-data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
-
-
 
 ## input directories
+data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
 ft_dir = paste0(data_dir,"/FT") #flowtype file directory
 csv_dir = paste0(data_dir,"/AML.csv") #meta file directory
 csv_dir2 = paste0(data_dir,"/AMLTraining.csv") #meta file directory
 
-## output directories (see last section, output split by tube/panel)
+
+## output directories (NOT last section, output split by tube/panel)
+result_dir0 = paste0(root, "/result/flowcap") #; dir.create(result_dir, showWarnings=F, recursive=T)
 
 
 ## libraries
 source("source/_func.R")
 libr(c("flowCore", "flowType",
-       "foreach", "doMC"))
+       "doMC", "foreach", "plyr"))
+
 
 ## cores
 no_cores = detectCores()-1
@@ -36,103 +34,62 @@ registerDoMC(no_cores)
 ## options
 writecsv = F
 options(stringsAsFactors=F)
-options(device="cairo")
-countThres = 0 #delete columns/rows where all values equal or below countThres
-levelThres = 8 #Inf if delete no layers; >levelcutoff are deleted
 
 
 
 start = Sys.time()
 
-## prepare directories
-ftFile_dir = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
-ftGT = folderNames(ftFile_dir)
-ftFileNames = fileNames(ftFile_dir, "Rda")
 
-## get meta data on files for meta_file
-meta_filetemp = data.frame(read.csv(csv_dir))
-colnames(meta_filetemp) = c("id", "tube", "specimen", "class") #rename columns
+## prepare flowtype directories & load meta data
+ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
+ftnames = fileNames(ft_dirs, "Rda")
 
-## get meta data on phenotypes (cell populations) for meta_cell
-ft = get(load(ftFile_dir[1]))
-markers = ft@MarkerNames
-# save(markers, file=paste0(markers_dir,".Rdata"))
+meta_filetemp = data.frame(read.csv(csv_dir)) # meta file with all
+meta_file_trt = read.csv(csv_dir2) # meta file with training/testing
 
-meta_cell = getPhen(rownames(ft@MFIs))
 
-## load flowtype files for feat_file_cell_count & fill in meta_file
-feat_file_cell_count = NULL
-meta_file = NULL
+## feat/file-cell-count: load and compile flowtype count files
+m00 = as.matrix(ldply(loopInd(1:length(ft_dirs),no_cores),function(ii){
+  ldply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs)
+}, .parallel=T))
+rownames(m00) = ftnames
+colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
 
-result = foreach (i=1:length(ftFile_dir), .combine="rbind") %dopar% {
-  ft = get(load(ftFile_dir[i]))
-  # print(ft@MarkerNames)
-  npheno = length(ft@CellFreqs)
-  # cat("\n", i, "Loaded file: ", ftGT[i], "/", ftFileNames[i], "; # of phenotypes x samples: ", npheno, " x ", length(ft), "", sep="")
+
+## meta/file
+tube_subject = ldply(1:length(ft_dirs), function(i) {
+  fn = strsplit(ftnames[i], "S")[[1]]
+  c(substr(fn[1],2,nchar(fn[1])), gsub("FT","",fn[2]))
+})
+meta_file0 = meta_filetemp[match(apply(tube_subject,1,paste), apply(meta_filetemp[,c(2,3)],1,paste)),]
+meta_file0$id = ftnames
+meta_file0$type = ifelse(
+  is.na(meta_file_trt$Label[match(
+  apply(tube_subject,1,paste), apply(meta_file_trt[,c(2,3)],1,paste)
+  )]),"test","train")
+meta_file0 = meta_file0[,c("Label","id","type")]
+meta_file0$subject = as.numeric(gsub("T[0-9]S|FT","",meta_file0$id))
+colnames(meta_file0)[1] = "class"
+meta_file0$class[meta_file0$class=="normal"] = "control"
+meta_file0$tube = as.numeric(substr(meta_file0$id,2,2))
+meta_file0 = meta_file0[match(rownames(m00),meta_file0$id),]
+
+
+## save: split data by tube/panel
+# controli = NULL
+for (tube in unique(meta_file0$tube)) {
+  if (tube!=6) next # save only tube 6 for now
   
-  fn = ftFileNames[i]
-  fn = strsplit(fn, "\\.")[[1]][1]
-  fn = strsplit(fn, "S")[[1]]
-  tube = substr(fn[1],2,nchar(fn[1]))
-  specimen = gsub("FT","",fn[2])
-  # meta_file = rbind(meta_file, meta_filetemp[which(as.numeric(meta_filetemp$specimen)==as.numeric(specimen) & as.numeric(meta_filetemp$tube)==as.numeric(tube)),])
-  return(c(meta_filetemp[which(as.numeric(meta_filetemp$specimen)==as.numeric(specimen) & as.numeric(meta_filetemp$tube)==as.numeric(tube)),], ft@CellFreqs))
+  # output directories
+  result_dir = paste0(result_dir0,tube)
+  meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
+  feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
   
-  # rm(ft) #save memory
-}
-
-#collate feat_file_cell_count
-feat_file_cell_count = as.matrix(apply(result[,(ncol(meta_filetemp)+1):ncol(result)], 2, as.numeric))
-sm = result[,1:(ncol(meta_filetemp))]
-
-#order meta_cell and feat_file_cell_count
-pheno_order = order(meta_cell$phenolevel)
-meta_cell = meta_cell[pheno_order,]
-feat_file_cell_count = feat_file_cell_count[,pheno_order]
-
-#make meta_file
-rownames(feat_file_cell_count) = ftFileNames
-meta_file = as.data.frame(ftFileNames)
-meta_file$tube = unlist(sm[,2])
-meta_file$specimen = unlist(sm[,3])
-meta_file$class = unlist(sm[,4])
-colnames(meta_file) = colnames(meta_filetemp)
-meta_file_trt = read.csv(csv_dir2) # meta file with training/testing, not used.
-
-rownames(feat_file_cell_count) = meta_file[,1] = ftFileNames
-colnames(feat_file_cell_count) = meta_cell$phenotype
-feat_file_cell_prop = feat_file_cell_count/feat_file_cell_count[,1]
-dimnames(feat_file_cell_prop) = dimnames(feat_file_cell_count)
-
-#rename classes, so there is a control group
-meta_file$class[meta_file$class=="normal"] = "control"
-meta_file$type[as.numeric(gsub("T[0-9]S|FT","",meta_file$id))%in%meta_file_trt$SampleNumber[is.na(meta_file_trt$Label)]] = "test"
-meta_file$type[is.na(meta_file$type)] = "train"
-
-
-
-## trim matrix/meta_cell ------------------------------
-rowIndex = apply(feat_file_cell_count, 1, function(x) any(x > countThres)) #delete rows of all 0 or too little count
-colIndex1 = apply(feat_file_cell_count, 2, function(x) any(x > countThres)) #delete cols of all 0 or too little count
-colIndex2 = meta_cell$phenolevel <= levelThres #delete cols of too high level
-colIndex = colIndex1 & colIndex2
-
-feat_file_cell_count <- feat_file_cell_count[rowIndex,colIndex]
-feat_file_cell_prop <- feat_file_cell_prop[rowIndex,colIndex]
-meta_cell <- meta_cell[colIndex,]
-meta_file <- meta_file[rowIndex,]
-
-
-## split data by tube/panel and save; also randomly pick same controls to be a non-control class so to make features-------------------------
-controli = NULL
-for (tube in unique(meta_file$tube)) {
-  if (tube!=6) next
-  tubei = meta_file$tube==tube
+  # prepare tube sample indices
+  tubei = meta_file0$tube==tube
   
-  meta_file_ = meta_file[tubei,]
-  tubeorder = order(meta_file_$specimen)
-  meta_file_ = meta_file_[tubeorder,]#c("specimen","class"), drop=F]
-  meta_file_$id = as.numeric(gsub("T[0-9]S|FT","",meta_file_$id))
+  meta_file = meta_file0[tubei,]
+  meta_file$id = as.numeric(gsub("T[0-9]S|FT","",meta_file$id))
   
   # # randomly pick normal patients as controls
   # if (is.null(controli)) {
@@ -142,35 +99,19 @@ for (tube in unique(meta_file$tube)) {
   # }
   # meta_file_$class[controli] = "control"
   
-  meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
-  # meta_dir = paste(result_dir, "_p", tube, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
-  meta_cell_dir = paste(meta_dir, "/cell", sep="")
   meta_file_dir = paste(meta_dir, "/file", sep="")
-  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
-  if (writecsv) write.csv(meta_cell, file=paste0(meta_cell_dir,".csv"), row.names=F)
-  save(meta_file_, file=paste0(meta_file_dir,".Rdata"))
-  if (writecsv) write.csv(meta_file_, file=paste0(meta_file_dir,".csv"), row.names=F)
+  save(meta_file, file=paste0(meta_file_dir,".Rdata"))
+  if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=F)
   
-  feat_file_cell_count_ = feat_file_cell_count[tubei,]
-  feat_file_cell_prop_ = feat_file_cell_prop[tubei,]
-  
-  feat_file_cell_count_ = feat_file_cell_count_[tubeorder,]
-  feat_file_cell_prop_ = feat_file_cell_prop_[tubeorder,]
-  rownames(feat_file_cell_prop_) = rownames(feat_file_cell_count_) = meta_file_$id
-  
-  feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
-  feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
-  
-  feat_file_cell_count_ = as.matrix(feat_file_cell_count_)
-  save(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_count_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
-  
-  feat_file_cell_prop_ = as.matrix(feat_file_cell_prop_)
-  save(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-  if (writecsv) write.csv(feat_file_cell_prop_, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  m0 = m00[tubei,]
+  rownames(m0) = meta_file$id
+
+  feat_file_cell_count_dir = paste(feat_dir,"/file-cell-count",sep="")
+  save(m0, file=paste0(feat_file_cell_count_dir,".Rdata"))
+  if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
 }
 
-time_output(start)
+
+time_output(start, "data_flowcap")
 
 

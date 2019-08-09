@@ -7,6 +7,7 @@ set.seed(10)
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
 setwd(root)
 
+
 ## libraries
 source("source/_func.R")
 libr(c("stringr","colorspace", "Matrix", "plyr",
@@ -16,11 +17,10 @@ libr(c("stringr","colorspace", "Matrix", "plyr",
        "foreach","doMC",
        "kernlab"))
 
-graph_dir = paste0(root,"/pval_graphs.Rdata")
 
 
 
-#Setup Cores
+## cores
 no_cores = detectCores()-1
 registerDoMC(no_cores)
 
@@ -65,7 +65,6 @@ feat_count = "file-cell-countAdj"
 # pv_all_ = foldsip[[uc]]$p[[ptype]][[adj]]$p_all
 
 start = Sys.time()
-table = pvals = NULL
 for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)){#[c(2,6,7,8)]) {
   if (grepl("pregnancy",result_dir)) next
   
@@ -103,11 +102,8 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
   
   #data paths
   feat_types = list.files(path=feat_dir,pattern=".Rdata")
-  feat_types = feat_types[!feat_types=="file-cell-count.Rdata"]
   feat_types = gsub(".Rdata","",feat_types)
-  # feat_types = feat_types[!grepl("KO|Max",feat_types)]
-  if (grepl("pregnan",result_dir)) feat_types = feat_types[!grepl("edge-prop",feat_types)] #!!!
-  
+
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
   
@@ -419,14 +415,9 @@ for (result_dir in list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
     
     return(list(foldsip=foldsip, foldres=foldres))
   }, .parallel=T)
-  pvals[[data]] = llply(result, function(x) x$foldsip)
-  names(pvals[[data]]) = feat_types
-  table = rbind(table, ldply(result, function(x) x$foldres))
-  
+
   time_output(start1)
 } # result
-save(table, file=paste0(root,"/pval_table.Rdata"))
-save(pvals, file=paste0(root,"/pval.Rdata"))
 time_output(start)
 
 
