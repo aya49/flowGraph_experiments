@@ -315,7 +315,7 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
   
-  for (pl in unique(meta_cell$phenolevel)) {
+  for (pl in sort(unique(meta_cell$phenolevel))) {
     # for (pl in 0:5) {
     start2 = Sys.time()
     cat(sum(ilevel)," pops ")
