@@ -52,6 +52,7 @@ fto = match(meta_file0$id,ft_names)
 m00 = as.matrix(ldply(loopInd(ft_dirs[fto],no_cores), function(ii) {
   ldply(ii, function(i) get(load(i))@CellFreqs)
 }, .parallel=T))
+m00 = as.matrix(m00[,-1])
 ft = get(load(ft_dirs[1]))
 ftcell = unlist(lapply(ft@PhenoCodes, function(x)
   decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))

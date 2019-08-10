@@ -49,9 +49,10 @@ meta_file_trt = read.csv(csv_dir2) # meta file with training/testing
 
 
 ## feat/file-cell-count: load and compile flowtype count files
-m00 = as.matrix(ldply(loopInd(1:length(ft_dirs),no_cores),function(ii){
+m00 = ldply(loopInd(1:length(ft_dirs),no_cores),function(ii){
   ldply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs)
-}, .parallel=T))
+}, .parallel=T)
+m00 = as.matrix(m00[,-1])
 rownames(m00) = ftnames
 colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
 

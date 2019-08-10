@@ -193,6 +193,59 @@ plot_int = function(dat, col, main, pch = ".", ...) {
 }
 
 
+## graph plot functions
+ggblank = function() {
+  require(ggplot2)
+  ggplot() +
+  scale_x_continuous(expand=c(0,1)) +  # expand x limits
+  scale_y_continuous(expand=c(0,1)) + # expand y limits
+  # theme_bw()+  # use the ggplot black and white theme
+  theme(
+    axis.text.x = element_blank(),  # rm x-axis text
+    axis.text.y = element_blank(), # rm y-axis text
+    axis.ticks = element_blank(),  # rm axis ticks
+    axis.title.x = element_blank(), # rm x-axis labels
+    axis.title.y = element_blank(), # rm y-axis labels
+    panel.background = element_blank(), 
+    panel.border = element_blank(), 
+    panel.grid.major = element_blank(),  #rm grid labels
+    panel.grid.minor = element_blank(),  #rm grid labels
+    plot.background = element_blank())
+}
+
+gggraph = function(a,main="", label_ind=NULL, v_ind=NULL, e_ind=NULL) { # indices of whether to apply color size etc
+  # gr_v: name x y label size color sizeb colorb
+  # gr_e: from to from.x from.y to.x to.y color
+require(ggrepel)
+  
+  gr_v = a$v
+  gr_e = a$e
+  if (is.null(label_ind)) label_ind = rep(T,nrow(gr_v))
+  if (is.null(v_ind)) v_ind = rep(T,nrow(gr_v))
+  if (is.null(e_ind)) e_ind = rep(T,nrow(gr_e))
+  # base graph
+  gp = ggblank() + ggtitle(main) +
+    geom_segment(data=gr_e[!e_ind,], color="grey",
+                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+    geom_segment(data=gr_e[e_ind,], 
+                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y,
+                     color=color)) +
+    geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=colorb,size=sizeb))+
+    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
+    geom_label_repel(
+      data=gr_v[v_ind,],
+      aes(x=x,y=y,label=label, color=color), nudge_y = .3)
+  
+  return(gp)
+}
+
+gpdf = function(a) {
+  gr_e = a$e
+  gr_v = a$v
+  return(list(e=data.frame(gr_e,width=1,color=""),
+              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="")))
+}
 
 # image functions -----------------------------------
 

@@ -14,7 +14,7 @@ setwd(root)
 ## libraries
 source("source/_func.R")
 libr(c("stringr", "plyr", 
-       "pracma", "fitdistrplus",
+       "pracma", "fitdistrplus", "flowType"
        "foreach","doMC"))
 
 
@@ -37,11 +37,12 @@ cellCountThres = .01 # don't use phenotypes with cell count all lower than cellC
 result_dirs =list.dirs(paste0(root,"/result"),full.names=T,recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("ctrl|pos",result_dir)) next
-  print(filNames(result_dir))
+  print(fileNames(result_dir))
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")
+  meta_cell_dir = paste(meta_dir, "/cell", sep="")
   feat_dir = paste(result_dir, "/feat", sep="")
   feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count",sep="")
   
@@ -60,8 +61,8 @@ for (result_dir in result_dirs) {
   
   ## load data
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
-  feat_file_cell_count0 = get(load(paste0(feat_file_cell_count_dir,".Rdata")))
-  meta_cell0 = getPhen(feat_file_cell_count0)
+  feat_file_cell_count0 = as.matrix(get(load(paste0(feat_file_cell_count_dir,".Rdata"))))
+  meta_cell0 = getPhen(colnames(feat_file_cell_count0))
   feat_file_cell_prop0 = feat_file_cell_count0/feat_file_cell_count0[,1]
   dimnames(feat_file_cell_prop0) = dimnames(feat_file_cell_count0)
 

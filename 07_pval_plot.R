@@ -364,21 +364,7 @@ for (data in c_datas) {
 
 ## graph stats
 start1 = Sys.time()
-gpbase = ggplot() +
-  scale_x_continuous(expand=c(0,1)) +  # expand x limits
-  scale_y_continuous(expand=c(0,1)) + # expand y limits
-  # theme_bw()+  # use the ggplot black and white theme
-  theme(
-    axis.text.x = element_blank(),  # rm x-axis text
-    axis.text.y = element_blank(), # rm y-axis text
-    axis.ticks = element_blank(),  # rm axis ticks
-    axis.title.x = element_blank(), # rm x-axis labels
-    axis.title.y = element_blank(), # rm y-axis labels
-    panel.background = element_blank(), 
-    panel.border = element_blank(), 
-    panel.grid.major = element_blank(),  #rm grid labels
-    panel.grid.minor = element_blank(),  #rm grid labels
-    plot.background = element_blank())
+gpbase = ggblank()
 
 for (data in c_datas) {
   pvalgr_dir = paste0(root,"/result/",data,"/pval/graph")
@@ -488,44 +474,9 @@ for (data in c_datas) {
             # colour palette
             # palblue = colorRampPalette(brewer.pal(3, "Blues"))
             
-            # edit layout
-            gr_vxy_ = layout.reingold.tilford(gr = graph_from_data_frame(gr_e)) # layout.circle
-            gr_vxy = as.data.frame(gr_vxy_)
-            
-            # edit layout manually
-            gys = sort(unique(gr_vxy[,2]))
-            gxns = sapply(gys,function(y) length(gr_vxy[gr_vxy[,2]==y,1]))
-            names(gxns) = gys
-            gxnmax = max(gxns)
-            gxnmaxl = which(gxns==gxnmax)
-            minwidthmid = 2
-            maxwidthmid = 4
-            gxnmaxwidth = gxnmax*minwidthmid-1
-            gxos = unlist(llply(gys, function(gy) {
-              gxtf = which(gr_vxy[,2]==gy)
-              gx = gr_vxy[gxtf,1]
-              gxtf[order(gx)]
-            }))
-            gr_vxy[gxos,1] = unlist(llply(1:length(gys), function(gyi) {
-              if (gyi%in%gxnmaxl) return( seq(0,gxnmaxwidth,by=minwidthmid) )
-              if (gxns[gyi]==1) return( gxnmaxwidth/2 )
-              by = min(maxwidthmid,(gxnmaxwidth+1)/(gxns[gyi]+1))
-              a = seq(0,gxns[gyi]-1)*by
-              a + (gxnmaxwidth-(a[length(a)]-1))/2
-            }))
-            
-            # get node
-            colnames(gr_vxy) = c("x","y")
-            gr_v = cbind(gr_vxy,gr_v)
-            gr_v$label_uc = paste0(gr_v$name, ": ", round(gr_v$mean_uc,3))
-            gr_v$label_ct = paste0(gr_v$name, ": ", round(gr_v$mean_ct,3))
-            
-            # get edge
-            gr_e$from.x <- gr_vxy$x[match(gr_e$from, gr_v$name)]
-            gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
-            gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
-            gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
-            
+            al = layout_gr(gr_e,gr_v,layout.reingold.tilford)
+            gr_e = al$e
+            gr_v = al$v
             main = paste0(data," data; class=",uc, ", feature=",feat,", method=",ptype,".",adj)
             
             # gr = delete.vertices(gr, V(gr)[degree(gr)<3]) # exclude low degree from graph

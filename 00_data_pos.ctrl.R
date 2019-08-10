@@ -105,6 +105,15 @@ for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
         if (ds=="pos3") {
           # .125 -> .19 a+b+c+
           f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+                        MaxMarkersPerPop=6, PartitionsPerMarker=2, 
+                        Thresholds=thress, 
+                        Methods='Thresholds', verbose=F, MemLimit=60)
+          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+            decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+          ftv0 = ft@CellFreqs
+          ftv0 = round(ftv0/ftv0[1],3)
+          
           ap = f@exprs[,1]>thress[[1]]
           bp = f@exprs[,2]>thress[[2]]
           cp = f@exprs[,3]>thress[[3]]
@@ -139,7 +148,7 @@ for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
           f@exprs[sample(which(non),tm),3] = p75
           
          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-                   MaxMarkersPerPop=4, PartitionsPerMarker=2, 
+                   MaxMarkersPerPop=6, PartitionsPerMarker=2, 
                    Thresholds=thress, 
                    Methods='Thresholds', verbose=F, MemLimit=60)
          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
@@ -149,7 +158,15 @@ for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
          names(ftv) = ftcell
          a = getPhenCP(cp=ftcell,no_cores=no_cores)
          al = layout_gr(a$gr$e,a$gr$v)
-         
+         alp = layout_gr(a$grp$e,a$grp$v)
+         al = gpdf(al)
+         al$v$label = paste0(al$v$name,":",ftv)
+         gp = gggraph(al, v_ind=rep(F,nrow(al$v)), e_ind=rep(F,nrow(al$e)), label_ind=rep(T,nrow(al$v)))
+         gp = gp + geom_label_repel(
+           data=al$v[(ftv-ftv0)/ftv0 >.1,],
+           aes(x=x,y=y,label=label, color=color), nudge_y = .3)
+         plot(gp)
+
         } else if (ds!="ctrl") {
           thress = switch(ds, 
                           pos1 = thress1,
