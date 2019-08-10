@@ -14,7 +14,7 @@ setwd(root)
 ## libraries
 source("source/_func.R")
 libr(c("stringr", "plyr", 
-       "pracma", "fitdistrplus", "flowType"
+       "pracma", "fitdistrplus", "flowType",
        "foreach","doMC"))
 
 
