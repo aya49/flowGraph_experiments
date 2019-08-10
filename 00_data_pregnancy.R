@@ -25,7 +25,7 @@ libr(c("flowCore", "flowType", "CytoML", "flowWorkspace",
        "foreach", "doMC", "plyr"))
 
 ## cores
-no_cores = 8#detectCores()-1
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -49,10 +49,10 @@ fto = match(meta_file0$id,ft_names)
 
 
 ## feat/file-cell-count: load and compile flowtype count files
-m00 = as.matrix(ldply(loopInd(ft_dirs[fto],no_cores), function(ii) {
-  ldply(ii, function(i) get(load(i))@CellFreqs)
-}, .parallel=T))
-m00 = as.matrix(m00[,-1])
+m00 = llply(loopInd(ft_dirs[fto],no_cores), function(ii) {
+  llply(ii, function(i) get(load(i))@CellFreqs)
+}, .parallel=T)
+m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
 ft = get(load(ft_dirs[1]))
 ftcell = unlist(lapply(ft@PhenoCodes, function(x)
   decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
@@ -61,32 +61,11 @@ rownames(m00) = meta_file0$id
 
 
 meta_file0$class[meta_file0$class==4] = "control"
+meta_file0$train = ifelse(meta_file0$type=="train",T,F)
+meta_file0 = meta_file0[,-4]
 
 
 ## save
-
-# for (typed in unique(meta_file0$type)) {
-# 
-#   # output directories
-#   result_dir = paste0(result_dir0,"-",typed)
-#   meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
-#   feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
-#   
-#   # prepare type sample indices
-#   typei = meta_file0$type==typed
-#   
-#   meta_file = meta_file0[typei,-4] # delete type column
-#   save(meta_file, file=paste0(meta_dir,"/file.Rdata"))
-#   if (writecsv) write.csv(meta_file, file=paste0(meta_dir,"/file.csv"), row.names=F)
-# 
-#   feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
-#   feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-#   
-#   m0 = m00[typei,]
-#   save(m00, file=paste0(feat_file_cell_count_dir,".Rdata"))
-#   if (writecsv) write.csv(m00, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
-# }
-
 
 # output directories
 result_dir = result_dir0

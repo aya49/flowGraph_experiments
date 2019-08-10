@@ -46,7 +46,7 @@ markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
 m0 = as.matrix(ldply(ftl, function(ft) ft@CellFreqs)[,-1])
 ftcell = laply(ftl[[1]]@PhenoCodes, function(x) decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )
 colnames(m0) = ftcell
-rownames(m0) = names(ftl)
+rownames(m0) = gsub("%|.fcs","",names(ftl))
 
 save(m0, file=paste0(feat_file_cell_count_dir,".Rdata"))
 if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
@@ -55,8 +55,7 @@ if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.na
 ## meta/file
 temp_ = Reduce("rbind", str_split(rownames(m0),"_"))
 meta_file = data.frame(id=rownames(m0), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
-meta_file$class[meta_file$class=="100%WB"] = "control"
-meta_file$class = gsub("%","",meta_file$class)
+meta_file$class[meta_file$class=="100WB"] = "control"
 
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
 if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=T)

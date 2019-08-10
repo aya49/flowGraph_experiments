@@ -44,15 +44,15 @@ start = Sys.time()
 ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
 ftnames = fileNames(ft_dirs, "Rda")
 
-meta_filetemp = data.frame(read.csv(csv_dir)) # meta file with all
-meta_file_trt = read.csv(csv_dir2) # meta file with training/testing
+meta_filetemp = data.frame(read.csv(csv_dir)) # meta file
+meta_file_trt = read.csv(csv_dir2) # meta file  with with training/testing
 
 
 ## feat/file-cell-count: load and compile flowtype count files
-m00 = ldply(loopInd(1:length(ft_dirs),no_cores),function(ii){
-  ldply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs)
+m00 = llply(loopInd(1:length(ft_dirs),no_cores),function(ii){
+  llply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs)
 }, .parallel=T)
-m00 = as.matrix(m00[,-1])
+m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
 rownames(m00) = ftnames
 colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
 
@@ -62,13 +62,12 @@ tube_subject = ldply(1:length(ft_dirs), function(i) {
   fn = strsplit(ftnames[i], "S")[[1]]
   c(substr(fn[1],2,nchar(fn[1])), gsub("FT","",fn[2]))
 })
-meta_file0 = meta_filetemp[match(apply(tube_subject,1,paste), apply(meta_filetemp[,c(2,3)],1,paste)),]
+meta_filetemp$train = ifelse(is.na(meta_file_trt$Label),F,T)
+meta_file0 = meta_filetemp[match(
+  apply(tube_subject,1,function(x) paste0(x,collapse=" ")), 
+  apply(meta_filetemp[,c(2,3)],1,function(x) paste0(x,collapse=" "))),]
 meta_file0$id = ftnames
-meta_file0$type = ifelse(
-  is.na(meta_file_trt$Label[match(
-  apply(tube_subject,1,paste), apply(meta_file_trt[,c(2,3)],1,paste)
-  )]),"test","train")
-meta_file0 = meta_file0[,c("Label","id","type")]
+meta_file0 = meta_file0[,c("Label","id","train")]
 meta_file0$subject = as.numeric(gsub("T[0-9]S|FT","",meta_file0$id))
 colnames(meta_file0)[1] = "class"
 meta_file0$class[meta_file0$class=="normal"] = "control"
