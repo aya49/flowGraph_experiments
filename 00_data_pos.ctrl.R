@@ -38,7 +38,7 @@ nctrl = .5 # % of control samples
 markern = 6 # # of markers
 
 normean = 300000 # 301234.7 for pregnancy
-normsd = 0 # 64734.05 for pregnancy
+normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countAdj & run 01_feat_normalizeadj
 
 
 start = Sys.time()
@@ -94,7 +94,7 @@ for (ds in c("ctrl","pos1","pos2","pos3","pos4")) {
   result_dir = paste0(root, "/result/",ds)
   meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
-  feat_file_cell_count_dir = paste(feat_dir,"/file-cell-count",sep="")
+  feat_file_cell_count_dir = paste(feat_dir,"/file-cell-countAdj",sep="")
 
   # flowtype
   ftl = llply(loopInd(1:nsample,no_cores), function(ii) {

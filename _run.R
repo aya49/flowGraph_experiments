@@ -11,8 +11,9 @@ source("source/02_data_flowcap2.R")
 source("source/03_feat_childparent.R")
 # source("source/05_stat_checkmatrix.R")
 source("source/05_feat_pregnancy.R")
-source("source/06_pvalv2.R")
-source("source/07_pval_plot.R")
+source("source/06_pval.R")
+source("source/07_pval_stats.R")
+source("source/08_pval_plot.R")
 
 
 

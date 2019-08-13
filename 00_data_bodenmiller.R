@@ -144,6 +144,7 @@ for (ci in 1:ncol(meta_file))
 meta_file = as.data.frame(meta_file)
 colnames(meta_file) = c("class","subject","id")
 meta_file$class = gsub("reference","control",meta_file$class,ignore.case=T)
+meta_file$class[meta_file$class!="control"] = "exp"
 meta_file = meta_file[match(rownames(m0),meta_file$id),]
 
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
