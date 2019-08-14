@@ -192,10 +192,10 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
           f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
           f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-        } else  {
-          thress = switch(ds, 
-                          pos1 = thress1,
-                          pos2 = thress2)
+        } else if (ds=="pos1") {
+          thress = thress1
+        } else if (ds=="pos2") {
+          thress = thress2
         }
       }
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
