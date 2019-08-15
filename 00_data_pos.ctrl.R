@@ -27,7 +27,7 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr"))
 
 ## cores
-no_cores = 10#detectCores()-1
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -96,23 +96,34 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_count_dir = paste(feat_dir,"/file-cell-countAdj",sep="")
   
+  # cell names
+  f@exprs = matrix(rnorm(ncells[1]*length(markers),2,1),nrow=ncells[1])
+  a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+               MaxMarkersPerPop=6, PartitionsPerMarker=2, 
+               Thresholds=thress0, 
+               Methods='Thresholds', verbose=F, MemLimit=60)
+  ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
+
   # flowtype
   ftl = llply(loopInd(1:nsample,no_cores), function(ii) {
     llply(ii, function(i) {
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
       thress = thress0
-      if (i>(nsample*nctrl & !grepl("ctrl",ds))) {
+      if (i>(nsample*nctrl) & !grepl("ctrl",ds)) {
+        # make base graph for plot
+        if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+                        MaxMarkersPerPop=4, PartitionsPerMarker=2,
+                        Thresholds=thress,
+                        Methods='Thresholds', verbose=F, MemLimit=60)
+          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+            decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+          ftv0 = ft@CellFreqs
+          ftv0 = round(ftv0/ftv0[1],3)
+        }
+        # change f values
         if (ds=="pos3") {
           # .125 -> .19 a+b+c+
-          # f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
-          # ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-          #               MaxMarkersPerPop=4, PartitionsPerMarker=2, 
-          #               Thresholds=thress, 
-          #               Methods='Thresholds', verbose=F, MemLimit=60)
-          # ftcell = unlist(lapply(ft@PhenoCodes, function(x)
-          #   decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          # ftv0 = ft@CellFreqs
-          # ftv0 = round(ftv0/ftv0[1],3)
           
           ap = f@exprs[,1]>thress[[1]]
           bp = f@exprs[,2]>thress[[2]]
@@ -151,28 +162,8 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           # 
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
           
-          
-          # ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-          #           MaxMarkersPerPop=4, PartitionsPerMarker=2, 
-          #           Thresholds=thress, 
-          #           Methods='Thresholds', verbose=F, MemLimit=60)
-          # ftcell = unlist(lapply(ft@PhenoCodes, function(x)
-          #   decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          # ftv = ft@CellFreqs
-          # ftv = round(ftv/ftv[1],3)
-          # names(ftv) = ftcell
-          # a = getPhenCP(cp=ftcell,no_cores=no_cores)
-          # al = layout_gr(a$gr$e,a$gr$v)
-          # alp = layout_gr(a$grp$e,a$grp$v)
-          # al = gpdf(al)
-          # al$v$label = paste0(al$v$name,":",ftv)
-          # gp = gggraph(al, v_ind=rep(F,nrow(al$v)), e_ind=rep(F,nrow(al$e)), label_ind=rep(T,nrow(al$v)))
-          # gp = gp + geom_label_repel(
-          #   data=al$v[str_count(al$v$name,"[-+]")==3 & !grepl("-",al$v$name) & abs(ftv-ftv0)/ftv0 >.1,], #grepl("A[+|-]B[+|-]C[+|-]",al$v$name) 
-          #   aes(x=x,y=y,label=label, color=color), nudge_y = .3)
-          # plot(gp)
-          
-        } else if (ds=="pos4") {
+        } 
+        else if (ds=="pos4") {
           
           ap = f@exprs[,1]>thress[[1]]
           bp = f@exprs[,2]>thress[[2]]
@@ -192,31 +183,65 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
           f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
           f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-        } else if (ds=="pos1") {
+        } 
+        else if (ds=="pos1") {
           thress = thress1
-        } else if (ds=="pos2") {
+        } 
+        else if (ds=="pos2") {
           thress = thress2
+        }
+        if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+          if (ds%in%c("pos1","pos2")) la=1
+          if (ds%in%c("pos3")) la=3
+          if (ds%in%c("pos4")) la=4
+          
+          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+                        MaxMarkersPerPop=4, PartitionsPerMarker=2,
+                        Thresholds=thress,
+                        Methods='Thresholds', verbose=F, MemLimit=60)
+          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+            decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+          ftv = ft@CellFreqs
+          ftv = round(ftv/ftv[1],3)
+          names(ftv) = ftcell
+          a = getPhenCP(cp=ftcell,no_cores=no_cores)
+          al = layout_gr(a$gr$e,a$gr$v)
+          alp = layout_gr(a$grp$e,a$grp$v)
+          al = gpdf(al)
+          al$v$label = paste0(al$v$name,":",ftv)
+          al$v$size=1
+          al$v$sizeb=1
+          
+          vind = abs(ftv-ftv0)/ftv0 >.05
+          gp = gggraph(al, v_ind=vind, vb_ind = rep(F,nrow(al$v)),
+                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind], 
+                        label_ind=str_count(al$v$name,"[-+]")==la & vind)
+          ggsave(paste0(meta_dir,"/all_sig.png"), plot=gp, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+          
+          vind = !grepl("-",al$v$name) & abs(ftv-ftv0)/ftv0 >.05
+          gp = gggraph(al, v_ind=vind, vb_ind = rep(F,nrow(al$v)),
+                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind], 
+                        label_ind=str_count(al$v$name,"[-+]")==la & vind)
+          ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
         }
       }
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                MaxMarkersPerPop=6, PartitionsPerMarker=2, 
                Thresholds=thress, 
-               Methods='Thresholds', verbose=F, MemLimit=60)
+               Methods='Thresholds', verbose=F, MemLimit=60)@CellFreqs
     })
   }, .parallel=T)
-  ftl = unlist(ftl,recursive=F)
-  ft = ldply(ftl, function(ft) ft@CellFreqs)[,-1]
-  ftcell = unlist(lapply(ftl[[1]]@PhenoCodes, function(x){return( decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker) )}))
+  ft = Reduce(rbind,unlist(ftl,recursive=F))
   colnames(ft) = ftcell
   rownames(ft) = meta_file$id
   
-  save(meta_cell, file=paste0(meta_dir,"/cell.Rdata"))
-  if (writecsv) write.csv(meta_cell, file=paste0(meta_dir,"/cell.csv"), row.names=F)
+  save(meta_file, file=paste0(meta_dir,"/file.Rdata"))
+  if (writecsv) write.csv(meta_file, file=paste0(meta_dir,"/file.csv"), row.names=F)
   
   # compile ---------------------------
-  ft_ = as.matrix(ft)
-  save(ft_, file=paste0(feat_file_cell_count_dir,".Rdata"))
-  if (writecsv) write.csv(ft_, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
+  m0 = as.matrix(ft)
+  save(m0, file=paste0(feat_file_cell_count_dir,".Rdata"))
+  if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
   
   time_output(start2, ds)
 }
