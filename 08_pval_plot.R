@@ -197,10 +197,8 @@ for (i in 1:nrow(tbl)) {
   
   main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n sig & >.1 ratio change cell pops labelled (border/centre colours = class/control proportion)")
   if (!grepl("short",tbl$feat[i])) {
-    gp = gggraph(gr, v_ind=rep(F,nrow(gr$v)), e_ind=rep(F,nrow(gr$e)), label_ind=rep(T,nrow(gr$v)))
-  gp = gp + geom_label_repel(
-    data=gr$v[(mcmu-mcmc)/mcmc >.1 & p_,],
-    aes(x=x,y=y,label=label, color=color), nudge_y = .3) +
+    gp = gggraph(gr, v_ind=p_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=(mcmu-mcmc)/mcmc >.1 & p_)
+  gp = gp + 
     ggtitle(paste0("(positive only) ",main))
 
   ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)

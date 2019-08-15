@@ -22,9 +22,8 @@ input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy" # ma
 source("source/_func.R")
 libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "CytoML", "flowWorkspace",
-       "pracma", "tools", "MASS", "KernSmooth", "fitdistrplus",
-       "colorRamps",
-       "foreach", "doMC", "plyr", "stringr"))
+       "pracma", "tools", "MASS", "KernSmooth", #"fitdistrplus",
+       "foreach", "doMC", "plyr", "stringr")) # too much, but will use later on
 
 ## cores
 no_cores = detectCores()-1
@@ -109,11 +108,11 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
     llply(ii, function(i) {
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
       thress = thress0
-      if (i>(nsample*nctrl) & !grepl("ctrl",ds)) {
+      if (i>(nsample*nctrl) & grepl("pos",ds)) {
         # make base graph for plot
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=4, PartitionsPerMarker=2,
+                        MaxMarkersPerPop=6, PartitionsPerMarker=2,
                         Thresholds=thress,
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
@@ -122,7 +121,11 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           ftv0 = round(ftv0/ftv0[1],3)
         }
         # change f values
-        if (ds=="pos3") {
+        if (ds=="pos1") { thress = thress1
+        } 
+        else if (ds=="pos2") { thress = thress2
+        } 
+        else if (ds=="pos3") {
           # .125 -> .19 a+b+c+
           
           ap = f@exprs[,1]>thress[[1]]
@@ -184,19 +187,14 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
           f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
         } 
-        else if (ds=="pos1") {
-          thress = thress1
-        } 
-        else if (ds=="pos2") {
-          thress = thress2
-        }
+        
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           if (ds%in%c("pos1","pos2")) la=1
           if (ds%in%c("pos3")) la=3
           if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=4, PartitionsPerMarker=2,
+                        MaxMarkersPerPop=6, PartitionsPerMarker=2,
                         Thresholds=thress,
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
@@ -208,21 +206,36 @@ for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ct
           al = layout_gr(a$gr$e,a$gr$v)
           alp = layout_gr(a$grp$e,a$grp$v)
           al = gpdf(al)
-          al$v$label = paste0(al$v$name,":",ftv)
+          al$v$color = ftv
+          vind_ = !grepl("-",al$v$name)
+          alp = gpdf(alp)
+          alp$v$color = ftv[vind_]
           al$v$size=1
           al$v$sizeb=1
           
+          al$v$label = paste0(al$v$name,":",ftv)
           vind = abs(ftv-ftv0)/ftv0 >.05
-          gp = gggraph(al, v_ind=vind, vb_ind = rep(F,nrow(al$v)),
-                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind], 
-                        label_ind=str_count(al$v$name,"[-+]")==la & vind)
-          ggsave(paste0(meta_dir,"/all_sig.png"), plot=gp, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+          gp = gggraph(al, v_ind=vind,
+                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
+          gp = gp +
+            geom_label_repel(
+              data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
+              aes(x=x,y=y,label=label, color=color),
+              nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
           
-          vind = !grepl("-",al$v$name) & abs(ftv-ftv0)/ftv0 >.05
-          gp = gggraph(al, v_ind=vind, vb_ind = rep(F,nrow(al$v)),
-                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind], 
-                        label_ind=str_count(al$v$name,"[-+]")==la & vind)
-          ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =11, height =7.5, units = "in", dpi = 300, limitsize = TRUE)
+          ggsave(paste0(meta_dir,"/all_sig.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
+          
+          alp$v$label = paste0(alp$v$name,":",ftv[vind_])
+          vind = abs(ftv[vind_]-ftv0[vind_])/ftv0[vind_] >.05
+          gp = gggraph(alp, v_ind=vind, 
+                        e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
+          gp = gp +
+            geom_label_repel(
+              data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
+              aes(x=x,y=y,label=label, color=color),
+              nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
+          
+          ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
         }
       }
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 

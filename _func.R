@@ -194,9 +194,15 @@ plot_int = function(dat, col, main, pch = ".", ...) {
 
 
 ## graph plot functions
-ggblank = function() {
+ggblank = function(gr_v=NULL) {
   require(ggplot2)
-  ggplot() +
+  if (is.null(gr_v)) {
+    gp = ggplot()
+  } else {
+    gp = ggplot(gr_v,aes(x=x, y=y, colour=color))
+  }
+    
+  gp +
   scale_x_continuous(expand=c(0,1)) +  # expand x limits
   scale_y_continuous(expand=c(0,1)) + # expand y limits
   # theme_bw()+  # use the ggplot black and white theme
@@ -213,34 +219,30 @@ ggblank = function() {
     plot.background = element_blank())
 }
 
-gggraph = function(a,main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NULL) { # indices of whether to apply color size etc
+gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NULL) { # indices of whether to apply color size etc
   # gr_v: name x y label size color sizeb colorb
   # gr_e: from to from.x from.y to.x to.y color
-require(ggrepel)
+  require(ggrepel)
+  require(ggplot2)
   
   gr_v = a$v
   gr_e = a$e
-  if (is.null(label_ind)) label_ind = rep(T,nrow(gr_v))
-  if (is.null(v_ind)) v_ind = rep(T,nrow(gr_v))
-  if (is.null(vb_ind)) vb_ind = rep(T,nrow(gr_v))
-  if (is.null(e_ind)) e_ind = rep(T,nrow(gr_e))
+  if (is.null(label_ind)) label_ind = rep(F,nrow(gr_v))
+  if (is.null(v_ind)) v_ind = rep(F,nrow(gr_v))
+  if (is.null(vb_ind)) vb_ind = rep(F,nrow(gr_v))
+  if (is.null(e_ind)) e_ind = rep(F,nrow(gr_e))
   # base graph
   gp = ggblank() + ggtitle(main) +
     geom_segment(data=gr_e[!e_ind,], color="grey",
                  aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
     geom_segment(data=gr_e[e_ind,], 
-                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y,
-                     color=color)) +
+                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color), size=1) +
     geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey") +
-    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color),size=1) +
     geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=1.5)+
-   geom_label_repel(data=gr_v[label_ind,],
-  aes(x=x,y=y,label=label, color=color),
-  nudge_y      = 0.05,
-  direction    = "x",
-  angle        = 90,
-  vjust        = 0,
-  segment.size = 0.2)
+    
+    geom_label_repel(data=gr_v[label_ind,],
+                     aes(x=x,y=y,label=label, color=color))
   return(gp)
 }
 
@@ -248,7 +250,7 @@ gpdf = function(a) {
   gr_e = a$e
   gr_v = a$v
   return(list(e=data.frame(gr_e,width=1,color=""),
-              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="")))
+              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="",label=gr_v$name)))
 }
 
 # image functions -----------------------------------
@@ -444,6 +446,9 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
       a = seq(0,gxns[gyi]-1)*by
       a + (gxnmaxwidth-(a[length(a)]-1))/2
     }))
+    # switch sideways
+    gr_vxy = gr_vxy[,2:1]
+    gr_vxy[,1] = 0-gr_vxy[,1]
   }
   
   # get node
