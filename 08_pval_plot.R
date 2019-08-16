@@ -64,16 +64,32 @@ c_pts = unique(tbl$pthres)
 ## default counts
 mcms = llply(c_datas, function(data) {
   mc0 = get(load(paste0(root,"/result/",data,"/feat_mean/", feat_count,".Rdata")))
+  
   mc = mc0$control
   mcm = mc - min(mc)
   2*mcm/max(mcm)
 }, .parallel=T)
+
 mcms_ = llply(c_datas, function(data) {
-  mc0 = get(load(paste0(root,"/result/",data,"/feat_mean/", feat_count,".Rdata")))
-  llply(mc0, function(mc) {
-    mcm = mc - min(mc)
-    mcm/max(mcm)
-  })
+  get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
+  # llply(m, function(mc) {
+  #   mcm = mc - min(mc)
+  #   mcm/max(mcm)
+  # })
+  
+  # sm =   get(load(paste0(root,"/result/",data,"/meta/", "file",".Rdata")))
+  # sm = sm[match(rownames(m),sm$id),]
+  # mc0 = llply(unique(sm$class), function(uc) {
+  #   a = apply(m[sm$class=="control",],2,mean_geo)
+  #   names(a) = colnames(m)
+  #   # return(a)
+  #   mc = a
+  #   mc = mc0$control
+  #   mcm = mc - min(mc)
+  #   mcm/max(mcm)
+  # })
+  # names(mc0) = unique(sm$class)
+  # return(mc0)
 }, .parallel=T)
 names(mcms) = names(mcms_) = c_datas
 
@@ -129,10 +145,10 @@ for (pa in c_pas) {
   
   names(pvs) = names(nqs) = names(cs) = unique(tb$feat) # feats
   
-  png(pathn, height=400, width=800)
+  png(pathn, height=500, width=1000)
   par(mfrow=c(1,2))
   
-  plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main=paste0("qq plot for all controls (pthres=.01, .025, .05); method: ", pa))
+  plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main=paste0("qq plot for all contrls (lines=.01/.025/.05); test: ", pa))
   for (i in 1:length(pvs)) {
     yo = order(pvs[[i]])
     points(nqs[[i]], pvs[[i]][yo], pch=1, cex=mcm1l[[i]][yo], col=adjustcolor(cs[i], alpha.f=.5))
@@ -224,11 +240,10 @@ time_output(start1)
 gpbase = ggblank()
 
 start1 = Sys.time()
-l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
-  for (i in ii) {
+l_ply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), function(ii) {
+  for (i in ii) { try({
     # do only for cell feature types and nodes<1000 see below
-    if(!tbl$data[i]%in%names(grp0s) | tbl$m_test_sig[i]+tbl$m_train_sig[i]==0) next
-    
+
     pt = tbl$pthres[i]; ptl = -log(pt)
     classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
     pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/pthres-",pt,"/",tbl$pmethod_adj[i])
@@ -245,11 +260,20 @@ l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
     pp_ = pp<pt
     
     # top most sig
-    p__ = rep(F,length(p)); p__[head(order(p),10)] = T
-    pp__ = rep(F,length(pp)); pp__[head(order(pp),10)] = T
+    p__ = p_;
+    if (sum(p_)>10) {
+      p__ = rep(F,length(p))
+      p__[which(p_)[head(order(p[p_]),10)]] = T
+    } 
+    pp__ = pp_;
+    if (sum(pp_)>10) {
+      pp__ = rep(F,length(pp))
+      pp__[which(pp_)[head(order(pp[pp_]),10)]] = T
+    } 
     
+
     mcmc = mcm$control
-    mcmc = mcmc[match(names(p),names(mcmc))]
+    mcmc = mcmc[match(as.character(names(p)),as.character(names(mcmc)))]
     mcmcp = mcmc[match(names(pp),names(mcmc))]
     mcmu = mcm[[tbl$class[i]]]
     mcmu = mcmu[match(names(p),names(mcmu))]
@@ -267,28 +291,28 @@ l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
     grp = layout_gr(grp0$e,grp0$v)
     grp = gpdf(grp)
     
-    gr$v$label = paste0(gr$v$name,":",round(mcmc,3))
+    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
     gr$v$color = mcmc
     gr$v$colorb = mcmu
-    grp$v$label = paste0(grp$v$name,":",round(mcmcp,3))
+    grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
     grp$v$color = mcmcp
     grp$v$colorb = mcmup
     
-    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n sig & >.05 ratio change cell pops labelled \ncolours=count/prop")
+    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n top 10 significant cell populations labelled \ncolours=count/prop")
     if (!grepl("short",tbl$feat[i])) {
       gpp = gggraph(
         grp, v_ind=pp_, vb_ind=pp_, main=main,
         e_ind=grp$e[,1]%in%grp$v$name[pp_] &grp$e[,2]%in%grp$v$name[pp_],
         label_ind=rep(F,nrow(grp$v)))
       gp = gpp + geom_label_repel(
-        data=grp$v[(mcmup-mcmcp)/mcmcp >.05 & pp_ & pp__,],
+        data=grp$v[pp__,],
         aes(x=x,y=y,label=label, color=color),
         nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
-      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gpp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
     }
     gp = gggraph(gr, v_ind=p_, vb_ind=p_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0("(positive only) ",main))
     gp = gp + geom_label_repel(
-      data=gr$v[(mcmu-mcmc)/mcmc >.05 & p_ & p__,],
+      data=gr$v[p__,],
       aes(x=x,y=y,label=label, color=color),
       nudge_x = -.1, direction = "y", hjust=1, segment.size=.2)
     ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
@@ -303,7 +327,7 @@ l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
     grp$v$color = pp
     grp$v$colorb = pp
     
-    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n sig & >.05 ratio change cell pops labelled \ncolours=pvalue")
+    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n top 10 significant cell populations labelled \ncolours=pvalue")
     if (!grepl("short",tbl$feat[i])) {
       gpp = gggraph(
         grp, v_ind=rep(T,length(pp_)), main=main,
@@ -411,7 +435,7 @@ l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
     #       
     #     }
     #     
-  }
+  })}
 }, .parallel=T)
 time_output(start1)
 
