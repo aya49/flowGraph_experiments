@@ -77,7 +77,8 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 save.image(paste0(root,"/temp.Rdata"))
 
 # start = Sys.time()
-for (ds in c("ctrl1","ctrl2","ctrl3","ctrl4","ctrl5","ctrl6","ctrl7","ctrl8","ctrl9","ctrl10","pos1","pos2","pos3","pos4")) {
+for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4")) {
+  # for (ds in c("pos1","pos2","pos3","pos4")) {
   # clear/load memory
   a = ls(all=T); a = a[!a%in%c("ds","root")]
   rm(list=a); gc()

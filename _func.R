@@ -422,7 +422,8 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
   require(igraph)
   
   # edit layout
-  gr_vxy_ = FUN(gr = graph_from_data_frame(gr_e)) # layout.circle
+  gr0 = graph_from_data_frame(gr_e)
+  gr_vxy_ = FUN(gr0) # layout.circle
   gr_vxy = as.data.frame(gr_vxy_)
   if (as.character(substitute(FUN))=="layout.reingold.tilford") {
     # edit layout manually
@@ -448,18 +449,18 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
     }))
     # switch sideways
     gr_vxy = gr_vxy[,2:1]
-    gr_vxy[,1] = 0-gr_vxy[,1]
+    gr_vxy[,1] = max(gr_vxy[,1])-gr_vxy[,1]
   }
   
   # get node
   colnames(gr_vxy) = c("x","y")
-  gr_v = cbind(gr_v,gr_vxy)
+  gr_v = cbind(gr_v,gr_vxy[match(gr_v$name,names(V(gr0)[[]])),])
 
   # get edge
-  gr_e$from.x <- gr_vxy$x[match(gr_e$from, gr_v$name)]
-  gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
-  gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
-  gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
+  gr_e$from.x <- gr_v$x[match(gr_e$from, gr_v$name)]
+  gr_e$from.y <- gr_v$y[match(gr_e$from, gr_v$name)]
+  gr_e$to.x <- gr_v$x[match(gr_e$to, gr_v$name)]
+  gr_e$to.y <- gr_v$y[match(gr_e$to, gr_v$name)]
   
   return(list(e=gr_e,v=gr_v))
 }

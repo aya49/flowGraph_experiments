@@ -49,22 +49,15 @@ for (result_dir in result_dirs) {
   
   ## output directories
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
-  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   norm_dir = paste(result_dir, "/cell_count_norm",sep=""); dir.create(norm_dir,showWarnings=F)
   norm_factor_dir = paste(norm_dir, "/norm_factor", sep=""); dir.create(norm_factor_dir,showWarnings=F) #plot of norm factor for each file
   norm_factor_diff_dir = paste(norm_dir, "/norm_factor_diff", sep="")
-  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="")
-  meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
-  meta_cell_graph_dir = paste(meta_dir, "/cell_graph",sep="") #specifies a phenotypes parents
-  meta_cell_graphpos_dir = paste(meta_dir, "/cell_graphpos",sep="") #specifies a phenotypes parents
   
   
   ## load data
   meta_file0 = get(load(paste0(meta_file_dir,".Rdata")))
   feat_file_cell_count0 = as.matrix(get(load(paste0(feat_file_cell_count_dir,".Rdata"))))
   meta_cell0 = getPhen(colnames(feat_file_cell_count0))
-  feat_file_cell_prop0 = feat_file_cell_count0/feat_file_cell_count0[,1]
-  dimnames(feat_file_cell_prop0) = dimnames(feat_file_cell_count0)
 
   
   
@@ -167,31 +160,11 @@ for (result_dir in result_dirs) {
   save(c0, file=paste0(feat_file_cell_count_dir,".Rdata"))
   if (writecsv) write.csv(c0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
   
-  p0 = feat_file_cell_prop0[,finalinds]
-  save(p0, file=paste0(feat_file_cell_prop_dir,".Rdata"))
-  if (writecsv) write.csv(p0, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
-  
   
   save(f0, file=paste0(norm_factor_dir,".Rdata"))
   if (writecsv) write.csv(f0, file=paste0(norm_factor_dir,".csv"), row.names=T)
   save(fdiff0, file=paste0(norm_factor_diff_dir,".Rdata"))
   if (writecsv) write.csv(fdiff0, file=paste0(norm_factor_diff_dir,".csv"), row.names=T)
-  
-    
-  ## save cell populations
-  meta_cell = meta_cell0[finalinds,]
-  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
-  
-  pccell = getPhenCP(meta_cell=meta_cell,no_cores=no_cores)
-  pchild = pccell$pchild
-  pparen = pccell$pparen
-  gr = pccell$gr
-  grp = pccell$grp
-  save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
-  save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
-  save(gr, file=paste0(meta_cell_graph_dir, ".Rdata"))
-  save(grp, file=paste0(meta_cell_graphpos_dir, ".Rdata"))
-  # graphs are saved; one with all cell populations, one with only positive ones a+b+... these can be converted to igraph with graph_from_data_frame
   
   time_output(start)
 }

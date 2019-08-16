@@ -41,15 +41,18 @@ for (result_dir in result_dirs) {
 
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
-  meta_cell_dir = paste(meta_dir, "/cell", sep="")
-  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
   meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_countAdj_dir = paste(feat_dir, "/file-cell-countAdj", sep="")
-  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   
   
   ## output directories
+  meta_cell_dir = paste(meta_dir, "/cell", sep="")
+  meta_cell_childpn_names_dir = paste(meta_dir, "/cell_childpn_names",sep="") #specifies a phenotypes children and splits them into +/- (only for when both -/+ exists)
+  meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
+  meta_cell_graph_dir = paste(meta_dir, "/cell_graph",sep="") #specifies a phenotypes parents
+  meta_cell_graphpos_dir = paste(meta_dir, "/cell_graphpos",sep="") #specifies a phenotypes parents
+  feat_file_cell_prop_dir = paste(feat_dir, "/file-cell-prop", sep="")
   feat_file_edge_pnratio_dir = paste(feat_dir, "/file-edge-pnratio",sep="")
   feat_file_edge_prop_dir = paste(feat_dir, "/file-edge-prop",sep="")
   feat_file_cell_entropychild_dir = paste(feat_dir, "/file-cell-entropychild",sep="")
@@ -66,10 +69,28 @@ for (result_dir in result_dirs) {
   
   ## load data
   m = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
-  mp = get(load(paste0(feat_file_cell_prop_dir,".Rdata")))
-  meta_cell = get(load(paste0(meta_cell_dir,".Rdata")))
-  meta_cell_childpn_names = get(load(paste0(meta_cell_childpn_names_dir, ".Rdata")))
-  meta_cell_parent_names = get(load(paste0(meta_cell_parent_names_dir, ".Rdata")))
+  
+  ## make prop
+  mp = m/m[,1]
+  dimnames(mp) = dimnames(m)
+  save(mp, file=paste0(feat_file_cell_prop_dir,".Rdata"))
+  if (writecsv) write.csv(mp, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
+  
+  ## make cell meta
+  meta_cell = getPhen(colnames(m))
+  save(meta_cell, file=paste0(meta_cell_dir,".Rdata"))
+  
+  pccell = getPhenCP(meta_cell=meta_cell,no_cores=no_cores)
+  meta_cell_childpn_names = pchild = pccell$pchild
+  meta_cell_parent_names = pparen = pccell$pparen
+  gr = pccell$gr
+  grp = pccell$grp
+  save(pchild, file=paste0(meta_cell_childpn_names_dir, ".Rdata"))
+  save(pparen, file=paste0(meta_cell_parent_names_dir, ".Rdata"))
+  save(gr, file=paste0(meta_cell_graph_dir, ".Rdata"))
+  save(grp, file=paste0(meta_cell_graphpos_dir, ".Rdata"))
+  # graphs are saved; one with all cell populations, one with only positive ones a+b+... these can be converted to igraph with graph_from_data_frame
+  
 
   
   
