@@ -50,7 +50,6 @@ start = Sys.time()
 table = NULL
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
-  print(result_dir)
   data = fileNames(result_dir)
   
   ## input directories
@@ -77,6 +76,8 @@ for (result_dir in result_dirs) {
 
 
 ## calculate corr
+start1 = Sys.time()
+# l_ply(loopInd(1:nrow(table),no_cores), function(ii) {
 for (i in 1:nrow(table)) {
   pvs = get(load(table$pathp[i]))
   
@@ -94,48 +95,57 @@ for (i in 1:nrow(table)) {
   # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
   # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
 }
+# },.parallel=T)
+time_output(start1)
 
 
 ## calculate p value sig stats
-tbl = NULL
-for (i in 1:nrow(table)) {
-  for (pthres in pthress) {
-    # get sig
-    table$pthres[i] = pthres
-    
+start1 = Sys.time()
+tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
+  Reduce(rbind,llply(ii, function(i) {
+    # for (i in ii) {
     pvs = get(load(table$pathp[i]))
-    pv_tr_ = pvs$train
-    pv_te_ = pvs$test
-    pv_all_ = pvs$all
-    
-    tr_sig = pv_tr_<pthres
-    # tr2_sig = pv_tr2_<pthres
-    te_sig = pv_te_<pthres
-    all_sig = pv_all_<pthres
-    
-    table$p_thres[i]=pthres
-    table$m_all_sig[i]=sum(all_sig)
-    table$m_all[i]=length(all_sig)
-    table$m_all_perc[i]=sum(all_sig)/length(all_sig)
-    table$m_train_sig[i]=sum(tr_sig)
-    table$m_train[i]=length(tr_sig)
-    table$m_train_perc[i]=sum(tr_sig)/length(tr_sig)
-    table$m_test_sig[i]=sum(te_sig)
-    table$m_test[i]=length(te_sig)
-    table$m_test_perc[i]=sum(te_sig)/length(te_sig)
-    table$m_overlap_sig[i] = overlap = sum(tr_sig & te_sig)
-    if (overlap==0) {
-      table$rec[i] = table$prec[i] = table$f[i] = 0
-    } else {
-      table$rec[i] = rec = overlap/sum(te_sig)
-      table$prec[i] = prec = overlap/sum(tr_sig)
-      table$f[i] = 2*((prec*rec)/(prec+rec))
-    }
-    
-    tbl = rbind(tbl,table[i,])
-  }
-}
+    Reduce(rbind,llply(pthress, function(pthres) {
+      # get sig
+      tt = table[i,]
+
+      tt$pthres = pthres
+      
+      pv_tr_ = pvs$train
+      pv_te_ = pvs$test
+      pv_all_ = pvs$all
+      
+      tr_sig = pv_tr_<pthres
+      # tr2_sig = pv_tr2_<pthres
+      te_sig = pv_te_<pthres
+      all_sig = pv_all_<pthres
+      
+      tt$p_thres=pthres
+      tt$m_all_sig=sum(all_sig)
+      tt$m_all=length(all_sig)
+      tt$m_all_perc=sum(all_sig)/length(all_sig)
+      tt$m_train_sig=sum(tr_sig)
+      tt$m_train=length(tr_sig)
+      tt$m_train_perc=sum(tr_sig)/length(tr_sig)
+      tt$m_test_sig=sum(te_sig)
+      tt$m_test=length(te_sig)
+      tt$m_test_perc=sum(te_sig)/length(te_sig)
+      tt$m_overlap_sig = overlap = sum(tr_sig & te_sig)
+      if (overlap==0) {
+        tt$rec = tt$prec = tt$f = 0
+      } else {
+        tt$rec = rec = overlap/sum(te_sig)
+        tt$prec = prec = overlap/sum(tr_sig)
+        tt$f = 2*((prec*rec)/(prec+rec))
+      }
+      
+      return(tt)
+    }))
+  }))
+},.parallel=T)
+tbl = Reduce(rbind,tbl)
 save(tbl, file=paste0(root,"/pvals.Rdata")) # table
+time_output(start1)
 
 time_output(start)
 

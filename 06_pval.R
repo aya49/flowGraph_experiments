@@ -69,8 +69,7 @@ for (result_dir in result_dirs) {
   meta_file = get(load(paste0(meta_file_dir,".Rdata")))
   
   feats = llply(feat_types, function(feat_type) {
-    
-    ## upload and prep feature matrix + meta
+    ## upload data and prep feature matrix + meta ------------
     m0 = get(load(paste0(feat_dir,"/", feat_type,".Rdata")))
     sm = meta_file[match(rownames(m0),meta_file$id),]
     
@@ -83,12 +82,21 @@ for (result_dir in result_dirs) {
     if (all(sm$class==sm$class[1])) return(F)
     m = m0[inrow,]
     
-    return(list(sm=sm,m=m))
+    ## save mean values for each class ----------------------
+    mname = paste0(sum_m_dir,"/",feat_type,".Rdata")
+    fmean = llply(unique(sm$class), function(uc) {
+      a = apply(m[sm$class=="control",],2,mean_geo)
+      names(a) = colnames(m)
+      return(a)
+    })
+    names(fmean) = unique(sm$class)
+    save(fmean, file=mname)
+    return(list(sm=sm,m=m,mname=mname))
   }, .parallel=T)
   names(feats) = feat_types
   
   
-  # calculate
+  # calculate p values --------------------------------
   # for (feat_type in feat_types_) {
   for (feat_type in feat_types) {
     start2 = Sys.time()
@@ -101,16 +109,10 @@ for (result_dir in result_dirs) {
     
     controli = sm$class=="control"
     # controln = sum(controli)
-    
-    mname = paste0(sum_m_dir,"/",feat_type,".Rdata")
-    fmean = NULL # mean values for each class
-    fmean[["control"]] = apply(m[sm$class=="control",],2,mean_geo)
 
     # foldsip = foldres = NULL # save original
     for (uc in unique(sm$class[!controli])) {
       uci = sm$class==uc
-      
-      fmean[[uc]] = apply(m[uci,],2,mean_geo)
       
       ## make test/train(x10) indices
       if ("train"%in%colnames(sm)) {
@@ -219,7 +221,6 @@ for (result_dir in result_dirs) {
         } # adj
       } # ptype
     } #uc
-    save(fmean, file=mname)
     time_output(start2)
   }#, .parallel=F)) # feat_types
   
