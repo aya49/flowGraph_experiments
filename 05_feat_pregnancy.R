@@ -55,6 +55,7 @@ for (result_dir in result_dirs) {
   a = sapply(list.dirs(result_dir,recursive=T,full.names=T),function(x)
     dir.create(gsub(result_dir, result_dir_,x), recursive=T, showWarnings=F))
   old = file.path(result_dir,list.files(result_dir,recursive=T))
+  old = old[grepl("/feat/|/meta/",old)]
   new = gsub(result_dir,result_dir_,old)
   file.copy(old, new, overwrite=T)
   

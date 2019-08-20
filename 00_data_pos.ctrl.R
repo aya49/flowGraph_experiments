@@ -77,7 +77,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 save.image(paste0(root,"/temp.Rdata"))
 
 # start = Sys.time()
-for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4")) {
+for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
   # for (ds in c("pos1","pos2","pos3","pos4")) {
   # clear/load memory
   a = ls(all=T); a = a[!a%in%c("ds","root")]
@@ -122,11 +122,9 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4")) {
           ftv0 = round(ftv0/ftv0[1],3)
         }
         # change f values
-        if (ds=="pos1") { thress = thress1
-        } 
-        else if (ds=="pos2") { thress = thress2
-        } 
-        else if (ds=="pos3") {
+        if (ds=="pos1") { thress = thress1 } 
+        else if (ds=="pos2") { thress = thress2 } 
+        else if (ds%in%c("pos3","pos4","pos5")) {
           # .125 -> .19 a+b+c+
           
           ap = f@exprs[,1]>thress[[1]]
@@ -135,16 +133,42 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4")) {
           dp = f@exprs[,4]>thress[[4]]
           # ep = f@exprs[,5]>thress[[5]]
           triple = (ap & bp & cp)
-          # quad = ap & bp & cp & dp
+          quad = ap & bp & cp & dp
           # quint = ap & bp & cp & dp & ep
           
-          
-          tm = sum(triple)/2
-          f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
-          f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
-          f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-          
+          if (ds=="pos3") {
+            tm = sum(triple)/2
+            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+            f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
+            f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
+            f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+          } else if (ds=="pos5") {
+            tm = sum(triple)/2/3
+            f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
+            f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
+            f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
+            f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
+
+            f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
+            f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
+            f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
+            f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
+            
+            f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
+            f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
+            f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+            f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+          } else if (ds=="pos4") {
+            tn = sum(quad)/2
+            f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
+            f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
+            f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
+            f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
+            f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
+            f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
+            f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
+            f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
+          }
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
           # f@exprs[sample(which(ap & !bp & cp & dp & ep),tn),1] = p25
@@ -167,31 +191,9 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4")) {
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
           
         } 
-        else if (ds=="pos4") {
-          
-          ap = f@exprs[,1]>thress[[1]]
-          bp = f@exprs[,2]>thress[[2]]
-          cp = f@exprs[,3]>thress[[3]]
-          dp = f@exprs[,4]>thress[[4]]
-          # ep = f@exprs[,5]>thress[[5]]
-          # triple = (ap & bp & cp)
-          quad = ap & bp & cp & dp
-          # quint = ap & bp & cp & dp & ep
-          
-          tn = sum(quad)/2
-          f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-          f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-          f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-          f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-          f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-          f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-          f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-          f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-        } 
-        
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           if (ds%in%c("pos1","pos2")) la=1
-          if (ds%in%c("pos3")) la=3
+          if (ds%in%c("pos3","pos5")) la=3
           if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,

@@ -36,7 +36,7 @@ cellCountThres = .01 # don't use phenotypes with cell count all lower than cellC
 
 result_dirs =list.dirs(paste0(root,"/result"),full.names=T,recursive=F)
 for (result_dir in result_dirs) {
-  if (grepl("ctrl|pos",result_dir)) next
+  if (grepl("ctrl|pos|paired",result_dir)) next
   print(fileNames(result_dir))
   
   ## input directories

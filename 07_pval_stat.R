@@ -46,7 +46,7 @@ pthress = c(.05,.025,.01) # p value sig threshold for t test
 start = Sys.time()
 
 
-## make table for stats
+## make table for p values paths
 table = NULL
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
@@ -55,24 +55,26 @@ for (result_dir in result_dirs) {
   ## input directories
   sum_dir = paste0(result_dir,"/feat_summaries")
   sum_p_dir = paste0(result_dir,"/feat_pval")
-  sum_m_dir = paste0(result_dir,"/feat_mean")
-  
+
   p_paths = list.files(sum_p_dir,full.names=T)
-  m_paths = list.files(sum_m_dir,full.names=T)
-  
+
   pp = str_split(gsub(".Rdata","",fileNames(p_paths)),"_")
   ppta = str_split(sapply(pp, function(x) x[3]),"-")
-  mm = str_split(gsub(".Rdata","",fileNames(m_paths)),"_")
-  
+
   fe = sapply(pp,function(x) x[1])
   table = rbind(table, data.frame(
-    pathp=p_paths, pathm=m_paths[match(fe,mm)], data=data,
+    pathp=p_paths,
+    data=data,
     feat=fe,
     class=sapply(pp,function(x) x[2]),
     test=sapply(ppta,function(x) x[1]),
     test_adj=sapply(ppta,function(x) x[2])))
 } # result
 
+
+## add overlap paths
+for (i in 1:nrow(table)) 
+  table$patho[i] = paste0(root,"/result/",table$data[i],"/feat_overlap/",table$feat[i],"_",table$class[i],".Rdata")
 
 
 ## calculate corr

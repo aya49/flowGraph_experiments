@@ -55,7 +55,7 @@ for (result_dir in result_dirs) {
   ## output directories
   sum_p_dir = paste0(result_dir,"/feat_pval"); dir.create(sum_p_dir, recursive=T, showWarnings=F)
   sum_m_dir = paste0(result_dir,"/feat_mean"); dir.create(sum_m_dir, showWarnings=F)
-  
+  sum_o_dir = paste0(result_dir,"/feat_overlap"); dir.create(sum_o_dir, showWarnings=F)
   
   
   start1 = Sys.time()
@@ -83,15 +83,18 @@ for (result_dir in result_dirs) {
     m = m0[inrow,]
     
     ## save mean values for each class ----------------------
+    ucs = unique(sm$class)
+    
     mname = paste0(sum_m_dir,"/",feat_type,".Rdata")
-    fmean = llply(unique(sm$class), function(uc) {
-      a = apply(m[sm$class=="control",],2,mean_geo)
+    fmean = llply(ucs, function(uc) {
+      a = apply(m[sm$class==uc,],2,mean_geo)
       names(a) = colnames(m)
       return(a)
     })
-    names(fmean) = unique(sm$class)
+    names(fmean) = ucs
     save(fmean, file=mname)
-    return(list(sm=sm,m=m,mname=mname))
+
+    return(list(sm=sm,m=m))
   }, .parallel=T)
   names(feats) = feat_types
   
@@ -108,11 +111,14 @@ for (result_dir in result_dirs) {
     # m[is.nan(m) | is.na(m)] = 0
     
     controli = sm$class=="control"
-    # controln = sum(controli)
-
+    cms = m[controli,,drop=F]
+    cmn = nrow(cms)
+    
     # foldsip = foldres = NULL # save original
     for (uc in unique(sm$class[!controli])) {
       uci = sm$class==uc
+      ems = m[uci,,drop=F]
+      emn = nrow(ems)
       
       ## make test/train(x10) indices
       if ("train"%in%colnames(sm)) {
@@ -129,29 +135,73 @@ for (result_dir in result_dirs) {
         tei = list(c = which(controli),
                    e = wuii)
       }
-      
-      ## calc pvalues
-      cm = m[controli,,drop=F]
-      em = m[uci,,drop=F]
       cmtrs = m[tri$c,,drop=F]
       cmtes = m[tei$c,,drop=F]
+      cmtrn = nrow(cmtrs)
+      cmten = nrow(cmtes)
       emtrs = m[tri$e,,drop=F]
       emtes = m[tei$e,,drop=F]
+      emtrn = nrow(emtrs)
+      emten = nrow(emtes)
       
+      
+      ## number of overlap control/totalcontrols ----------------------
+      os = llply(loopInd(1:ncol(m),no_cores), function(jj) {
+        laply(jj, function(j) {
+          cm = cms[,j]
+          em = ems[,j]
+          cmtr = cmtrs[,j]
+          emtr = emtrs[,j]
+          cmte = cmtes[,j]
+          emte = emtes[,j]
+          
+          mjcr = range(cm)
+          mjur = range(em)
+          if (mjur[1]<=mjcr[1] & mjur[2]>=mjcr[2]) { all = 1 
+          } else if (mjcr[1]<=mjur[1] & mjcr[2]>=mjur[2]) { all = 1 
+          } else if (mjur[1]<=mjcr[1]) { all = sum(cm<=mjur[2])/cmn 
+          } else { all = sum(cm>=mjur[1])/cmn }
+          # if (mjcr[1]<=mjur[1]) 
+          
+          mjcr = range(cmtr)
+          mjur = range(emtr)
+          if (mjur[1]<=mjcr[1] & mjur[2]>=mjcr[2]) { tr = 1 
+          } else if (mjcr[1]<=mjur[1] & mjcr[2]>=mjur[2]) { tr = 1 
+          } else if (mjur[1]<=mjcr[1]) { tr = sum(cmtr<=mjur[2])/cmtrn 
+          } else { tr = sum(cmtr>=mjur[1])/cmtrn }
+          
+          mjcr = range(cmte)
+          mjur = range(emte)
+          if (mjur[1]<=mjcr[1] & mjur[2]>=mjcr[2]) { te = 1 
+          } else if (mjcr[1]<=mjur[1] & mjcr[2]>=mjur[2]) { te = 1 
+          } else if (mjur[1]<=mjcr[1]) { te = sum(cmte<=mjur[2])/cmten 
+          } else { te = sum(cmte>=mjur[1])/cmten }
+          
+          return(c(all,tr,te))
+        })
+      },.parallel=T)
+      os = Reduce(rbind,os); rownames(os) = colnames(m)
+      os = list(all=os[,1],train=os[,2],test=os[,3])
+      oname = paste0(sum_o_dir,"/",feat_type,"_",uc,".Rdata")
+      save(os, file=oname)
+      
+      
+      
+      ## calc pvalues --------------------------------------
       pvs = llply(loopInd(1:ncol(m),no_cores), function(jj) {
         laply(jj, function(j) {
           # cm = m[controli,j];
-          cm_ = cm[,j]
-          em_ = em[,j]
+          cm = cms[,j]
+          em = ems[,j]
           cmtr = cmtrs[,j]
           cmte = cmtes[,j]
           emtr = emtrs[,j]
           emte = emtes[,j]
           return(c(
             tryCatch({ 
-              t.test(em_,cm_)$p.value }, error=function(e) {1}),
+              t.test(em,cm)$p.value }, error=function(e) {1}),
             tryCatch({ 
-              wilcox.test(em_,cm_)$p.value}, warning=function(w) {1}),
+              wilcox.test(em,cm)$p.value}, warning=function(w) {1}),
             
             tryCatch({ 
               t.test(emtr,cmtr)$p.value }, error=function(e) {1}),
@@ -169,25 +219,22 @@ for (result_dir in result_dirs) {
       pvs[is.na(pvs)|is.nan(pvs)] = 1
       pvs = list(t=list(all=pvs[,1],train=pvs[,3],test=pvs[,5]),
                  wilcox=list(all=pvs[,2],train=pvs[,4],test=pvs[,6]))
+      
 
       for (ptype in names(pvs)) {
         for (adj in adjust) {
           pvs_ = NULL
           for (tretype in names(pvs[[ptype]])) {
-            # pv = sapply(pvs, function(x) x[[ptype]][[tretype]]); 
-            # pv[is.nan(pv) | is.na(pv)] = 1
             pv = pvs[[ptype]][[tretype]]
 
             ## adjust or combo p values
             if (adj%in%c("lanc","fisher")) {
-              # if (grepl("group",feat_type)) next()
-              
+
               phens = names(pv)
               if(grepl("_",phens[10])) phens = sapply(str_split(names(pv),"_"), function(x) x[1])
               nonp = gsub("[-]|[+]","",phens)
               allplus = which(grepl("[-]|[+]",phens) & !duplicated(nonp))
               if (length(allplus)==length(phens)) next
-              # nonpu = unique(nonp)
               groupi = match(nonp, nonp)
               groups = llply(allplus, function(i) {
                 ii = which(groupi==groupi[i])
@@ -214,7 +261,6 @@ for (result_dir in result_dirs) {
               pv_ = p.adjust(pv, method=adj)
             }
             pvs_[[tretype]] = pv_
-            # foldsip[[uc]]$p[[ptype]][[adj]][[tretype]] = pv_
           } # tretype
           pname = paste0(sum_p_dir,"/",feat_type,"_",uc,"_",ptype,"-",adj,".Rdata")
           save(pvs_,file=pname)

@@ -233,14 +233,14 @@ gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NU
   if (is.null(e_ind)) e_ind = rep(F,nrow(gr_e))
   # base graph
   gp = ggblank() + ggtitle(main) +
+    scale_fill_brewer(palette="Pastel2") +
     geom_segment(data=gr_e[!e_ind,], color="grey",
                  aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
     geom_segment(data=gr_e[e_ind,], 
                  aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
-    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color), size=1) +
-    geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey") +
-    geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=1.5)+
-    
+    geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+    # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
     geom_label_repel(data=gr_v[label_ind,],
                      aes(x=x,y=y,label=label, color=color))
   return(gp)

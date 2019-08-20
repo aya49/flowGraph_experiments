@@ -63,19 +63,11 @@ c_pts = unique(tbl$pthres)
 
 ## default counts
 mcms = llply(c_datas, function(data) {
-  mc0 = get(load(paste0(root,"/result/",data,"/feat_mean/", feat_count,".Rdata")))
-  
-  mc = mc0$control
-  mcm = mc - min(mc)
-  2*mcm/max(mcm)
-}, .parallel=T)
-
-mcms_ = llply(c_datas, function(data) {
-  get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
-  # llply(m, function(mc) {
-  #   mcm = mc - min(mc)
-  #   mcm/max(mcm)
-  # })
+  m = get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
+  llply(m, function(mc) {
+    mcm = mc - min(mc)
+    mcm/max(mcm)
+  })
   
   # sm =   get(load(paste0(root,"/result/",data,"/meta/", "file",".Rdata")))
   # sm = sm[match(rownames(m),sm$id),]
@@ -91,7 +83,7 @@ mcms_ = llply(c_datas, function(data) {
   # names(mc0) = unique(sm$class)
   # return(mc0)
 }, .parallel=T)
-names(mcms) = names(mcms_) = c_datas
+names(mcms) = names(mcms) = c_datas
 
 
 ## default graphs
@@ -114,12 +106,115 @@ plot_int = function(dat, pch='.', ...) {
 }
 
 
+# make folders
+for (i in 1:nrow(tbl)) 
+  dir.create(paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",tbl$pthres[i]),showWarnings=F,recursive=T)
 
 
 
-## control qq plot
+
+
+## histograms p ----------------------------------
+start1 = Sys.time()
+l_ply(loopInd(which(tbl$pthres==.05), no_cores), function(ii) {
+  for (i in ii) {
+    pt = tbl$pthres[i]; ptl = -log(pt)
+    classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
+    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i])
+    pv = get(load(tbl$pathp[i]))
+    
+    
+    png(paste0(pathn,"/hist_p",classn,"_",tbl$feat[i],".png"), height=800, width=800)
+    mv1 = matrix(c(1,1,2,3,4,4,5,6),ncol=2,byrow=F)
+    layout(mv1) # scatterplot + histograms
+    
+    mcm = mcms[[tbl$data[i]]]$control*4
+    
+    set1 = pv$train
+    set2 = pv$test
+    
+    if (grepl("-cell-",tbl$feat[i])) 
+      mcmind = match(names(set1),names(mcm))
+    if (!grepl("-cell-",tbl$feat[i])) 
+      mcmind = match(sapply(strsplit(names(set1),"_"), function(x) x[1]),names(mcm))
+    mcm1 = mcm[mcmind]
+    
+    plot_int(cbind(set1,set2), pch=1, xlim=c(0,1), ylim=c(0,1), 
+             xlab="set 1 p values", ylab="set 2 p values", main=paste0("data:",tbl$data[i],"; class: ",tbl$class[i], "; feature: ", tbl$feat[i], "; method: ", tbl$pmethod_adj[i]), cex=mcm1)
+    abline(v=pt,h=pt, col="red")
+    
+    hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+    abline(v=pt, col="red")
+    
+    hist(set2, freq=F, main="set 2", xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+    abline(v=pt, col="red")
+    
+    
+    set1 = -log(set1); 
+    set1[set1==Inf] = 10
+    set2 = -log(set2); 
+    set2[set2==Inf] = 10
+    plot_int(cbind(set1,set2), pch=1, xlim=c(0,10), ylim=c(0,10), 
+             xlab="set 1 -ln(p values)", ylab="set 2 -ln(p values)", main=paste0("set2 class: ",tbl$class[i], "; feature: ", tbl$feat[i], "; method: ", tbl$pmethod_adj[i]), cex=mcm1)
+    abline(v=ptl,h=ptl, col="red")
+    
+    hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,max(4,max(set1))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+    abline(v=ptl, col="red")
+    
+    hist(set2, freq=F, main="set 2", xlim=c(0,max(4,max(set2))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+    abline(v=ptl, col="red")
+    
+    graphics.off()
+  }
+},.parallel=T)
+time_output(start1)
+
+
+
+## histograms o ----------------------------------
+start1 = Sys.time()
+l_ply(loopInd(which(tbl$pthres==c_pts[1] & tbl$pmethod_adj==c_pas[1]), no_cores), function(ii) {
+for (i in ii) {
+  pt = tbl$pthres[i]; ptl = -log(pt)
+  classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
+  pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval")
+  dir.create(pathn,showWarnings=F,recursive=T)
+  mo = get(load(tbl$patho[i]))
+  
+  
+  png(paste0(pathn,"/hist_o",classn,"_",tbl$feat[i],".png"), height=800, width=400)
+  mv1 = matrix(c(1,1,2,3),ncol=1,byrow=F)
+  layout(mv1) # scatterplot + histograms
+  
+  mcm = mcms[[tbl$data[i]]]$control*4
+  
+  set1 = mo$train
+  set2 = mo$test
+  
+  if (grepl("-cell-",tbl$feat[i])) 
+    mcmind = match(names(set1),names(mcm))
+  if (!grepl("-cell-",tbl$feat[i])) 
+    mcmind = match(sapply(strsplit(names(set1),"_"), function(x) x[1]),names(mcm))
+  mcm1 = mcm[mcmind]
+  
+  plot_int(cbind(set1,set2), pch=1, xlim=c(0,1), ylim=c(0,1), 
+           xlab="set 1  overlaps/control", ylab="set 2 overlaps/control", main=paste0("data:",tbl$data[i],"; class: ",tbl$class[i], "; feature: ", tbl$feat[i]), cex=mcm1)
+
+  hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+
+  hist(set2, freq=F, main="set 2", xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
+
+  graphics.off()
+}
+},.parallel=T)
+time_output(start1)
+
+
+
+
+## control qq plot -------------------------------
 classn = ""
-mcm = mcms[["ctrl0"]]
+mcm = mcms[["ctrl0"]]$control
 for (pa in c_pas) {
   tb = tblc[tblc$pmethod_adj==pa & tblc$pthres==.05,]
   
@@ -128,7 +223,7 @@ for (pa in c_pas) {
   })
   names(pvs) = unique(tb$feat)
   
-  pathn = paste0(root,"/result/ctrl0/plot_pval/qqctrl_",pa,".png")
+  pathn = paste0(root,"/result/ctrl0/plot_pval/",pa,"/qqctrl.png")
   
   
   
@@ -176,175 +271,170 @@ for (pa in c_pas) {
 }
 
 
-## histograms ----------------------------------
-start1 = Sys.time()
-l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
-  for (i in ii) {
-    pt = tbl$pthres[i]; ptl = -log(pt)
-    classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
-    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/pthres-",pt,"/",tbl$pmethod_adj[i])
-    dir.create(pathn,showWarnings=F,recursive=T)
-    pv = get(load(tbl$pathp[i]))
-    
-    
-    
-    png(paste0(pathn,"/hist",classn,"_",tbl$feat[i],".png"), height=800, width=800)
-    mv1 = matrix(c(1,1,2,3,4,4,5,6),ncol=2,byrow=F)
-    layout(mv1) # scatterplot + histograms
-    
-    mcm = mcms[[tbl$feat[i]]]
-    
-    set1 = pv$train
-    set2 = pv$test
-    
-    if (grepl("-cell-",tbl$feat[i])) 
-      mcmind = match(names(set1),names(mcm))
-    if (!grepl("-cell-",tbl$feat[i])) 
-      mcmind = match(sapply(strsplit(names(set1),"_"), function(x) x[1]),names(mcm))
-    mcm1 = mcm[mcmind]
-    
-    plot_int(cbind(set1,set2), pch=1, xlim=c(0,1), ylim=c(0,1), 
-             xlab="set 1 p values", ylab="set 2 p values", main=paste0("set2 class: ",tbl$class[i], "; feature: ", tbl$feat[i], "; method: ", tbl$pmethod_adj[i]), cex=mcm1)
-    abline(v=pt,h=pt, col="red")
-    
-    hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
-    abline(v=pt, col="red")
-    
-    hist(set2, freq=F, main="set 2", xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
-    abline(v=pt, col="red")
-    
-    
-    set1 = -log(set1); 
-    set1[set1==Inf] = 10
-    set2 = -log(set2); 
-    set2[set2==Inf] = 10
-    plot_int(cbind(set1,set2), pch=1, xlim=c(0,10), ylim=c(0,10), 
-             xlab="set 1 -ln(p values)", ylab="set 2 -ln(p values)", main=paste0("set2 class: ",tbl$class[i], "; feature: ", tbl$feat[i], "; method: ", tbl$pmethod_adj[i]), cex=mcm1)
-    abline(v=ptl,h=ptl, col="red")
-    
-    hist(set1, freq=F, main=paste0("set 1"), xlim=c(0,max(4,max(set1))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
-    abline(v=ptl, col="red")
-    
-    hist(set2, freq=F, main="set 2", xlim=c(0,max(4,max(set2))), xlab="-ln(p values)", ylab="histogram", cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, col=rgb(0,0,0,.5))
-    abline(v=ptl, col="red")
-    
-    graphics.off()
-  }
-},.parallel=T)
-time_output(start1)  
-
-
 
 ## graph stats ----------------------------------
-# graph base
-gpbase = ggblank()
-
 start1 = Sys.time()
 l_ply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), function(ii) {
-  for (i in ii) { try({
+  for (i in ii) { 
     # do only for cell feature types and nodes<1000 see below
 
     pt = tbl$pthres[i]; ptl = -log(pt)
     classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
-    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/pthres-",pt,"/",tbl$pmethod_adj[i])
+    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",pt)
+    
+    main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i])
+    
+    mcm = mcms[[tbl$data[i]]]
+    mo0 = get(load(tbl$patho[i]))$all
     pv = get(load(tbl$pathp[i]))
-    gr0 = gr0s[[tbl$data[i]]]
-    grp0 = grp0s[[tbl$data[i]]]
-    
-    mcm = mcms_[[tbl$data[i]]]
-    
-    # sig
+    ptr = pv$train
+    pte = pv$test
     p = pv$all
+    
     p_ = p<pt
-    pp = p[!grepl("[-]",names(p))]
-    pp_ = pp<pt
+    ptr_ = ptr<pt & pte>pt
+    pte_ = pte<pt & ptr>pt
+    mcmc = mcm$control
+    mcmu = mcm[[tbl$class[i]]]
+    mcmc = mcmc[match(names(p),names(mcmc))]
+    mcmu = mcmu[match(names(p),names(mcmu))]
+    gr0 = gr0s[[tbl$data[i]]]
+    gr0$v = gr0$v[match(names(p),gr0$v$name),,drop=F]
+    gr0$v = data.frame(name=unlist(gr0$v))
+    gr0$e = gr0$e[gr0$e$from%in%gr0$v$name & gr0$e$to%in%gr0$v$name,]
+    gr = layout_gr(gr0$e,gr0$v)
+    gr = gpdf(gr)
+    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
+    gr$v$color = mcmu
+    gr$v$colorb = ifelse(ptr_,"set1","none") # node border colour
+    gr$v$colorb[pte_] = "set2"
+    gr$v$colorb[!pte_ & !ptr_ & p_] = "all"
+    gr$v$colorb = as.factor(gr$v$colorb)
+    
+    mo = mo0[match(names(p),names(mo0))]
+    
+    if (!grepl("short",tbl$feat[i])) {
+    posind = !grepl("[-]",names(p))
+    pp = p[posind] # p
+    pp_ = pp<pt # p sig
+    ptrp_ = ptr_[posind] # p sig train only
+    ptep_ = pte_[posind] # p sig test only
+    mcmcp = mcmc[match(names(pp),names(mcmc))] # prop control
+    mcmup = mcmu[match(names(pp),names(mcmu))] # prop exp
+    mop = mo0[match(names(pp),names(mo0))]
+    grp0 = grp0s[[tbl$data[i]]] # load graph
+    grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
+    grp0$v = data.frame(name=unlist(grp0$v))
+    grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
+    grp = layout_gr(grp0$e,grp0$v) # graph layout
+    grp = gpdf(grp) # add graph attributes
+    grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
+    grp$v$size = (1-mop[v_ind])^2*4
+    grp$v$color = mcmup # node colour
+    grp$v$colorb = ifelse(ptrp_,"set1","none") # node border colour
+    grp$v$colorb[ptep_] = "set2"
+    grp$v$colorb[(!ptep_ | !ptrp_) & pp_] = "all"
+    grp$v$colorb = as.factor(grp$v$colorb)
+    
+    main = paste0(main0,"\n top 10 sig cell populations labelled \ncolours=prop")
+    gpp = gggraph(
+      grp, v_ind=pp_, vb_ind=ptep_|ptrp_, main=main,
+      e_ind=grp$e[,1]%in%grp$v$name[pp_] & grp$e[,2]%in%grp$v$name[pp_],
+      label_ind=rep(F,nrow(grp$v)))
+    gp = gpp + geom_label_repel(
+      data=grp$v[pp__,],
+      aes(x=x,y=y,label=label, color=color),
+      nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
+    ggsave(paste0(pathn,"/grpos_prop",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+    
+    
+    }
+    
+    
+    
     
     # top most sig
     p__ = p_;
     if (sum(p_)>10) {
       p__ = rep(F,length(p))
       p__[which(p_)[head(order(p[p_]),10)]] = T
-    } 
+    }
     pp__ = pp_;
     if (sum(pp_)>10) {
       pp__ = rep(F,length(pp))
       pp__[which(pp_)[head(order(pp[pp_]),10)]] = T
     } 
     
-
-    mcmc = mcm$control
-    mcmc = mcmc[match(as.character(names(p)),as.character(names(mcmc)))]
-    mcmcp = mcmc[match(names(pp),names(mcmc))]
-    mcmu = mcm[[tbl$class[i]]]
-    mcmu = mcmu[match(names(p),names(mcmu))]
-    mcmup = mcmu[match(names(pp),names(mcmu))]
     
-    gr0$v = gr0$v[match(names(p),gr0$v$name),,drop=F]
-    gr0$v = data.frame(name=unlist(gr0$v))
-    gr0$e = gr0$e[gr0$e$from%in%gr0$v$name & gr0$e$to%in%gr0$v$name,]
-    grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
-    grp0$v = data.frame(name=unlist(grp0$v))
-    grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
     
-    gr = layout_gr(gr0$e,gr0$v)
-    gr = gpdf(gr)
-    grp = layout_gr(grp0$e,grp0$v)
-    grp = gpdf(grp)
     
-    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
-    gr$v$color = mcmc
-    gr$v$colorb = mcmu
-    grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
-    grp$v$color = mcmcp
-    grp$v$colorb = mcmup
     
-    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n top 10 significant cell populations labelled \ncolours=count/prop")
-    if (!grepl("short",tbl$feat[i])) {
-      gpp = gggraph(
-        grp, v_ind=pp_, vb_ind=pp_, main=main,
-        e_ind=grp$e[,1]%in%grp$v$name[pp_] &grp$e[,2]%in%grp$v$name[pp_],
-        label_ind=rep(F,nrow(grp$v)))
-      gp = gpp + geom_label_repel(
-        data=grp$v[pp__,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
-      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
-    }
-    gp = gggraph(gr, v_ind=p_, vb_ind=p_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0("(positive only) ",main))
+    
+    
+    
+    gp = gggraph(gr, v_ind=p_, vb_ind=p_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0(main))
     gp = gp + geom_label_repel(
       data=gr$v[p__,],
       aes(x=x,y=y,label=label, color=color),
       nudge_x = -.1, direction = "y", hjust=1, segment.size=.2)
-    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+    ggsave(paste0(pathn,"/gr_prop",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
     
     
     
     ## color = p value
-    gr$v$label = paste0(gr$v$name,":",round(mcmc,3))
+    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
     gr$v$color = p
     gr$v$colorb = p
-    grp$v$label = paste0(grp$v$name,":",round(mcmcp,3))
+    grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
     grp$v$color = pp
     grp$v$colorb = pp
     
     main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n top 10 significant cell populations labelled \ncolours=pvalue")
     if (!grepl("short",tbl$feat[i])) {
       gpp = gggraph(
-        grp, v_ind=rep(T,length(pp_)), main=main,
+        grp, v_ind=p_, main=main,
         e_ind=grp$e[,1]%in%grp$v$name[pp_] &grp$e[,2]%in%grp$v$name[pp_],
         label_ind=rep(F,nrow(grp$v)))
       gp = gpp + geom_label_repel(
         data=grp$v[(mcmup-mcmcp)/mcmcp >.05 & pp_ & pp__,],
         aes(x=x,y=y,label=label, color=color),
         nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
-      ggsave(paste0(pathn,"/grPpos",classn,"_",tbl$feat[i],".png"), plot=gpp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+      ggsave(paste0(pathn,"/grpos_p",classn,"_",tbl$feat[i],".png"), plot=gpp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
     }
-    gp = gggraph(gr, v_ind=rep(T,length(pp_)), e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0("(positive only) ",main))
+    gp = gggraph(gr, v_ind=pp_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0("(positive only) ",main))
     gp = gp + geom_label_repel(
       data=gr$v[(mcmu-mcmc)/mcmc >.05 & p_ & p__,],
       aes(x=x,y=y,label=label, color=color),
       nudge_x = -.1, direction = "y", hjust=1, segment.size=.2)
-    ggsave(paste0(pathn,"/grP",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+    ggsave(paste0(pathn,"/gr_p",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+    
+    
+    ## color = overlap
+    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
+    gr$v$color = mo
+    gr$v$colorb = mo
+    grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
+    grp$v$color = mop
+    grp$v$colorb = mop
+    
+    main = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i],"\n top 10 significant cell populations labelled \ncolours=overlap/controls")
+    if (!grepl("short",tbl$feat[i])) {
+      gpp = gggraph(
+        grp, v_ind=p_, main=main,
+        e_ind=grp$e[,1]%in%grp$v$name[pp_] &grp$e[,2]%in%grp$v$name[pp_],
+        label_ind=rep(F,nrow(grp$v)))
+      gp = gpp + geom_label_repel(
+        data=grp$v[(mcmup-mcmcp)/mcmcp >.05 & pp_ & pp__,],
+        aes(x=x,y=y,label=label, color=color),
+        nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
+      ggsave(paste0(pathn,"/grpos_overlap",classn,"_",tbl$feat[i],".png"), plot=gpp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
+    }
+    gp = gggraph(gr, v_ind=pp_, e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_], label_ind=rep(F,nrow(gr$v)), main=paste0("(positive only) ",main))
+    gp = gp + geom_label_repel(
+      data=gr$v[(mcmu-mcmc)/mcmc >.05 & p_ & p__,],
+      aes(x=x,y=y,label=label, color=color),
+      nudge_x = -.1, direction = "y", hjust=1, segment.size=.2)
+    ggsave(paste0(pathn,"/gr_overlap",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =11, units = "in", dpi = 300, limitsize = TRUE)
     
     
     #   c_feats_ = c_feats
@@ -435,7 +525,7 @@ l_ply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), func
     #       
     #     }
     #     
-  })}
+}
 }, .parallel=T)
 time_output(start1)
 
@@ -451,14 +541,21 @@ for (data in c_datas) {
   for (uc in ucs) {
     classn = ifelse(length(ucs)==1, "", paste0("_",uc))
     for (pa in c_pas) {
+      tbinds = tbl$data==data & tbl$class==uc & tbl$pmethod_adj==pa
+      tb = tbl[tbinds & tb$pthres==.05,]
+      
+      # load p values
+      pvs = llply(tb$pathp, function(x) get(load(x))$all)
+      names(pvs) = tb$feat
+      
+      pathn = paste0(root,"/result/",data,"/plot_pval/",pa,"/pthres-",pt)
+      
       for (pt in c_pts) { 
         ptl = -log(pt)
-        tb = tbl[tbl$data==data & tbl$class==uc & tbl$pmethod_adj==pa & tbl$pthres==pt,]
+        tb = tbl[tbinds & tb$pthres==pt,]
         
-        pvs = llply(tb$pathp, function(x) get(load(x))$all)
-        names(pvs) = tb$feat
         
-        pathn = paste0(root,"/result/",data,"/plot_pval/pthres-",pt,"/",pa)
+        pathn = paste0(root,"/result/",data,"/plot_pval/",pa,"/pthres-",pt)
         
         
         
