@@ -45,7 +45,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   print(result_dir)
-  
+
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")
@@ -128,11 +128,11 @@ for (result_dir in result_dirs) {
                    e = which(uci & !sm$train))
       } else {
         wu = which(uci)
-        wui = sample(1:length(wu),length(wu)/2)
-        wuii = setdiff(1:length(wu),wui)
-        tri = list(c = which(controli),
+        wui = wu[sample(1:length(wu),length(wu)/2)]
+        wuii = wu[setdiff(1:length(wu),wui)]
+        tri = list(c = which(controli)[1:floor(sum(controli)/2)],
                    e = wui)
-        tei = list(c = which(controli),
+        tei = list(c = which(controli)[floor(sum(controli)/2):sum(controli)],
                    e = wuii)
       }
       cmtrs = m[tri$c,,drop=F]

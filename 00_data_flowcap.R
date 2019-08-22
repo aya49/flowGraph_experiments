@@ -12,6 +12,7 @@ setwd(root)
 
 ## input directories
 data_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II/data" #main data directory
+fcs_dir = paste0(data_dir,"/FCS") #fcs file directory
 ft_dir = paste0(data_dir,"/FT") #flowtype file directory
 csv_dir = paste0(data_dir,"/AML.csv") #meta file directory
 csv_dir2 = paste0(data_dir,"/AMLTraining.csv") #meta file directory
@@ -24,7 +25,7 @@ result_dir0 = paste0(root, "/result/flowcap") #; dir.create(result_dir, showWarn
 ## libraries
 source("source/_func.R")
 libr(c("flowCore", "flowType",
-       "doMC", "foreach", "plyr"))
+       "doMC", "foreach", "plyr","stringr"))
 
 
 ## cores
@@ -55,7 +56,7 @@ m00 = llply(loopInd(1:length(ft_dirs),no_cores),function(ii){
 m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
 rownames(m00) = ftnames
 colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
-
+markers_ = c("FS","SS",paste0("FL",1:5)) #unique(unlist(str_split(colnames(m00),"[+-]")))
 
 ## meta/file
 tube_subject = ldply(1:length(ft_dirs), function(i) {
@@ -103,8 +104,14 @@ for (tube in unique(meta_file0$tube)) {
   save(meta_file, file=paste0(meta_file_dir,".Rdata"))
   if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=F)
   
+  f = read.FCS(paste0(fcs_dir,"/",str_pad(meta_file$id[1], 4, pad="0"),".fcs"))
+  markers = str_extract(f@parameters@data$desc,"[A-Za-z0-9]+")
   m0 = m00[tubei,]
   rownames(m0) = meta_file$id
+  #colnames(m0) = laply(ft@PhenoCodes, function(x) decodePhenotype(x, markers, ft@PartitionsPerMarker) )
+  for (i in 1:length(markers_))
+    colnames(m0) = gsub(markers_[i],markers[i],colnames(m0))
+  
 
   feat_file_cell_count_dir = paste(feat_dir,"/file-cell-count",sep="")
   save(m0, file=paste0(feat_file_cell_count_dir,".Rdata"))

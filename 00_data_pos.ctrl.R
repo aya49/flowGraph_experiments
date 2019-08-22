@@ -74,24 +74,19 @@ thress1 = thress2 = thress4 = thress0
 thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = p75
 thress4[gthresm[1:4]] = quantile(cvd, .501)
 
-save.image(paste0(root,"/temp.Rdata"))
 
 # start = Sys.time()
 for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
   # for (ds in c("pos1","pos2","pos3","pos4")) {
   # clear/load memory
-  a = ls(all=T); a = a[!a%in%c("ds","root")]
-  rm(list=a); gc()
   
   # start
   start2 = Sys.time()
-  load(paste0(root,"/temp.Rdata"))
-  setwd(root)
-  registerDoMC(no_cores)
-  
+
   
   # ouput directories
   result_dir = paste0(root, "/result/",ds)
+  fcs_dir = paste0(result_dir,"/fcs"); dir.create(fcs_dir, showWarnings=F, recursive=T)
   meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_count_dir = paste(feat_dir,"/file-cell-countAdj",sep="")
@@ -222,7 +217,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
                         e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
           gp = gp +
             geom_label_repel(
-              data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
+              data=al$v[str_count(al$v$name,"[-+]")%in%c(la,la+1) & vind,],
               aes(x=x,y=y,label=label, color=color),
               nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
           
@@ -241,6 +236,9 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
           ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
         }
       }
+      fe = f@exprs
+      colnames(fe) = LETTERS[1:ncol(fe)]
+      save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                MaxMarkersPerPop=6, PartitionsPerMarker=2, 
                Thresholds=thress, 
@@ -260,6 +258,8 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
   if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
   
   time_output(start2, ds)
+  rm(list=c("ftl","ft","m0")); gc()
+  
 }
 time_output(start)
 

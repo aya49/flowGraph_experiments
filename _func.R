@@ -238,7 +238,7 @@ gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NU
                  aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
     geom_segment(data=gr_e[e_ind,], 
                  aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
-    geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+    # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
     # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
     geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
     geom_label_repel(data=gr_v[label_ind,],
@@ -250,7 +250,7 @@ gpdf = function(a) {
   gr_e = a$e
   gr_v = a$v
   return(list(e=data.frame(gr_e,width=1,color=""),
-              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="",label=gr_v$name)))
+              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="",fill="",label=gr_v$name)))
 }
 
 # image functions -----------------------------------

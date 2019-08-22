@@ -8,11 +8,11 @@ setwd(root)
 
 
 ## input directories
-input_dir = "/mnt/f/Brinkman group/current/Daniel/Genentech/TAP/comp_mix/flowType/Tube_003"
+input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003"
 
 
 ## ouput directories
-result_dir = paste0(root, "/result/genetech"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/genentech"); dir.create(result_dir, showWarnings=F, recursive=T)
 feat_dir = paste0(result_dir,"/feat"); dir.create(feat_dir, showWarnings=F, recursive=T)
 feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
 meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
@@ -56,6 +56,10 @@ if (writecsv) write.csv(m0, file=paste0(feat_file_cell_count_dir,".csv"), row.na
 temp_ = Reduce("rbind", str_split(rownames(m0),"_"))
 meta_file = data.frame(id=rownames(m0), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
 meta_file$class[meta_file$class=="100WB"] = "control"
+for (uc in unique(meta_file$class)) {
+  uci = meta_file$class==uc
+  meta_file$train[uci] = ifelse(which(uci)%in%sample(which(uci),sum(uci)/2),T,F)
+}
 
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
 if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=T)

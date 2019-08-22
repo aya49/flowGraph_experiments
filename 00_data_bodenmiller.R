@@ -146,6 +146,10 @@ colnames(meta_file) = c("class","subject","id")
 meta_file$class = gsub("reference","control",meta_file$class,ignore.case=T)
 meta_file$class[meta_file$class!="control"] = "exp"
 meta_file = meta_file[match(rownames(m0),meta_file$id),]
+for (uc in unique(meta_file$class)) {
+  uci = meta_file$class==uc
+  meta_file$train[uci] = ifelse(which(uci)%in%sample(which(uci),sum(uci)/2),T,F)
+}
 
 save(meta_file, file=paste0(meta_file_dir,".Rdata"))
 if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=T)
