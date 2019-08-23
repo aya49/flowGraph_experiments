@@ -51,6 +51,9 @@ ncells = rnorm(nsample,normean,normsd) # number of cells for each sample
 ## meta/file
 meta_file = data.frame(id=paste0("a",1:nsample), class="exp")
 meta_file$class[1:(nctrl*nsample)] = "control"
+meta_file$train = rep(F,nrow(meta_file))
+meta_file$train[(nctrl*nsample+1):(nctrl*nsample+(1-nctrl)*nsample/2)] = meta_file$train[1:(nctrl*nsample/2)] = T
+
 
 
 ## feat/file-count-count: flowtype
@@ -76,7 +79,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
-for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
+for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
   # for (ds in c("pos1","pos2","pos3","pos4")) {
   # clear/load memory
   
@@ -137,6 +140,9 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5")) {
             f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
             f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
             f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+          } else if (ds=="pos6") {
+            tm = sum(triple)/2
+            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
           } else if (ds=="pos5") {
             tm = sum(triple)/2/3
             f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc

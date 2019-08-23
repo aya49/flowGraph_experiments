@@ -16,11 +16,16 @@ no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
-## load processed fcs
-fcss = mfs = NULL
 
-for (data in c("flowcap6","flowcap6_ctrl","flowcap6_pos","pregnancy","genentech","bodenmiller",paste0("ctrl",0:9),paste0("pos",1:5))) { try({
+start = sys.time()
+
+
+fcss = mfs = NULL
+l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0:9),paste0("pos",1:5),"pregnancy"), function(data) { try({
+  start1 = Sys.time()
   print(data)
+  
+  ## load processed fcs
   if (grepl("flowcap6",data)) {
     # flowcap-ii
     if (!exists("fcfcss")) {
@@ -51,6 +56,7 @@ for (data in c("flowcap6","flowcap6_ctrl","flowcap6_pos","pregnancy","genentech"
     } else if (grepl("flowcap6_ctrl",data)) {
       fcss = fcss[as.character(sm0$id)]
     }
+    
   } else if (grepl("pregnancy",data)) {
     # pregnancy
     gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/gs")
@@ -74,8 +80,8 @@ for (data in c("flowcap6","flowcap6_ctrl","flowcap6_pos","pregnancy","genentech"
       # "FoxP3", 
       # "HLADR", 
       "Tbet", "TCRgd")
+    
   } else if (data=="bodenmiller") {
-    # bodenmiller
     fcs_dirs = list.files("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs", full.names=T, pattern=".fcs")
     sm0 = get(load(paste0(root, "/result/bodenmiller/meta/file.Rdata")))
     fcss = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs.Rdata"))
@@ -85,58 +91,69 @@ for (data in c("flowcap6","flowcap6_ctrl","flowcap6_pos","pregnancy","genentech"
     })
     fcss = fcss[sm0$id]
     markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
-  } else if (data=="genentech") {
     
-    # genetech
+  } else if (data=="genentech") {
     gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/Tube_003gs")
     fcss = as(gs_pop_get_data(gs, "Myeloid"),Class="list")
     names(fcss) = gsub("%|.fcs","",names(fcss))
     sm0 = get(load(paste0(root, "/result/genentech/meta/file.Rdata")))
     fcss = fcss[sm0$id]
     markers = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003/MarkerNames_myeloid.Rdata"))
-    mi = match(markers,f@parameters@data$desc)
     fcss = llply(fcss, function(f) {
+      mi = match(markers,f@parameters@data$desc)
       f@exprs = f@exprs[,mi]
       f
     })
-  } else {
+    
+  } else { # ctrl/pos
     sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
-    fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))))
+    fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)
     names(fcss) = sm0$id
   }
+  
+  
   for (uc in unique(sm0$class)) {
     if (uc=="control") next()
     sm = sm0[sm0$class%in%c(uc,"control"),]
-    fcs = fcss[sm$id]
+    fcs = fcss[as.character(sm$id)]
     
     c_dir = paste0(root,"/result/",data,"/cytodx/",uc)
     dir.create(c_dir,showWarnings=F,recursive=T)
     
-    # start1 = Sys.time()
-    train_data = Reduce(rbind,llply(sm$id[sm$train], function(x) {
+    ## collate fcs data
+    train_data = Reduce(rbind,llply(as.character(sm$id[sm$train]), function(x) {
+      if (typeof(fcs[[x]])=="S4") {
+        a = fcs[[x]]@exprs
+      } else {
+        a = fcs[[x]]
+      }
+      data.frame(a,x,sm$class[as.character(sm$id)==x])
+    }))
+    test_data = Reduce(rbind,llply(as.character(sm$id[!sm$train]), function(x) {
       if (typeof(fcs[[x]])=="S4") {
         a = fcs[[x]]@exprs
       } else {
         a = fcs[[x]]
       }
       as = rep(x,nrow(a))
-      ay = rep(sm$class[sm$id==x],nrow(a))
+      ay = rep(sm$class[as.character(sm$id)==x],nrow(a))
       data.frame(a,as,ay)
     }))
-    # time_output(start1)
-    test_data = as.data.frame(Reduce(rbind,llply(sm$id[!sm$train], function(x) {
-      if (typeof(fcs[[x]])=="S4") {
-        a = fcs[[x]]@exprs
-      } else {
-        a = fcs[[x]]
-      }
-      as = rep(x,nrow(a))
-      ay = rep(sm$class[sm$id==x],nrow(a))
-      data.frame(a,as,ay)
-    })))
     colnames(train_data) = colnames(test_data) = c(markers,"xSample","y")
+    if (sum(is.na(train_data))>0) {
+      b = train_data[,1:(ncol(train_data)-2)]
+      b = b-min(b[!is.na(b)])
+      b[is.na(b)] = 0
+      train_data[,1:(ncol(train_data)-2)] = b
+    }
+    if (sum(is.na(test_data))>0) {
+      b = test_data[,1:(ncol(test_data)-2)]
+      b = b-min(b[!is.na(b)])
+      b[is.na(b)] = 0
+      test_data[,1:(ncol(test_data)-2)] = b
+    }
     
-    # build the model
+    ## build models
     start1 = Sys.time()
     x = as.matrix(train_data[,markers])
     x = x-min(x[!is.na(x)])
@@ -163,12 +180,14 @@ for (data in c("flowcap6","flowcap6_ctrl","flowcap6_pos","pregnancy","genentech"
     graphics.off()
     save(fit1,file=paste0(c_dir,"/fit2.Rdata"))
     save(tg1,file=paste0(c_dir,"/tree2.Rdata"))
-    
   }
   
+  rm(list=c("tg1","fit1","test_data","train_data")); gc()
+  
   time_output(start1)
-})}
+})},.parallel=T)
 time_output(start)
+
 # # tg1t = tg1$splits[tg1$splits[,1]>0,]
 # tg1t = tg1$frame
 # yval = NULL
