@@ -122,7 +122,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
         # change f values
         if (ds=="pos1") { thress = thress1 } 
         else if (ds=="pos2") { thress = thress2 } 
-        else if (ds%in%c("pos3","pos4","pos5")) {
+        else if (ds%in%c("pos3","pos4","pos5","pos6")) {
           # .125 -> .19 a+b+c+
           
           ap = f@exprs[,1]>thress[[1]]
@@ -194,7 +194,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           if (ds%in%c("pos1","pos2")) la=1
-          if (ds%in%c("pos3","pos5")) la=3
+          if (ds%in%c("pos3","pos5","pos6")) la=3
           if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
@@ -223,7 +223,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
                         e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
           gp = gp +
             geom_label_repel(
-              data=al$v[str_count(al$v$name,"[-+]")%in%c(la,la+1) & vind,],
+              data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
               aes(x=x,y=y,label=label, color=color),
               nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
           

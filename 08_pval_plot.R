@@ -443,8 +443,10 @@ time_output(start1)
 
 ## graph stats ----------------------------------
 start1 = Sys.time()
-a=llply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), function(ii) {
-  for (i in ii) { 
+# a=llply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), function(ii) {
+#   for (i in ii) {
+    for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
+      
     # do only for cell feature types and nodes<1000 see below
     
     pt = tbl$pthres[i]; ptl = -log(pt)
@@ -538,7 +540,7 @@ a=llply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), fu
       
     }
   }
-},.parallel=T)
+# },.parallel=T)
 time_output(start1)
 
 
