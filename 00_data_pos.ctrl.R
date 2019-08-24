@@ -79,7 +79,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
-for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
+for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7")) {
   # for (ds in c("pos1","pos2","pos3","pos4")) {
   # clear/load memory
   
@@ -122,7 +122,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
         # change f values
         if (ds=="pos1") { thress = thress1 } 
         else if (ds=="pos2") { thress = thress2 } 
-        else if (ds%in%c("pos3","pos4","pos5","pos6")) {
+        else {
           # .125 -> .19 a+b+c+
           
           ap = f@exprs[,1]>thress[[1]]
@@ -143,6 +143,16 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
           } else if (ds=="pos6") {
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+          } else if (ds=="pos7") {
+            tm = sum(triple)/2/3
+            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+            f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
+            f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
+          } else if (ds=="pos8") {
+            tm = sum(triple)/2
+            abc = f@exprs[sample(which(triple),tm),]
+            oth = f@exprs[-sample(which(!triple),tm),]
+            f@exprs = rbind(abc, oth)
           } else if (ds=="pos5") {
             tm = sum(triple)/2/3
             f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
@@ -194,7 +204,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6")) {
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           if (ds%in%c("pos1","pos2")) la=1
-          if (ds%in%c("pos3","pos5","pos6")) la=3
+          if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
           if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,

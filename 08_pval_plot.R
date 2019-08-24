@@ -1,4 +1,4 @@
-()## input: features 
+## input: features 
 ## output: p values and their corelation between train/test sets; p value qq plots, recall/precision, number of significant features
 
 set.seed(10)
@@ -45,6 +45,7 @@ table = get(load(paste0(root,"/pvals.Rdata")))
 
 # use tbl (trim)
 tbl = table
+# tbl = tbl[grepl("^pos",tbl$data),]
 tbl = tbl[!grepl("raw|edge|group|entropy",tbl$feat),]
 tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
 tblc = tbl[grepl("^ctrl",tbl$data),]
@@ -61,7 +62,7 @@ c_pts = unique(tbl$pthres)
 
 
 
-## default counts
+## default counts/props
 mcms = llply(c_datas, function(data) {
   m = get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
   llply(m, function(mc) {
@@ -83,7 +84,19 @@ mcms = llply(c_datas, function(data) {
   # names(mc0) = unique(sm$class)
   # return(mc0)
 }, .parallel=T)
-names(mcms) = names(mcms) = c_datas
+names(mcms) = c_datas
+
+
+## default all feats
+mfms = llply(c_datas, function(data) {
+  fm_dir = paste0(root,"/result/",data,"/feat_mean")
+  fm_dirs = gsub(".Rdata","",list.files(fm_dir, full.names=F, pattern=".Rdata"))
+  mf = llply(fm_dirs, function(feat) get(load(paste0(fm_dir,"/",feat,".Rdata"))) )
+  names(mf) = fm_dirs
+  mf
+}, .parallel=T)
+names(mfms) = c_datas
+
 
 
 ## default graphs
@@ -251,7 +264,7 @@ for (pa in c_pas) {
   abline(h=.05)
   abline(h=.025)
   abline(h=.01)
-  lines(x = c(-100,100), y = c(-100,100))
+  lines(x=c(-100,100), y=c(-100,100))
   legend("topleft", legend=names(pvs), fill=cs, bg="transparent")
   
   nqls = llply(nqs, log)
@@ -445,101 +458,136 @@ time_output(start1)
 start1 = Sys.time()
 # a=llply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s)), no_cores), function(ii) {
 #   for (i in ii) {
-    for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
-      
-    # do only for cell feature types and nodes<1000 see below
+for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
+  
+  # do only for cell feature types and nodes<1000 see below
+  
+  pt = tbl$pthres[i]; ptl = -log(pt)
+  classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
+  pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",pt)
+  
+  main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i])
+  mfm = mfms[[tbl$data[i]]][[tbl$feat[i]]]
+  mcm = mcms[[tbl$data[i]]]
+  mfm_tf = grepl("lnpropexpect",tbl$feat[i])
+  if (mfm_tf) mfm_ = mfms[[tbl$data[i]]][[paste0(tbl$feat[i],"-raw")]]
+  mo0 = get(load(tbl$patho[i]))$all
+  pv = get(load(tbl$pathp[i]))
+  ptr = pv$train
+  pte = pv$test
+  p = pv$all
+  
+  p_ = p<pt
+  ptr_ = ptr<pt & pte>pt
+  pte_ = pte<pt & ptr>pt
+  mfmc = mfm$control
+  mfmu = mfm[[tbl$class[i]]]
+  mfmc = mfmc[match(names(p),names(mfmc))]
+  mfmu = mfmu[match(names(p),names(mfmu))]
+  if (mfm_tf) {
+    mfmc_ = mfm_$control
+    mfmu_ = mfm_[[tbl$class[i]]]
+    mfmc_ = mfmc_[match(names(p),names(mfmc_))]
+    mfmu_ = mfmu_[match(names(p),names(mfmu_))]
+  }
+  mcmc = mcm$control
+  mcmu = mcm[[tbl$class[i]]]
+  mcmc = mcmc[match(names(p),names(mcmc))]
+  mcmu = mcmu[match(names(p),names(mcmu))]
+  gr0 = gr0s[[tbl$data[i]]]
+  gr0$v = gr0$v[match(names(p),gr0$v$name),,drop=F]
+  gr0$v = data.frame(name=unlist(gr0$v))
+  mo = mo0[match(names(p),names(mo0))]
+  gr0$e = gr0$e[gr0$e$from%in%gr0$v$name & gr0$e$to%in%gr0$v$name,]
+  gr = layout_gr(gr0$e,gr0$v)
+  gr = gpdf(gr)
+  gr$v$label = paste0(gr$v$name,":",round(mfmu,3))
+  gr$v$size = 1-mo
+  gr$v$color = p # node colour
+  # label_ind = rep(F,length(p))
+  # label_ind_ = p+mo/2
+  # label_ind[which(p_)[head(order(label_ind_[p_]),5)]] = T
+  label_ind = p_
+  
+  main = paste0(main0,"\ncolours=p value; size=1-overlap(control); label=prop(exp)\n")
+  gpp = gggraph(
+    gr, v_ind=p_, vb_ind=rep(F,nrow(gr$v)), main=main,
+    e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_],
+    label_ind=rep(F,nrow(gr$v)))
+  gpp = gpp + geom_point(data=gr$v[ptr_|pte_,],aes(x=x,y=y),size=2,color="grey")
+  gp = gpp + geom_label_repel(
+    data=gr$v[label_ind,],
+    aes(x=x,y=y,label=label, color=color),
+    nudge_x=-.2, direction="y", hjust=1, segment.size=0.2)
+  
+  ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=11, height=11, units="in", dpi=300, limitsize=T)
+  
+  if (mfm_tf) {
+    gp = gpp + geom_label_repel(
+      data=gr$v[label_ind,],
+      aes(x=x,y=y,color=color,label=label),
+      nudge_x=-.2, direction="y", hjust=1, segment.size=0.2)
     
-    pt = tbl$pthres[i]; ptl = -log(pt)
-    classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
-    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",pt)
-    
-    main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",tbl$pthres[i])
-    
-    mcm = mcms[[tbl$data[i]]]
-    mo0 = get(load(tbl$patho[i]))$all
-    pv = get(load(tbl$pathp[i]))
-    ptr = pv$train
-    pte = pv$test
-    p = pv$all
-    
-    p_ = p<pt
-    ptr_ = ptr<pt & pte>pt
-    pte_ = pte<pt & ptr>pt
-    mcmc = mcm$control
-    mcmu = mcm[[tbl$class[i]]]
-    mcmc = mcmc[match(names(p),names(mcmc))]
-    mcmu = mcmu[match(names(p),names(mcmu))]
-    gr0 = gr0s[[tbl$data[i]]]
-    gr0$v = gr0$v[match(names(p),gr0$v$name),,drop=F]
-    gr0$v = data.frame(name=unlist(gr0$v))
-    mo = mo0[match(names(p),names(mo0))]
-    gr0$e = gr0$e[gr0$e$from%in%gr0$v$name & gr0$e$to%in%gr0$v$name,]
-    gr = layout_gr(gr0$e,gr0$v)
-    gr = gpdf(gr)
-    gr$v$label = paste0(gr$v$name,":",round(mcmu,3))
-    gr$v$size = 1-mo
-    gr$v$color = p # node colour
-    label_ind = rep(F,length(p))
-    label_ind_ = p+mo/2
-    label_ind[which(p_)[head(order(label_ind_[p_]),5)]] = T
+    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=11, height=11, units="in", dpi=300, limitsize=T)
+  }
+  
+  
+  if (!grepl("short",tbl$feat[i])) {
+    posind = !grepl("[-]",names(p))
+    pp = p[posind] # p
+    pp_ = pp<pt # p sig
+    ptrp_ = ptr_[posind] # p sig train only
+    ptep_ = pte_[posind] # p sig test only
+    mfmcp = mfmc[match(names(pp),names(mfmc))] # prop control
+    mfmup = mfmu[match(names(pp),names(mfmu))] # prop exp
+    if (mfm_tf) {
+      mfmcp_ = mfmc_[match(names(pp),names(mfmc_))] # prop control
+      mfmup_ = mfmu_[match(names(pp),names(mfmu_))] # prop exp
+    }
+    mcmcp = mcmc[match(names(pp),names(mcmc))] # prop control
+    mcmup = mcmu[match(names(pp),names(mcmu))] # prop exp
+    mop = mo0[match(names(pp),names(mo0))]
+    grp0 = grp0s[[tbl$data[i]]] # load graph
+    grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
+    grp0$v = data.frame(name=unlist(grp0$v))
+    grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
+    grp = layout_gr(grp0$e,grp0$v) # graph layout
+    grp = gpdf(grp) # add graph attributes
+    grp$v$label = paste0(grp$v$name,":",round(mfmup,3))
+    grp$v$size = 1-mop
+    grp$v$color = pp # node colour
+    # grp$v$colorb = ifelse(ptrp_,"set1","none") # node border colour
+    # grp$v$colorb[ptep_] = "set2"
+    # grp$v$colorb[(!ptep_ | !ptrp_) & pp_] = "all"
+    # grp$v$colorb = as.factor(grp$v$colorb)
+    # grp$v$fill = ifelse(ptep_ | ptrp_,F,T)
+    # label_ind = rep(F,length(pp))
+    # label_ind_ = pp+mop/2
+    # label_ind[which(pp_)[head(order(label_ind_[pp_]),5)]] = T
+    label_ind = pp_
     
     main = paste0(main0,"\ncolours=p value; size=1-overlap(control); label=prop(exp)\n")
     gpp = gggraph(
-      gr, v_ind=p_, vb_ind=rep(F,nrow(gr$v)), main=main,
-      e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_],
-      label_ind=rep(F,nrow(gr$v)))
+      grp, v_ind=pp_, vb_ind=rep(F,nrow(grp$v)), main=main,
+      e_ind=grp$e[,1]%in%grp$v$name[pp_] & grp$e[,2]%in%grp$v$name[pp_],
+      label_ind=rep(F,nrow(grp$v)))
+    gpp = gpp + geom_point(data=grp$v[ptrp_|ptep_,],aes(x=x,y=y),size=2,color="grey") 
     gp = gpp + geom_label_repel(
-      data=gr$v[label_ind,],
+      data=grp$v[label_ind,],
       aes(x=x,y=y,label=label, color=color),
-      nudge_x = -.2, direction = "y", hjust = 1, segment.size = 0.2) +
-      geom_point(data=gr$v[ptr_|pte_,],aes(x=x,y=y),size=2,color="grey")
+      nudge_x=-.2, direction="y", hjust=1, segment.size=0.2) 
+    ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=11, height=15, units="in", dpi=300, limitsize=T)
     
-    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =15, units = "in", dpi = 300, limitsize = TRUE)
-    
-    
-    if (!grepl("short",tbl$feat[i])) {
-      posind = !grepl("[-]",names(p))
-      pp = p[posind] # p
-      pp_ = pp<pt # p sig
-      ptrp_ = ptr_[posind] # p sig train only
-      ptep_ = pte_[posind] # p sig test only
-      mcmcp = mcmc[match(names(pp),names(mcmc))] # prop control
-      mcmup = mcmu[match(names(pp),names(mcmu))] # prop exp
-      mop = mo0[match(names(pp),names(mo0))]
-      grp0 = grp0s[[tbl$data[i]]] # load graph
-      grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
-      grp0$v = data.frame(name=unlist(grp0$v))
-      grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
-      grp = layout_gr(grp0$e,grp0$v) # graph layout
-      grp = gpdf(grp) # add graph attributes
-      grp$v$label = paste0(grp$v$name,":",round(mcmup,3))
-      grp$v$size = 1-mop
-      grp$v$color = pp # node colour
-      # grp$v$colorb = ifelse(ptrp_,"set1","none") # node border colour
-      # grp$v$colorb[ptep_] = "set2"
-      # grp$v$colorb[(!ptep_ | !ptrp_) & pp_] = "all"
-      # grp$v$colorb = as.factor(grp$v$colorb)
-      # grp$v$fill = ifelse(ptep_ | ptrp_,F,T)
-      label_ind = rep(F,length(pp))
-      label_ind_ = pp+mop/2
-      label_ind[which(pp_)[head(order(label_ind_[pp_]),5)]] = T
-      
-      main = paste0(main0,"\ncolours=p value; size=1-overlap(control); label=prop(exp)\n")
-      gpp = gggraph(
-        grp, v_ind=pp_, vb_ind=rep(F,nrow(grp$v)), main=main,
-        e_ind=grp$e[,1]%in%grp$v$name[pp_] & grp$e[,2]%in%grp$v$name[pp_],
-        label_ind=rep(F,nrow(grp$v)))
+    if (mfm_tf) {
       gp = gpp + geom_label_repel(
         data=grp$v[label_ind,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x = -.2, direction = "y", hjust = 1, segment.size = 0.2) +
-        geom_point(data=grp$v[ptrp_|ptep_,],aes(x=x,y=y),size=2,color="grey") 
-      
-      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale = 1, width =11, height =15, units = "in", dpi = 300, limitsize = TRUE)
-      
-      
+        aes(x=x,y=y,color=color,label=label), 
+        nudge_x=-.2, direction="y", hjust=1, segment.size=.2) 
+      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=11, height=15, units="in", dpi=300, limitsize=T)
     }
+    
   }
+}
 # },.parallel=T)
 time_output(start1)
 

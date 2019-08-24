@@ -87,7 +87,7 @@ for (result_dir in result_dirs) {
     
     mname = paste0(sum_m_dir,"/",feat_type,".Rdata")
     fmean = llply(ucs, function(uc) {
-      a = apply(m[sm$class==uc,],2,mean_geo)
+      a = colMeans(m[sm$class==uc,])
       names(a) = colnames(m)
       return(a)
     })

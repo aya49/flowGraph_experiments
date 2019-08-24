@@ -1,4 +1,4 @@
-## input: features 
+## input: pval etc. directories 
 ## output: p values and their corelation between train/test sets; p value qq plots, recall/precision, number of significant features
 
 set.seed(10)
