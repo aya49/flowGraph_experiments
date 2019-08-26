@@ -108,6 +108,7 @@ for (data in c(paste0("ctrl",0),paste0("pos",1:6))) {
       
     } else { # ctrl/pos
       sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
+      sm0 = sm0[c(1:2,251:252,501:502,751:752),]
       fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)
       names(fcss) = sm0$id
       markers = colnames(fcss[[1]])

@@ -141,6 +141,21 @@ tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
         tt$f = 2*((prec*rec)/(prec+rec))
       }
       
+      # calculate corr again
+      pv_trl = -log(pv_tr_[tr_sig | te_sig])
+      pv_tel = -log(pv_te_[tr_sig | te_sig])
+      # pv_alll
+      
+      tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
+      tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
+      if (is.na(tt$pcorr)) { 
+        table$pcorr_sigonly = 1
+        table$pcorrp_sigonly = 0
+      }
+      # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
+      # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
+      
+      
       return(tt)
     }))
   }))

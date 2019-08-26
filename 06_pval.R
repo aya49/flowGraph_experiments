@@ -34,7 +34,7 @@ good_sample = minfold = 5 # each class must have more thatn good_sample amount o
 
 
 
-adjust = c("BY", "none")#,"fisher","none","BH","bonferroni") #pvalue adjustment; "lanc",
+adjust = c("BY", "BH", "none")#,"fisher","none","BH","bonferroni") #pvalue adjustment; "lanc",
 pthres = .05 # p value sig threshold for t test
 good_count = 5
 
@@ -103,7 +103,7 @@ for (result_dir in result_dirs) {
   # for (feat_type in feat_types_) {
   for (feat_type in feat_types) {
     start2 = Sys.time()
-    cat("\n", feat_type, " ",sep="")
+    cat(feat_type, " ",sep="")
 
     m = feats[[feat_type]]$m
     sm = feats[[feat_type]]$sm
