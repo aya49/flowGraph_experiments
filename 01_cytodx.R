@@ -21,7 +21,7 @@ start = Sys.time()
 
 
 # l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:5),"pregnancy"), function(data) { 
-for (data in c(paste0("ctrl",0),paste0("pos",1:6))) {
+for (data in c(paste0("pos",1:8))) {
   try({
     start1 = Sys.time()
     print(data)

@@ -34,7 +34,8 @@ registerDoMC(no_cores)
 writecsv = F
 nsample = 1000 # # of samples to create per data set
 nctrl = .5 # % of control samples
-markern = 6 # # of markers
+markern = 5 # # of markers
+maxmarker = 6
 
 normean = 300000 # 301234.7 for pregnancy
 normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countAdj & run 01_feat_normalizeadj
@@ -79,8 +80,9 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
-for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7")) {
-  # for (ds in c("pos1","pos2","pos3","pos4")) {
+# for (ds in c("pos1","pos2","pos3",#"pos4",
+#              "pos5","pos6","pos7",paste0("ctrl",0:9))) {
+  for (ds in c("pos5")) {
   # clear/load memory
   
   # start
@@ -97,7 +99,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
   # cell names
   f@exprs = matrix(rnorm(ncells[1]*length(markers),2,1),nrow=ncells[1])
   a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-               MaxMarkersPerPop=6, PartitionsPerMarker=2, 
+               MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                Thresholds=thress0, 
                Methods='Thresholds', verbose=F, MemLimit=60)
   ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
@@ -111,7 +113,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
         # make base graph for plot
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=6, PartitionsPerMarker=2,
+                        MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
                         Thresholds=thress,
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
@@ -129,7 +131,9 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
           bp = f@exprs[,2]>thress[[2]]
           cp = f@exprs[,3]>thress[[3]]
           dp = f@exprs[,4]>thress[[4]]
+          ep = f@exprs[,5]>thress[[5]]
           # ep = f@exprs[,5]>thress[[5]]
+          double = ap & bp
           triple = (ap & bp & cp)
           quad = ap & bp & cp & dp
           # quint = ap & bp & cp & dp & ep
@@ -140,45 +144,55 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
             f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
             f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
             f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-          } else if (ds=="pos6") {
+          } else if (ds=="pos6") { # change abc
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") {
-            tm = sum(triple)/2/3
-            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-            f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
-            f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
+          } else if (ds=="pos7") { # change ab
+            tm = sum(double)/2
+            f@exprs[sample(which(bp & !ap),tm),1] = p75
+            
+            # tm = sum(triple)/2/3
+            # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+            # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
+            # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
           } else if (ds=="pos8") {
             tm = sum(triple)/2
             abc = f@exprs[sample(which(triple),tm),]
             oth = f@exprs[-sample(which(!triple),tm),]
             f@exprs = rbind(abc, oth)
-          } else if (ds=="pos5") {
-            tm = sum(triple)/2/3
-            f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
-            f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
-            f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
-            f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
-
-            f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
-            f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
-            f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
-            f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
+          } else if (ds=="pos5") { # change two double ab ed
+            tm = sum(double)/2
+            f@exprs[sample(which(bp & !ap),tm),1] = p75 # ab
+            f@exprs[sample(which(dp & !ep),tm),5] = p75 # ed
             
-            f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
-            f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
-            f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-            f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-          } else if (ds=="pos4") {
-            tn = sum(quad)/2
-            f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-            f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-            f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-            f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-            f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-            f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-            f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-            f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
+            # tm = sum(triple)/2/3
+            # f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
+            # f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
+            # f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
+            # f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
+            # 
+            # f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
+            # f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
+            # f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
+            # f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
+            # 
+            # f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
+            # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
+            # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+            # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+          } else if (ds=="pos4") { # AB change from B
+            tm = sum(double)/2
+            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
+            
+            # tn = sum(quad)/2
+            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
+            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
+            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
+            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
+            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
+            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
+            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
+            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
           }
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
@@ -208,7 +222,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
           if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=6, PartitionsPerMarker=2,
+                        MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
                         Thresholds=thress,
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
@@ -256,7 +270,7 @@ for (ds in c(paste0("ctrl",0:9),"pos1","pos2","pos3","pos4","pos5","pos6","pos7"
       colnames(fe) = LETTERS[1:ncol(fe)]
       save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-               MaxMarkersPerPop=6, PartitionsPerMarker=2, 
+               MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                Thresholds=thress, 
                Methods='Thresholds', verbose=F, MemLimit=60)@CellFreqs
     })

@@ -506,7 +506,7 @@ time_output(start1)
 
 
 
-## graph stats ----------------------------------
+## graph plots ----------------------------------
 start1 = Sys.time()
 l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
   #   for (i in ii) {
@@ -595,6 +595,9 @@ l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test
     }
     
     
+  
+    
+    
     try ({
       pn = names(p)[p_ & mo<overlapmin]
       pnse = str_extract_all(pn,"[A-Za-z0-9]+[+|-]")
@@ -608,14 +611,7 @@ l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test
         }))
       }, .parallel=T))
       colnames(pndf) = pnseu
-      # itemsets = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=.1))#, confidence=0.5))
       rules = apriori(pndf, parameter=list(support=1/nrow(pndf), confidence=.1))#, confidence=0.5))
-      # ic = itemsets@quality$count
-      # idu = itemsets@items@itemInfo$labels
-      # id = itemsets@items@data
-      # ia = is.subset(itemsets)
-      # colnames(ia) = rownames(ia) = gsub("[{|}|,]","",colnames(ia))
-      # iv = sapply(1:ncol(id), function(j) paste(idu[id[,j]],collapse=""))
       # ivl = str_count(iv,"[+|-]")
       # igr0 = list(v=data.frame(name=iv), e=as.data.frame(t(apply(which(ia, arr.ind=T),1,function(x) {
       #   if (ivl[x[2]]-ivl[x[1]]==1) return(c(iv[x[1]],iv[x[2]]))
@@ -632,20 +628,58 @@ l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test
       #   label_ind=rep(F,nrow(gr$v)))
       
       
-      
-      dir.create(paste0(pathn,"/arules/",uc), showWarnings=F, recursive=T)
-      png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_paracoord.png"))
+      # rules plot
+      dir.create(paste0(pathn,"/arules/",tbl$class[i]), showWarnings=F, recursive=T)
+      png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_paracoord.png"))
       plot(rules, method="paracoord") # lines arrow
       graphics.off()
-      png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_graph.png"))
+      png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_graph.png"))
       plot(rules, method="graph") # dots with arrows point to them by lift
       graphics.off()
-      png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_scatterplot.png"))
+      png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_scatterplot.png"))
       plot(rules, method="scatterplot")
       graphics.off()
-      png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_grouped.png"))
+      png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_grouped.png"))
       plot(rules, method="grouped") # item in LHs by RHS
       graphics.off()
+      
+      
+      # itemset plot
+      itemsets = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=.1))#, confidence=0.5))
+      ic = itemsets@quality$count
+      idu = itemsets@items@itemInfo$labels
+      id = itemsets@items@data
+      # ia = is.subset(itemsets)
+      # colnames(ia) = rownames(ia) = gsub("[{|}|,]","",colnames(ia))
+      iv = sapply(1:ncol(id), function(j) paste(idu[id[,j]],collapse=""))
+      names(ic) = iv
+      
+      ivm = match(gr$v$name,names(ic))
+      gr$v$size = ic[ivm]
+      gr$v$label = paste0(gr$v$name,":",ic[ivm])
+      lbnotna = !grepl("NA$",gr$v$label)
+      label_ind[!lbnotna] = F
+
+    main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
+    gpp = gggraph(
+      gr, v_ind=lbnotna, vb_ind=rep(F,nrow(gr$v)), main=main,
+      e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna],
+      label_ind=rep(F,nrow(gr$v)))
+    gp = gpp + geom_label_repel(
+      data=gr$v[label_ind,],
+      aes(x=x,y=y,label=label, color=color),
+      nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+    
+    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=16, height=12, units="in", dpi=300, limitsize=T)
+    
+    gp = gpp + geom_label_repel(
+      data=gr$v[lbnotna,],
+      aes(x=x,y=y,label=label, color=color),
+      nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+    
+    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset_alllabellled.png"), plot=gp, scale=1, width=16, height=12, units="in", dpi=300, limitsize=T)
+    
+    
     })
     
     
@@ -701,6 +735,7 @@ l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test
         data=grp$v[label_ind,],
         aes(x=x,y=y,label=label, color=color),
         nudge_x=-.1, direction="y", hjust=1, segment.size=0.2) 
+      
       ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=16, height=12, units="in", dpi=300, limitsize=T)
       
       if (mfm_tf) {
@@ -730,19 +765,58 @@ l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test
         }, .parallel=T))
         colnames(pndf) = pnseu
         rules = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=0.5))
-        dir.create(paste0(pathn,"/arules/",uc), showWarnings=F, recursive=T)
-        png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_paracoord_pos.png"))
+        dir.create(paste0(pathn,"/arules/",tbl$class[i]), showWarnings=F, recursive=T)
+        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_paracoord_pos.png"))
         plot(rules, method="paracoord") # lines arrow
         graphics.off()
-        png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_graph_pos.png"))
+        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_graph_pos.png"))
         plot(rules, method="graph") # dots with arrows point to them by lift
         graphics.off()
-        png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_scatterplot_pos.png"))
+        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_scatterplot_pos.png"))
         plot(rules, method="scatterplot")
         graphics.off()
-        png(paste0(pathn,"/arules/",uc,"/",tbl$feat[i],"_grouped_pos.png"))
+        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_grouped_pos.png"))
         plot(rules, method="grouped") # item in LHs by RHS
         graphics.off()
+        
+        
+        # itemset plot
+        itemsets = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=.1))#, confidence=0.5))
+        ic = itemsets@quality$count
+        idu = itemsets@items@itemInfo$labels
+        id = itemsets@items@data
+        # ia = is.subset(itemsets)
+        # colnames(ia) = rownames(ia) = gsub("[{|}|,]","",colnames(ia))
+        iv = sapply(1:ncol(id), function(j) paste(idu[id[,j]],collapse=""))
+        names(ic) = iv
+        
+        ivm = match(grp$v$name,names(ic))
+        grp$v$size = ic[ivm]
+        grp$v$label = paste0(grp$v$name,":",ic[ivm])
+        lbnotna = !grepl(":NA",grp$v$label)
+        # label_ind = rep(F,nrow(grp$v))
+        label_ind[!lbnotna] = F
+        
+        main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
+        gpp = gggraph(
+          grp, v_ind=lbnotna, vb_ind=rep(F,nrow(grp$v)), main=main,
+          e_ind=grp$e[,1]%in%grp$v$name[lbnotna] & grp$e[,2]%in%grp$v$name[lbnotna],
+          label_ind=rep(F,nrow(grp$v)))
+        gp = gpp + geom_label_repel(
+          data=grp$v[label_ind,],
+          aes(x=x,y=y,label=label, color=color),
+          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+        
+        ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=16, height=12, units="in", dpi=300, limitsize=T)
+        
+        gp = gpp + geom_label_repel(
+          data=grp$v[lbnotna,],
+          aes(x=x,y=y,label=label, color=color),
+          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+        
+        ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset_alllabelled.png"), plot=gp, scale=1, width=16, height=12, units="in", dpi=300, limitsize=T)
+        
+        
       })
       
       

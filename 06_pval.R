@@ -45,7 +45,8 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   print(result_dir)
-
+  # if (!grepl("/pos5",result_dir)) next
+  
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_file_dir = paste(meta_dir, "/file", sep="")

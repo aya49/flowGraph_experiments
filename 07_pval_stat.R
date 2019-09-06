@@ -146,9 +146,10 @@ tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
       pv_tel = -log(pv_te_[tr_sig | te_sig])
       # pv_alll
       
-      tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
-      tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
-      if (is.na(tt$pcorr)) { 
+      if (length(pv_trl)>1) {
+        tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
+        tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
+      } else {
         table$pcorr_sigonly = 1
         table$pcorrp_sigonly = 0
       }
