@@ -1,4 +1,4 @@
-﻿there exists
+there exists
 - relationship between cells: overlap of markers; "parent/child/sibling"
 - relationship between edges: 
 
@@ -24,3 +24,17 @@ apriori
   - e.g. 1.2 = incorrect 20% more often (1.2 times as often) if the association between X and Y was purely random chance
 - maximal: no children are >frequent
 - closed: all children have smaller count than it
+
+to-do
+
+plot: use -log p value for size
+Color for increase/decrese
+
+Instead of overlap: number of standard deviations of control between means
+
+control: choose a random count for everything in the last row
+Positive: increase on last layer count
+
+Positive: abc random, def not random thresholds
+
+Decrease size of lattice
