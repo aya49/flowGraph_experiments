@@ -125,8 +125,6 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
         if (ds=="pos1") { thress = thress1 } 
         else if (ds=="pos2") { thress = thress2 } 
         else {
-          # .125 -> .19 a+b+c+
-          
           ap = f@exprs[,1]>thress[[1]]
           bp = f@exprs[,2]>thress[[2]]
           cp = f@exprs[,3]>thress[[3]]
@@ -144,22 +142,19 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
             f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
             f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
             f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-          } else if (ds=="pos6") { # change abc
-            tm = sum(triple)/2
-            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") { # change ab
+          } else if (ds=="pos4") { # AB change from B
             tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75
+            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
             
-            # tm = sum(triple)/2/3
-            # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-            # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
-            # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
-          } else if (ds=="pos8") {
-            tm = sum(triple)/2
-            abc = f@exprs[sample(which(triple),tm),]
-            oth = f@exprs[-sample(which(!triple),tm),]
-            f@exprs = rbind(abc, oth)
+            # tn = sum(quad)/2
+            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
+            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
+            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
+            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
+            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
+            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
+            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
+            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
           } else if (ds=="pos5") { # change two double ab ed
             tm = sum(double)/2
             f@exprs[sample(which(bp & !ap),tm),1] = p75 # ab
@@ -180,20 +175,22 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
             # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
             # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
             # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-          } else if (ds=="pos4") { # AB change from B
+          } else if (ds=="pos6") { # change abc
+            tm = sum(triple)/2
+            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+          } else if (ds=="pos7") { # change ab
             tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
+            f@exprs[sample(which(bp & !ap),tm),1] = p75
             
-            # tn = sum(quad)/2
-            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-          }
+            # tm = sum(triple)/2/3
+            # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+            # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
+            # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
+          } else if (ds=="pos8") {
+            tm = sum(triple)/2
+            abc = f@exprs[sample(which(triple),tm),]
+            oth = f@exprs[-sample(which(!triple),tm),]
+            f@exprs = rbind(abc, oth)
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
           # f@exprs[sample(which(ap & !bp & cp & dp & ep),tn),1] = p25
@@ -214,7 +211,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           # f@exprs[sample(which(ap & !bp & !cp & !dp & ep),tn),1] = p25
           # 
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
-          
+          }
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           if (ds%in%c("pos1","pos2")) la=1
