@@ -58,7 +58,8 @@ for (data in c(paste0("pos",1:8))) {
         fcss = fcss[as.character(sm0$id)]
       }
       
-    } else if (grepl("pregnancy",data)) {
+    } 
+    else if (grepl("pregnancy",data)) {
       # pregnancy
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/gs")
       sm0 = get(load("/mnt/f/Brinkman group/current/Alice/flowtype_metric/result/pregnancy/meta/file.Rdata"))
@@ -82,7 +83,8 @@ for (data in c(paste0("pos",1:8))) {
         # "HLADR", 
         "Tbet", "TCRgd")
       
-    } else if (data=="bodenmiller") {
+    } 
+    else if (data=="bodenmiller") {
       fcs_dirs = list.files("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs", full.names=T, pattern=".fcs")
       sm0 = get(load(paste0(root, "/result/bodenmiller/meta/file.Rdata")))
       fcss = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs.Rdata"))
@@ -93,7 +95,8 @@ for (data in c(paste0("pos",1:8))) {
       fcss = fcss[sm0$id]
       markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
       
-    } else if (data=="genentech") {
+    } 
+    else if (data=="genentech") {
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/Tube_003gs")
       fcss = as(gs_pop_get_data(gs, "Myeloid"),Class="list")
       names(fcss) = gsub("%|.fcs","",names(fcss))
@@ -106,7 +109,8 @@ for (data in c(paste0("pos",1:8))) {
         f
       })
       
-    } else { # ctrl/pos
+    } 
+    else { # ctrl/pos
       sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
       sm0 = sm0[c(1:2,251:252,501:502,751:752),]
       fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)

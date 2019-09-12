@@ -544,8 +544,8 @@ start1 = Sys.time()
     # ptr = pv$train
     # pte = pv$test
     p = pv$all
-    if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("E|F|G|H",names(p))]
-    if (tbl$data[i]%in%c("pos6")) p = p[!grepl("F|G|H",names(p))]
+    if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("D|E|F|G|H",names(p))]
+    if (tbl$data[i]%in%c("pos6")) p = p[!grepl("E|F|G|H",names(p))]
     
     p_ = p<pt
     # ptr_ = ptr<pt & pte>pt
