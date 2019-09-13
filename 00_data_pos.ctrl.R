@@ -1,7 +1,7 @@
 ## input: gates + fcm files,  meta data paths
 ## output: feat_file_cell_count, meta_file
 ## process: 
-## - takes gates + fcm files (values randomly generated via exponential distribution; for class 3,4 FCS files, we increase gate values of the first 2 markers by 25% for artificial positive experiment files), outputs flowtype vectors 
+## - takes gates + fcm files (values randomly generated via normal distribution; see different pos_ for how positive controls are changed
 ## - compiles flowtype vectors together to create cell count matrix
 ## - reformats meta file (meta info for fcm files)
 ## - creates cell meta file (meta info for fcm cell populations)
@@ -39,6 +39,8 @@ maxmarker = 6
 
 normean = 300000 # 301234.7 for pregnancy
 normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countAdj & run 01_feat_normalizeadj
+
+lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
 
 
 start = Sys.time()
@@ -80,9 +82,9 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
-# for (ds in c("pos1","pos2","pos3",#"pos4",
-#              "pos5","pos6","pos7",paste0("ctrl",0:9))) {
-  for (ds in c("pos5")) {
+# for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
+  for (ds in c(paste0("pos",7:9))) {
+    # for (ds in c("pos5")) {
   # clear/load memory
   
   # start
@@ -96,18 +98,39 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
   feat_dir = paste(result_dir, "/feat", sep=""); dir.create(feat_dir, showWarnings=F)
   feat_file_cell_count_dir = paste(feat_dir,"/file-cell-countAdj",sep="")
   
-  # cell names
+  # make cell names
   f@exprs = matrix(rnorm(ncells[1]*length(markers),2,1),nrow=ncells[1])
   a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                Thresholds=thress0, 
                Methods='Thresholds', verbose=F, MemLimit=60)
   ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
-
+  ftcell_ = str_count(ftcell,"[+|-]")
+  lastlcp = ftcell[ftcell_==length(markers)]
+  lastlcpm = llply(str_extract_all(lastlcp,"[A-Z][+|-]"), function(x) 
+    grepl("[+]",x) )
+  lastlallposi = which(sapply(lastlcpm, function(x) all(x)))
+  lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
+  
+  
   # flowtype
   ftl = llply(loopInd(1:nsample,no_cores), function(ii) {
     llply(ii, function(i) {
+      # v1 randomized matrix
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+      # v2 randomized matrix: randomly define last layer pops
+      lastlm = normean/length(lastlcp)
+      lastlsd = .1*lastlm
+      lastln = round(rnorm(length(lastlcp),lastlm,lastlsd))
+      lastlncs = cumsum(lastln)
+      
+      fex = matrix(p25, nrow=sum(lastln), ncol=length(markers))
+      fex[1:lastlncs[1], lastlcpm[[1]]] = p75
+      for (i in 2:length(lastlcp)) 
+        fex[(lastlncs[i-1]+1):lastlncs[i], lastlcpm[[i]]] = p75
+      
+      
+      
       thress = thress0
       if (i>(nsample*nctrl) & grepl("pos",ds)) {
         # make base graph for plot
@@ -122,8 +145,12 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           ftv0 = round(ftv0/ftv0[1],3)
         }
         # change f values
-        if (ds=="pos1") { thress = thress1 } 
-        else if (ds=="pos2") { thress = thress2 } 
+        if (ds=="pos1") { # A+ > .25
+          thress = thress1 
+        } 
+        else if (ds=="pos2") { # A+, B+ > .25
+          thress = thress2 
+        } 
         else {
           ap = f@exprs[,1]>thress[[1]]
           bp = f@exprs[,2]>thress[[2]]
@@ -136,29 +163,12 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           quad = ap & bp & cp & dp
           # quint = ap & bp & cp & dp & ep
           
-          if (ds=="pos3") {
+          if (ds=="pos3") { # A-B+C+ > A+B+C+ x1.5
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
             f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
             f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
             f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-          } else if (ds=="pos4") { # AB change from B
-            tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
-            
-            # tn = sum(quad)/2
-            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-          } else if (ds=="pos5") { # change two double ab ed
-            tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75 # ab
-            f@exprs[sample(which(dp & !ep),tm),5] = p75 # ed
             
             # tm = sum(triple)/2/3
             # f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
@@ -175,22 +185,39 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
             # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
             # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
             # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-          } else if (ds=="pos6") { # change abc
+            
+          } else if (ds=="pos4") { # A-B+ > A+B+ x1.5
+            tm = sum(double)/2
+            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
+            
+            # tn = sum(quad)/2
+            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
+            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
+            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
+            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
+            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
+            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
+            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
+            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
+          } else if (ds=="pos5") { # A-B+ > A+B+ x1.5; E-D+ > E+D+ x1.5
+            tm = sum(double)/2
+            f@exprs[sample(which(bp & !ap),tm),1] = p75 # ab
+            f@exprs[sample(which(dp & !ep),tm),5] = p75 # ed
+            
+          } else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") { # change ab
-            tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75
-            
+          } else if (ds=="pos7") { # change all pos leaf cell population > x1.5
+            f@exprs = rbind(fex, matrix(p75,nrow=.5*lastln[lastlallposi], ncol=length(markers)))
+
             # tm = sum(triple)/2/3
             # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
             # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
             # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
-          } else if (ds=="pos8") {
-            tm = sum(triple)/2
-            abc = f@exprs[sample(which(triple),tm),]
-            oth = f@exprs[-sample(which(!triple),tm),]
-            f@exprs = rbind(abc, oth)
+          } else if (ds=="pos8") { # same as 7 but all neg leaf also > x1.5
+            f@exprs = rbind(fex, matrix(p75,nrow=.5*lastln[lastlallposi], ncol=length(markers)))
+            f@exprs = rbind(f@exprs, matrix(p25,nrow=.5*lastln[lastlallnegi], ncol=length(markers)))
+            
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
           # f@exprs[sample(which(ap & !bp & cp & dp & ep),tn),1] = p25
@@ -211,10 +238,13 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           # f@exprs[sample(which(ap & !bp & !cp & !dp & ep),tn),1] = p25
           # 
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
+          } else if (ds=="pos9") { # same as pos2 but with random last layer pops
+            thress = thress2
+            f@exprs = fex
           }
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
-          if (ds%in%c("pos1","pos2")) la=1
+          if (ds%in%c("pos1","pos2","pos9")) la=1
           if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
           if (ds%in%c("pos4")) la=4
           

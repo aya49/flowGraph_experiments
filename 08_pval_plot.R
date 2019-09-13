@@ -45,7 +45,7 @@ start = Sys.time()
 table = get(load(paste0(root,"/pvals.Rdata")))
 
 # use tbl (trim)
-# tbl = tbl[grepl("^pos",tbl$data),]
+# tbl = table[grepl("pos7|pos8|pos9",tbl$data),]
 tbl = tbl_ = table[!grepl("raw|edge|group|entropy|short",table$feat),]
 tbl_$pmethod_adj = tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
 tblc = tbl[grepl("^ctrl",tbl$data),]
