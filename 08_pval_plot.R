@@ -45,8 +45,8 @@ start = Sys.time()
 table = get(load(paste0(root,"/pvals.Rdata")))
 
 # use tbl (trim)
-# tbl = table[grepl("pos7|pos8|pos9",tbl$data),]
-tbl = tbl_ = table[!grepl("raw|edge|group|entropy|short",table$feat),]
+tbl = table[grepl("pos7|pos8|pos9",table$data),]
+tbl = tbl_ = tbl[!grepl("raw|edge|group|entropy|short",tbl$feat),]
 tbl_$pmethod_adj = tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
 tblc = tbl[grepl("^ctrl",tbl$data),]
 tbl = tbl[!grepl("ctrl[1-9]",tbl$data),]
@@ -402,12 +402,12 @@ for (data in c_datas) {
         
         
         ## pos stats -----------------------
-        if(grepl("pos[0-9]",data)) {
+        if(grepl("pos[0-6]",data)) {
           asig = llply(pvs, function(x) x<pt)
           rsig = llply(pvs, function(x) {
             if (data=="pos1") a = grepl("^A[+|-]$",names(x))
             if (data=="pos2") a = grepl("^[A|B][+|-]$",names(x))
-            if (data%in%c("pos4","pos7")) a = grepl("^A[+|-]B[+|-]$",names(x))
+            if (data%in%c("pos4")) a = grepl("^A[+|-]B[+|-]$",names(x))
             if (data=="pos5") a = grepl("^A[+|-]B[+|-]$",names(x)) | grepl("^D[+|-]E[+|-]$",names(x))
             if (data%in%c("pos3","pos6","pos8")) a = grepl("^A[+|-]B[+|-]C[+|-]$",names(x))
 
@@ -517,13 +517,16 @@ time_output(start1)
 
 
 ## graph plots ----------------------------------
-tbl = table[!grepl("raw|edge|group|entropy",table$feat),]
+tbl = table[grepl("pos7|pos8|pos9",table$data),]
+tbl = tbl[!grepl("raw|edge|group|entropy",tbl$feat),]
 tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
 tbl = tbl[!grepl("ctrl[1-9]",tbl$data),]
 
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
-  l_ply(loopInd(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none" & tbl$pthres==.01 & tbl$pmethod_adj=="t-BY" & !grepl("^pos",tbl$data) & grepl("prop|countAdj|lnpropexpect",tbl$feat) & grepl("pregnancy|flowcap6$|genentech",tbl$data)), no_cores), function(ii) {
+  l_ply(loopInd(which((tbl$pmethod_adj=="t-BY" | tbl$pmethod_adj=="t-none") & grepl("pos7|pos8|pos9",tbl$data) & grepl("prop|countAdj|lnpropexpect",tbl$feat)), no_cores), function(ii) {try({
+     # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
+      
     #   for (i in ii) {
   # for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
   for (i in ii) { 
@@ -577,7 +580,7 @@ start1 = Sys.time()
     # label_ind_ = p+mo/2
     # label_ind[which(p_)[head(order(label_ind_[p_]),5)]] = T
     if (grepl("^ctrl|^pos",tbl$data[i])) {
-      label_ind = p_ & mo==0 & !grepl("[-]",names(p_))
+      label_ind = p_ & !grepl("[-]",names(p_))
       gr$v$label = paste0(gr$v$name,":",round(mcmu,3))#,"/",round(mfmc,3))
       gr$v$size = mfmdiff
       main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
@@ -742,7 +745,7 @@ start1 = Sys.time()
       # grp$v$colorb = as.factor(grp$v$colorb)
       # grp$v$fill = ifelse(ptep_ | ptrp_,F,T)
       if (grepl("^ctrl|^pos",tbl$data[i])) {
-        label_ind = pp_ & mop==0 & !grepl("[-]",names(pp_))
+        label_ind = pp_ & !grepl("[-]",names(pp_))
         grp$v$label = paste0(grp$v$name,":",round(mcmup,3))#,"/",round(mfmc,3))
         grp$v$size = mfmdiffp
         main = paste0(main0,"\npositive nodes only\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
@@ -854,7 +857,7 @@ start1 = Sys.time()
       
     }
   }
-},.parallel=T)
+})},.parallel=T)
 time_output(start1)
 
 

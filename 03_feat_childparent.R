@@ -37,7 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  # if (!grepl("/pos7|/pos8|/pos9",result_dir)) next
+  if (!grepl("/pos7|/pos8|/pos9",result_dir)) next
   print(result_dir)
 
   ## input directories

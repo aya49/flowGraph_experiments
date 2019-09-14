@@ -104,62 +104,66 @@ time_output(start1)
 ## calculate p value sig stats
 start1 = Sys.time()
 tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
-  Reduce(rbind,llply(ii, function(i) {
-    # for (i in ii) {
-    pvs = get(load(table$pathp[i]))
-    Reduce(rbind,llply(pthress, function(pthres) {
-      # get sig
-      tt = table[i,]
-
-      tt$pthres = pthres
-      
-      pv_tr_ = pvs$train
-      pv_te_ = pvs$test
-      pv_all_ = pvs$all
-      
-      tr_sig = pv_tr_<pthres
-      # tr2_sig = pv_tr2_<pthres
-      te_sig = pv_te_<pthres
-      all_sig = pv_all_<pthres
-      
-      tt$p_thres=pthres
-      tt$m_all_sig=sum(all_sig)
-      tt$m_all=length(all_sig)
-      tt$m_all_perc=sum(all_sig)/length(all_sig)
-      tt$m_train_sig=sum(tr_sig)
-      tt$m_train=length(tr_sig)
-      tt$m_train_perc=sum(tr_sig)/length(tr_sig)
-      tt$m_test_sig=sum(te_sig)
-      tt$m_test=length(te_sig)
-      tt$m_test_perc=sum(te_sig)/length(te_sig)
-      tt$m_overlap_sig = overlap = sum(tr_sig & te_sig)
-      if (overlap==0) {
-        tt$rec = tt$prec = tt$f = 0
-      } else {
-        tt$rec = rec = overlap/sum(te_sig)
-        tt$prec = prec = overlap/sum(tr_sig)
-        tt$f = 2*((prec*rec)/(prec+rec))
-      }
-      
-      # calculate corr again
-      pv_trl = -log(pv_tr_[tr_sig | te_sig])
-      pv_tel = -log(pv_te_[tr_sig | te_sig])
-      # pv_alll
-      
-      if (length(pv_trl)>1) {
-        tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
-        tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
-      } else {
-        table$pcorr_sigonly = 1
-        table$pcorrp_sigonly = 0
-      }
-      # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
-      # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
-      
-      
-      return(tt)
-    }))
-  }))
+  Reduce(rbind,
+         llply(ii, function(i) {
+           # for (i in ii) {
+           pvs = get(load(table$pathp[i]))
+           Reduce(rbind,
+                  llply(pthress, function(pthres) {
+                    # get sig
+                    tt = table[i,]
+                    
+                    tt$pthres = pthres
+                    
+                    pv_tr_ = pvs$train
+                    pv_te_ = pvs$test
+                    pv_all_ = pvs$all
+                    
+                    tr_sig = pv_tr_<pthres
+                    # tr2_sig = pv_tr2_<pthres
+                    te_sig = pv_te_<pthres
+                    all_sig = pv_all_<pthres
+                    
+                    tt$p_thres=pthres
+                    tt$m_all_sig=sum(all_sig)
+                    tt$m_all=length(all_sig)
+                    tt$m_all_perc=sum(all_sig)/length(all_sig)
+                    tt$m_train_sig=sum(tr_sig)
+                    tt$m_train=length(tr_sig)
+                    tt$m_train_perc=sum(tr_sig)/length(tr_sig)
+                    tt$m_test_sig=sum(te_sig)
+                    tt$m_test=length(te_sig)
+                    tt$m_test_perc=sum(te_sig)/length(te_sig)
+                    tt$m_overlap_sig = overlap = sum(tr_sig & te_sig)
+                    if (overlap==0) {
+                      tt$rec = tt$prec = tt$f = 0
+                    } else {
+                      tt$rec = rec = overlap/sum(te_sig)
+                      tt$prec = prec = overlap/sum(tr_sig)
+                      tt$f = 2*((prec*rec)/(prec+rec))
+                    }
+                    
+                    # calculate corr again
+                    pv_trl = -log(pv_tr_[tr_sig | te_sig])
+                    pv_tel = -log(pv_te_[tr_sig | te_sig])
+                    # pv_alll
+                    
+                    if (length(pv_trl)>1) {
+                      tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
+                      tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
+                    } else {
+                      table$pcorr_sigonly = 1
+                      table$pcorrp_sigonly = 0
+                    }
+                    # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
+                    # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
+                    
+                    
+                    return(tt)
+                  })
+           )
+         })
+  )
 },.parallel=T)
 tbl = Reduce(rbind,tbl)
 save(tbl, file=paste0(root,"/pvals.Rdata")) # table

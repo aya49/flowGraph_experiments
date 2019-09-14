@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
-  for (ds in c(paste0("pos",7:9))) {
+for (ds in c(paste0("pos",7:11))) {
     # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -126,8 +126,8 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
       
       fex = matrix(p25, nrow=sum(lastln), ncol=length(markers))
       fex[1:lastlncs[1], lastlcpm[[1]]] = p75
-      for (i in 2:length(lastlcp)) 
-        fex[(lastlncs[i-1]+1):lastlncs[i], lastlcpm[[i]]] = p75
+      for (j in 2:length(lastlcp)) 
+        fex[(lastlncs[j-1]+1):lastlncs[j], lastlcpm[[j]]] = p75
       
       
       
@@ -207,16 +207,16 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           } else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") { # change all pos leaf cell population > x1.5
-            f@exprs = rbind(fex, matrix(p75,nrow=.5*lastln[lastlallposi], ncol=length(markers)))
-
+          } else if (ds=="pos7") { # change all pos leaf cell population > x2
+            f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
+            
             # tm = sum(triple)/2/3
             # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
             # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
             # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
-          } else if (ds=="pos8") { # same as 7 but all neg leaf also > x1.5
-            f@exprs = rbind(fex, matrix(p75,nrow=.5*lastln[lastlallposi], ncol=length(markers)))
-            f@exprs = rbind(f@exprs, matrix(p25,nrow=.5*lastln[lastlallnegi], ncol=length(markers)))
+          } else if (ds=="pos8") { # same as 7 but all neg leaf also > x2
+            f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
+            f@exprs = rbind(f@exprs, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
             
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
@@ -239,8 +239,19 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
           # 
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
           } else if (ds=="pos9") { # same as pos2 but with random last layer pops
-            thress = thress2
-            f@exprs = fex
+            tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
+            tm = sum(triple)/2
+            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          } else if (ds=="pos10") {
+            tripleind = which(fex[,1]==p75 & fex[,2]==p75)
+            tm = sum(double)/2
+            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          } else if (ds=="pos11") {
+            tripleind = which(fex[,1]==p75)
+            tm = sum(double)
+            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+            tripleind = which(fex[,2]==p75)
+            f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
           }
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
