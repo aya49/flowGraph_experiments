@@ -20,8 +20,8 @@ registerDoMC(no_cores)
 start = Sys.time()
 
 
-# l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:5),"pregnancy"), function(data) { 
-for (data in c(paste0("pos",1:8))) {
+l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:11),"pregnancy"), function(data) {
+#for (data in c(paste0("pos",1:11))) {
   try({
     start1 = Sys.time()
     print(data)
@@ -112,7 +112,7 @@ for (data in c(paste0("pos",1:8))) {
     } 
     else { # ctrl/pos
       sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
-      sm0 = sm0[c(1:2,251:252,501:502,751:752),]
+      sm0 = sm0[c(1:5,251:255,501:505,751:755),]
       fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)
       names(fcss) = sm0$id
       markers = colnames(fcss[[1]])
@@ -201,8 +201,8 @@ for (data in c(paste0("pos",1:8))) {
     
     time_output(start1)
   }) 
-}
-# })
+#}
+})
 time_output(start)
 
 # # tg1t = tg1$splits[tg1$splits[,1]>0,]

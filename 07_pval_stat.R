@@ -71,6 +71,8 @@ for (result_dir in result_dirs) {
     test_adj=sapply(ppta,function(x) x[2])))
 } # result
 
+# table = table[table$test=="t" & table$test_adj%in%c("BY","none"),]
+
 
 ## add overlap paths
 for (i in 1:nrow(table)) 
@@ -105,7 +107,7 @@ time_output(start1)
 start1 = Sys.time()
 tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
   Reduce(rbind,
-         llply(ii, function(i) {
+         llply(ii, function(i) { try ({
            # for (i in ii) {
            pvs = get(load(table$pathp[i]))
            Reduce(rbind,
@@ -152,8 +154,8 @@ tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
                       tt$pcorr_sigonly = cor(pv_trl,pv_tel, method="spearman")
                       tt$pcorrp_sigonly = cor.test(pv_trl,pv_tel, method="spearman")$p.value
                     } else {
-                      table$pcorr_sigonly = 1
-                      table$pcorrp_sigonly = 0
+                      tt$pcorr_sigonly = 1
+                      tt$pcorrp_sigonly = 0
                     }
                     # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
                     # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
@@ -162,7 +164,7 @@ tbl = llply(loopInd(1:nrow(table),no_cores), function(ii) {
                     return(tt)
                   })
            )
-         })
+         }) })
   )
 },.parallel=T)
 tbl = Reduce(rbind,tbl)

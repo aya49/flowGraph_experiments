@@ -45,7 +45,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   print(result_dir)
-  if (!grepl("/pos7|/pos8|/pos9",result_dir)) next
+  if (!grepl("/pos",result_dir)) next
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
@@ -102,7 +102,7 @@ for (result_dir in result_dirs) {
   
   # calculate p values --------------------------------
   # for (feat_type in feat_types_) {
-  for (feat_type in feat_types) {
+  llply(feat_types, function(feat_type) {
     start2 = Sys.time()
     cat(feat_type, " ",sep="")
 
@@ -180,7 +180,7 @@ for (result_dir in result_dirs) {
           
           return(c(all,tr,te))
         })
-      },.parallel=T)
+      },.parallel=F)
       os = Reduce(rbind,os); rownames(os) = colnames(m)
       os = list(all=os[,1],train=os[,2],test=os[,3])
       oname = paste0(sum_o_dir,"/",feat_type,"_",uc,".Rdata")
@@ -269,7 +269,7 @@ for (result_dir in result_dirs) {
       } # ptype
     } #uc
     time_output(start2)
-  }#, .parallel=F)) # feat_types
+  }, .parallel=T) # feat_types
   
   time_output(start1)
 } # result

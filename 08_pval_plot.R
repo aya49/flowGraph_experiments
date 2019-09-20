@@ -45,8 +45,8 @@ start = Sys.time()
 table = get(load(paste0(root,"/pvals.Rdata")))
 
 # use tbl (trim)
-tbl = table[grepl("pos7|pos8|pos9",table$data),]
-tbl = tbl_ = tbl[!grepl("raw|edge|group|entropy|short",tbl$feat),]
+tbl = table#[grepl("^pos",table$data),]
+tbl = tbl_ = tbl[!grepl("raw|edge|group|entropy|short",tbl$feat) & !grepl("rror",table$pathp),]
 tbl_$pmethod_adj = tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
 tblc = tbl[grepl("^ctrl",tbl$data),]
 tbl = tbl[!grepl("ctrl[1-9]",tbl$data),]
@@ -517,38 +517,41 @@ time_output(start1)
 
 
 ## graph plots ----------------------------------
-tbl = table[grepl("pos7|pos8|pos9",table$data),]
-tbl = tbl[!grepl("raw|edge|group|entropy",tbl$feat),]
-tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
-tbl = tbl[!grepl("ctrl[1-9]",tbl$data),]
+# tbl = table#[grepl("^pos",table$data),]
+# tbl = tbl[!grepl("raw|edge|group|entropy",tbl$feat),]
+# tbl$pmethod_adj = paste(tbl$test, tbl$test_adj, sep="-")
+# tbl = tbl[!grepl("ctrl[1-9]",tbl$data),]
 
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
-  l_ply(loopInd(which((tbl$pmethod_adj=="t-BY" | tbl$pmethod_adj=="t-none") & grepl("pos7|pos8|pos9",tbl$data) & grepl("prop|countAdj|lnpropexpect",tbl$feat)), no_cores), function(ii) {try({
+  l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
+                        grepl("prop$|countAdj$|expect$",tbl$feat)
+                      ), no_cores), function(ii) {try({
      # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
       
     #   for (i in ii) {
   # for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
   for (i in ii) { 
+    print(tbl$pathp[i])
     
     # do only for cell feature types and nodes<1000 see below... nvm
     
-    pt = tbl$pthres[i]; ptl = -log(pt)
+    pt = as.numeric(tbl$pthres[i]); ptl = -log(pt)
     classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
     pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",pt)
     
-    main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",round(-log(tbl$pthres[i]),3))
+    main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",round(ptl,3))
     mfm = mfms[[tbl$data[i]]][[tbl$feat[i]]]
     mcm = mcms[[tbl$data[i]]]
-    mfm_tf = grepl("lnpropexpect",tbl$feat[i])
+    mfm_tf = grepl("expect",tbl$feat[i])
     if (mfm_tf) mfm_ = mfms[[tbl$data[i]]][[paste0(tbl$feat[i],"-raw")]]
     mo0 = get(load(tbl$patho[i]))$all
     pv = get(load(tbl$pathp[i]))
     # ptr = pv$train
     # pte = pv$test
     p = pv$all
-    if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("D|E|F|G|H",names(p))]
-    if (tbl$data[i]%in%c("pos6")) p = p[!grepl("E|F|G|H",names(p))]
+    # if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("D|E|F|G|H",names(p))]
+    # if (tbl$data[i]%in%c("pos6")) p = p[!grepl("E|F|G|H",names(p))]
     
     p_ = p<pt
     # ptr_ = ptr<pt & pte>pt
@@ -592,7 +595,7 @@ start1 = Sys.time()
       gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
       gr$v$size = -log(p)
       gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
-      main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if lnpropexpect)")
+      main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
       
     }
     
@@ -757,8 +760,7 @@ start1 = Sys.time()
         grp$v$label = paste0(grp$v$name,":",round(mfmup,3))#,"/",round(mfmc,3))
         grp$v$size = -log(p)
         grp$v$size[is.infinite(grp$v$size)] = max(grp$v$size[!is.infinite(grp$v$size)])
-        main = paste0(main0,"\npositive nodes only\nsize=-ln(p value); label=feature value (prop if lnpropexpect)")
-        
+        main = paste0(main0,"\npositive nodes only\nsize=-ln(p value); label=feature value (prop if expect)")
       }
       
       main = paste0(main0,"\ncolours=p value (if ctrl/pos, %change); size=1-overlap(control); label=prop(exp)\n")
@@ -857,7 +859,7 @@ start1 = Sys.time()
       
     }
   }
-})},.parallel=T)
+})},.parallel=F)
 time_output(start1)
 
 

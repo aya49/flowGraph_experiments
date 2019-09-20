@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",7:11))) {
+for (ds in c(paste0("pos",8:11))) {
     # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -129,6 +129,9 @@ for (ds in c(paste0("pos",7:11))) {
       for (j in 2:length(lastlcp)) 
         fex[(lastlncs[j-1]+1):lastlncs[j], lastlcpm[[j]]] = p75
       
+      if (!grepl("ctrl",ds)) {
+                if (as.numeric(gsub("pos","",ds))>6 ) f@exprs = fex
+      }
       
       
       thress = thress0
@@ -141,7 +144,7 @@ for (ds in c(paste0("pos",7:11))) {
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
             decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          ftv0 = ft@CellFreqs
+          ftv0 = ftv0_ = ft@CellFreqs
           ftv0 = round(ftv0/ftv0[1],3)
         }
         # change f values
@@ -207,7 +210,7 @@ for (ds in c(paste0("pos",7:11))) {
           } else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5
             tm = sum(triple)/2
             f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") { # change all pos leaf cell population > x2
+          } else if (ds=="pos7") { # change "all pos" leaf cell population > x2
             f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
             
             # tm = sum(triple)/2/3
@@ -242,11 +245,11 @@ for (ds in c(paste0("pos",7:11))) {
             tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
             tm = sum(triple)/2
             f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          } else if (ds=="pos10") {
+          } else if (ds=="pos10") { #1.5x A+B+
             tripleind = which(fex[,1]==p75 & fex[,2]==p75)
             tm = sum(double)/2
             f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          } else if (ds=="pos11") {
+          } else if (ds=="pos11") { # 1.5x A+, B+
             tripleind = which(fex[,1]==p75)
             tm = sum(double)
             f@exprs = rbind(fex,fex[sample(tripleind,tm),])
@@ -255,9 +258,9 @@ for (ds in c(paste0("pos",7:11))) {
           }
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
-          if (ds%in%c("pos1","pos2","pos9")) la=1
-          if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
-          if (ds%in%c("pos4")) la=4
+          # if (ds%in%c("pos1","pos2","pos9")) la=1
+          # if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
+          # if (ds%in%c("pos4")) la=4
           
           ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
                         MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
@@ -265,27 +268,28 @@ for (ds in c(paste0("pos",7:11))) {
                         Methods='Thresholds', verbose=F, MemLimit=60)
           ftcell = unlist(lapply(ft@PhenoCodes, function(x)
             decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          ftv = ft@CellFreqs
+          ftv = ftv_ = ft@CellFreqs
           ftv = round(ftv/ftv[1],3)
           names(ftv) = ftcell
           a = getPhenCP(cp=ftcell,no_cores=no_cores)
           al = layout_gr(a$gr$e,a$gr$v)
           alp = layout_gr(a$grp$e,a$grp$v)
           al = gpdf(al)
-          al$v$color = ftv
+          al$v$color = ifelse(ftv_>ftv0_,"increase","decrease")
           vind_ = !grepl("-",al$v$name)
           alp = gpdf(alp)
-          alp$v$color = ftv[vind_]
+          alp$v$color = ifelse(ftv_[vind_]>ftv0_[vind_],"increase","decrease") #ftv[vind_]
           al$v$size=1
           al$v$sizeb=1
           
           al$v$label = paste0(al$v$name,":",ftv)
-          vind = abs(ftv-ftv0)/ftv0 >.05
+          vind = abs(ftv_-ftv0_)/ftv0_ >.05 #& !grepl("[-]",al$v$name)
           gp = gggraph(al, v_ind=vind,
                         e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
           gp = gp +
             geom_label_repel(
-              data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
+              # data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
+              data=al$v[vind & !grepl("[-]",al$v$name),],
               aes(x=x,y=y,label=label, color=color),
               nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
           
@@ -297,7 +301,8 @@ for (ds in c(paste0("pos",7:11))) {
                         e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
           gp = gp +
             geom_label_repel(
-              data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
+              # data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
+              data=alp$v[vind & !grepl("[-]",al$v$name)[vind_],],
               aes(x=x,y=y,label=label, color=color),
               nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
           
