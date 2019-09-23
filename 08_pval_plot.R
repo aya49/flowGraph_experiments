@@ -131,7 +131,7 @@ for (i in 1:nrow(tbl))
 start1 = Sys.time()
 l_ply(loopInd(which(tbl$pthres==.05), no_cores), function(ii) {
   for (i in ii) {
-    pt = tbl$pthres[i]; ptl = -log(pt)
+    pt = as.numeric(tbl$pthres[i]); ptl = -log(pt)
     classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
     pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i])
     pv = get(load(tbl$pathp[i]))
@@ -188,8 +188,8 @@ time_output(start1)
 ## histograms o ----------------------------------
 start1 = Sys.time()
 l_ply(loopInd(which(tbl$pthres==c_pts[1] & tbl$pmethod_adj==c_pas[1]), no_cores), function(ii) {
-  for (i in ii) {
-    pt = tbl$pthres[i]; ptl = -log(pt)
+  for (i in ii) { try ({
+    pt = as.numeric(tbl$pthres[i]); ptl = -log(pt)
     classn = ifelse(tbl$class[i]=="exp", "", paste0("_",tbl$class[i]))
     pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval")
     dir.create(pathn,showWarnings=F,recursive=T)
@@ -220,7 +220,8 @@ l_ply(loopInd(which(tbl$pthres==c_pts[1] & tbl$pmethod_adj==c_pas[1]), no_cores)
     hist(set2, freq=F, main="set 2", xlim=c(0,1), breaks=seq(0,1,.05), xlab="p values", ylab="histogram", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5, col=rgb(0,0,0,.5))
     
     graphics.off()
-  }
+    
+  }) }
 },.parallel=T)
 time_output(start1)
 
@@ -235,56 +236,56 @@ for (pa in c_pas) {
   
   for (trtype in c("train","test","all")) {
     
-  pvs = llply(unique(tb$feat), function(x) {
-    unlist(llply(tb$pathp[tb$feat==x], function(y) get(load(y))[[trtype]]))
-  })
-  names(pvs) = unique(tb$feat)
-  
-  pathn = paste0(root,"/result/ctrl0/plot_pval/",pa,"/qqctrl.png")
-  
-  
-  
-  ## qq plot; log both axis -----------------------
-  nqs = llply(sapply(pvs,length), function(n) 1:n/(n+1))
-  cs = rainbow(length(pvs))
-  
-  mcm1l = llply(pvs, function(x) {
-    if (grepl("_",names(x)[1])) mcmind = match(names(x),names(mcm))
-    if (!grepl("_",names(x)[1]))
-      mcmind = match(sapply(strsplit(names(x),"_"), function(x) x[1]),names(mcm))
-    mcm[mcmind]
-  })
-  
-  names(pvs) = names(nqs) = names(cs) = unique(tb$feat) # feats
-  
-  png(pathn, height=500, width=1000)
-  par(mfrow=c(1,2),mar=c(7,7,3,3))
-  
-  plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-  for (i in 1:length(pvs)) {
-    yo = order(pvs[[i]])
-    points(nqs[[i]], pvs[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
-  }
-  abline(h=.05)
-  # abline(h=.025)
-  # abline(h=.01)
-  lines(x=c(-100,100), y=c(-100,100))
-  legend("topleft", legend=names(pvs), fill=cs, bg="transparent",pt.cex=1.5)
-  
-  nqls = llply(nqs, log)
-  pvls = llply(pvs, log)
-  plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(pa, " ln(p values)"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-  for (i in 1:length(pvs)) {
-    yo = order(pvls[[i]])
-    points(nqls[[i]], pvls[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
-  }
-  abline(h=log(.05))
-  # abline(h=log(.025))
-  # abline(h=log(.01))
-  lines(x=c(-100,100), y=c(-100,100))
-  legend("topleft", legend=names(pvs), fill=cs, bg="transparent",pt.cex=1.5)
-  
-  graphics.off()
+    pvs = llply(unique(tb$feat), function(x) {
+      unlist(llply(tb$pathp[tb$feat==x], function(y) get(load(y))[[trtype]]))
+    })
+    names(pvs) = unique(tb$feat)
+    
+    pathn = paste0(root,"/result/ctrl0/plot_pval/",pa,"/qqctrl.png")
+    
+    
+    
+    ## qq plot; log both axis -----------------------
+    nqs = llply(sapply(pvs,length), function(n) 1:n/(n+1))
+    cs = rainbow(length(pvs))
+    
+    mcm1l = llply(pvs, function(x) {
+      if (grepl("_",names(x)[1])) mcmind = match(names(x),names(mcm))
+      if (!grepl("_",names(x)[1]))
+        mcmind = match(sapply(strsplit(names(x),"_"), function(x) x[1]),names(mcm))
+      mcm[mcmind]
+    })
+    
+    names(pvs) = names(nqs) = names(cs) = unique(tb$feat) # feats
+    
+    png(pathn, height=500, width=1000)
+    par(mfrow=c(1,2),mar=c(7,7,3,3))
+    
+    plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+    for (i in 1:length(pvs)) {
+      yo = order(pvs[[i]])
+      points(nqs[[i]], pvs[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
+    }
+    abline(h=.05)
+    # abline(h=.025)
+    # abline(h=.01)
+    lines(x=c(-100,100), y=c(-100,100))
+    legend("topleft", legend=names(pvs), fill=cs, bg="transparent",pt.cex=1.5)
+    
+    nqls = llply(nqs, log)
+    pvls = llply(pvs, log)
+    plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(pa, " ln(p values)"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+    for (i in 1:length(pvs)) {
+      yo = order(pvls[[i]])
+      points(nqls[[i]], pvls[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
+    }
+    abline(h=log(.05))
+    # abline(h=log(.025))
+    # abline(h=log(.01))
+    lines(x=c(-100,100), y=c(-100,100))
+    legend("topleft", legend=names(pvs), fill=cs, bg="transparent",pt.cex=1.5)
+    
+    graphics.off()
   }
 }
 
@@ -302,160 +303,160 @@ for (data in c_datas) {
     for (pa in c_pas) {
       tbinds = tbl$data==data & tbl$class==uc & tbl$pmethod_adj==pa
       tb = tbl[tbinds & tbl$pthres==.05,]
-      pt = tbl$pthres
+      pt = as.numeric(tbl$pthres)
       
       for (trtype in c("train","test","all")) {
         
-      # load p values
-      pvs = llply(tb$pathp, function(x) get(load(x))[[trtype]])
-      names(pvs) = tb$feat
-      
-      pathn = paste0(root,"/result/",data,"/plot_pval/",pa)
-      ## qq plot; log both axis -----------------------
-      nqs = llply(sapply(pvs,length), function(n) 1:n/(n+1))
-      cs = rainbow(length(pvs))
-      
-      mcm1l = llply(pvs, function(x) {
-        if (grepl("_",names(x)[1])) mcmind = match(names(x),names(mcm))
-        if (!grepl("_",names(x)[1]))
-          mcmind = match(sapply(strsplit(names(x),"_"), function(x) x[1]),names(mcm))
-        mcm[mcmind]
-      })
-      names(nqs) = names(cs) = names(mcm1l) = tb$feat # feats
-      
-      png(paste0(pathn,"/qqpl",classn,"_",trtype,".png"), height=500, width=1000)
-      par(mfrow=c(1,2),mar=c(7,7,3,3))
-      
-      plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-      for (i in 1:length(pvs)) {
-        yo = order(pvs[[i]])
-        points(nqs[[i]], pvs[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
-      }
-      abline(h=.05)
-      lines(x = c(-100,100), y = c(-100,100))
-      legend("topleft", legend=names(pvs), fill=cs, bg="transparent")
-      
-      nqls = llply(nqs, log)
-      pvls = llply(pvs, log)
-      plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(pa, " ln(p values)"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-      for (i in 1:length(pvs)) {
-        yo = order(pvls[[i]])
-        points(nqls[[i]], pvls[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
-      }
-      abline(h=log(.05))
-      lines(x = c(-100,100), y = c(-100,100))
-      legend("topleft", legend=names(pvs), fill=cs, bg="transparent")
-      
-      graphics.off()
-      
-      
-      for (pt in c_pts) { 
-        ptl = -log(pt)
-        tb = tbl[tbinds & tbl$pthres==pt,]
+        # load p values
+        pvs = llply(tb$pathp, function(x) get(load(x))[[trtype]])
+        names(pvs) = tb$feat
         
-        pathn = paste0(root,"/result/",data,"/plot_pval/",pa,"/pthres-",pt)
+        pathn = paste0(root,"/result/",data,"/plot_pval/",pa)
+        ## qq plot; log both axis -----------------------
+        nqs = llply(sapply(pvs,length), function(n) 1:n/(n+1))
+        cs = rainbow(length(pvs))
         
-        ## number of significant features -----------------------
-        plens = laply(pvs, length)
-        npts = laply(pvs, function(pv) {
-          a = sum(pv<pt); ifelse (a==0,0,a/length(pv))
+        mcm1l = llply(pvs, function(x) {
+          if (grepl("_",names(x)[1])) mcmind = match(names(x),names(mcm))
+          if (!grepl("_",names(x)[1]))
+            mcmind = match(sapply(strsplit(names(x),"_"), function(x) x[1]),names(mcm))
+          mcm[mcmind]
         })
-        names(pvs) = names(npts) = names(plens) = tb$feat
+        names(nqs) = names(cs) = names(mcm1l) = tb$feat # feats
         
-        png(paste0(pathn,"/num",classn,"_",trtype,".png"), height=500, width=500)
-        par(mar=c(10,7,5,3))
+        png(paste0(pathn,"/qqpl",classn,"_",trtype,".png"), height=500, width=1000)
+        par(mfrow=c(1,2),mar=c(7,7,3,3))
         
-        maint = paste0("% of sig/features (bar/line) \n data: ", data, "/", uc, ", method: ", pa)
+        plot(NULL, xlim=c(0,1), ylim=c(0,1), ylab=paste0(pa, " p values"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+        for (i in 1:length(pvs)) {
+          yo = order(pvs[[i]])
+          points(nqs[[i]], pvs[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
+        }
+        abline(h=.05)
+        lines(x = c(-100,100), y = c(-100,100))
+        legend("topleft", legend=names(pvs), fill=cs, bg="transparent")
         
-        barplot(npts, ylim=c(0,1), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=maint, cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-        
-        abline(h=pt)
-        par(new=T)
-        
-        plot(plens, pch=15, xlab="",ylab="",axes=F,type="b", col="red", ylim=c(0, max(plens)+(.15*max(plens))), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-        mtext("number of features",side=4,col="red",line=4)
-        axis(4, col="red", col.axis="red", las=1)
+        nqls = llply(nqs, log)
+        pvls = llply(pvs, log)
+        plot(NULL, xlim=c(min(sapply(nqls,function(x)x[1])),0), ylim=c(min(sapply(nqls,function(x)x[1])),0), ylab=paste0(pa, " ln(p values)"), xlab="theoretical quantile", main="", cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+        for (i in 1:length(pvs)) {
+          yo = order(pvls[[i]])
+          points(nqls[[i]], pvls[[i]][yo], pch=1, cex=mcm1l[[i]][yo]*4, col=adjustcolor(cs[i], alpha.f=.75))
+        }
+        abline(h=log(.05))
+        lines(x = c(-100,100), y = c(-100,100))
+        legend("topleft", legend=names(pvs), fill=cs, bg="transparent")
         
         graphics.off()
         
         
-        
-        ## robustness stats -----------------------
-        fr = adply(tb,1, function(x) {
-          ldply(c("rec","prec","f","pcorr"), function(y)
-            data.frame(x,metric=y,score=as.numeric(x[[y]])) )
-        })
-        
-        png(paste0(pathn,"/rpfc",classn,"_",trtype,".png"), height=500, width=500)
-        par(mar=c(10,4,5,4))
-        
-        pl = barchart(score~feat, fr, groups=metric, las=1,# cex.axis=3,
-                      ylim=c(0,1),
-                      auto.key = list(columns=2),
-                      scales=list(x=list(rot=45,cex=0.8)),
-                      main=paste0("data: ", data, "/", uc, "\ntests: f measure, precision, recall, pearson correlation"), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-        print(pl)
-        
-        graphics.off()
-        
-        
-        
-        
-        ## pos stats -----------------------
-        if(grepl("pos[0-6]",data)) {
-          asig = llply(pvs, function(x) x<pt)
-          rsig = llply(pvs, function(x) {
-            if (data=="pos1") a = grepl("^A[+|-]$",names(x))
-            if (data=="pos2") a = grepl("^[A|B][+|-]$",names(x))
-            if (data%in%c("pos4")) a = grepl("^A[+|-]B[+|-]$",names(x))
-            if (data=="pos5") a = grepl("^A[+|-]B[+|-]$",names(x)) | grepl("^D[+|-]E[+|-]$",names(x))
-            if (data%in%c("pos3","pos6","pos8")) a = grepl("^A[+|-]B[+|-]C[+|-]$",names(x))
-
-            return(a)
+        for (pt in c_pts) { 
+          ptl = -log(as.numeric(pt))
+          tb = tbl[tbinds & tbl$pthres==pt,]
+          
+          pathn = paste0(root,"/result/",data,"/plot_pval/",pa,"/pthres-",pt)
+          
+          ## number of significant features -----------------------
+          plens = laply(pvs, length)
+          npts = laply(pvs, function(pv) {
+            a = sum(pv<pt); ifelse (a==0,0,a/length(pv))
           })
-          hsig = llply(pvs, function(x) {
-            if (data=="pos1") a = grepl("A",names(x))
-            if (data=="pos2") a = grepl("A|B",names(x))
-            if (data%in%c("pos4","pos7")) a = grepl("A[+|-]B[+|-][C-Z|+|-]+",names(x))
-            if (data=="pos5") a = grepl("A[+|-]B[+|-][C-Z|+|-]+",names(x)) | grepl("[A-C|+|-]+D[+|-]E[+|-]",names(x))
-            
-            if (data%in%c("pos3","pos6","pos8")) a = grepl("A[+|-]B[+|-]C[+|-][D-Z|+|-]+",names(x))
-            
-            return(a)
-          })
-          hsig = llply(1:length(hsig), function(j) hsig[[j]] & !rsig[[j]])
-          names(pvs) = names(asig) = names(rsig) = names(hsig) = tb$feat
+          names(pvs) = names(npts) = names(plens) = tb$feat
+          
+          png(paste0(pathn,"/num",classn,"_",trtype,".png"), height=500, width=500)
+          par(mar=c(10,7,5,3))
+          
+          maint = paste0("% of sig/features (bar/line) \n data: ", data, "/", uc, ", method: ", pa)
+          
+          barplot(npts, ylim=c(0,1), xlab="", las=2, ylab="% significant features", col=rgb(0,0,0,.5), main=maint, cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+          
+          abline(h=pt)
+          par(new=T)
+          
+          plot(plens, pch=15, xlab="",ylab="",axes=F,type="b", col="red", ylim=c(0, max(plens)+(.15*max(plens))), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+          mtext("number of features",side=4,col="red",line=4)
+          axis(4, col="red", col.axis="red", las=1)
+          
+          graphics.off()
           
           
-          for (t in c("real","influenced")) {
-            if (t=="real") sig = rsig
-            if (t=="influenced") sig = hsig
-            # sig = switch(t, real = rsig, influenced = hsig)
-            sbs = ldply(tb$feat, function(i) {
-              overlap = sum(asig[[i]] & sig[[i]])
-              if (overlap==0) {
-                rec = prec = f = 0
-              } else {
-                rec = overlap/sum(asig[[i]])
-                prec = overlap/sum(sig[[i]])
-                f = 2*((prec*rec)/(prec+rec))
-              }
-              return(data.frame(feature=paste0(i," (",sum(asig[[i]]),",",overlap,",",sum(sig[[i]]),")"), type=t,
-                                sig=sum(sig[[i]]), actual=sum(asig[[i]]),
-                                metric=c("recall","precision","f"),
-                                score=c(rec,prec,f)))
+          
+          ## robustness stats -----------------------
+          fr = adply(tb,1, function(x) {
+            ldply(c("rec","prec","f","pcorr"), function(y)
+              data.frame(x,metric=y,score=as.numeric(x[[y]])) )
+          })
+          
+          png(paste0(pathn,"/rpfc",classn,"_",trtype,".png"), height=500, width=500)
+          par(mar=c(10,4,5,4))
+          
+          pl = barchart(score~feat, fr, groups=metric, las=1,# cex.axis=3,
+                        ylim=c(0,1),
+                        auto.key = list(columns=2),
+                        scales=list(x=list(rot=45,cex=0.8)),
+                        main=paste0("data: ", data, "/", uc, "\ntests: f measure, precision, recall, pearson correlation"), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+          print(pl)
+          
+          graphics.off()
+          
+          
+          
+          
+          ## pos stats -----------------------
+          if(grepl("pos[0-6]",data)) {
+            asig = llply(pvs, function(x) x<pt)
+            rsig = llply(pvs, function(x) {
+              if (data=="pos1") a = grepl("^A[+|-]$",names(x))
+              if (data=="pos2") a = grepl("^[A|B][+|-]$",names(x))
+              if (data%in%c("pos4")) a = grepl("^A[+|-]B[+|-]$",names(x))
+              if (data=="pos5") a = grepl("^A[+|-]B[+|-]$",names(x)) | grepl("^D[+|-]E[+|-]$",names(x))
+              if (data%in%c("pos3","pos6","pos8")) a = grepl("^A[+|-]B[+|-]C[+|-]$",names(x))
+              
+              return(a)
             })
+            hsig = llply(pvs, function(x) {
+              if (data=="pos1") a = grepl("A",names(x))
+              if (data=="pos2") a = grepl("A|B",names(x))
+              if (data%in%c("pos4","pos7")) a = grepl("A[+|-]B[+|-][C-Z|+|-]+",names(x))
+              if (data=="pos5") a = grepl("A[+|-]B[+|-][C-Z|+|-]+",names(x)) | grepl("[A-C|+|-]+D[+|-]E[+|-]",names(x))
+              
+              if (data%in%c("pos3","pos6","pos8")) a = grepl("A[+|-]B[+|-]C[+|-][D-Z|+|-]+",names(x))
+              
+              return(a)
+            })
+            hsig = llply(1:length(hsig), function(j) hsig[[j]] & !rsig[[j]])
+            names(pvs) = names(asig) = names(rsig) = names(hsig) = tb$feat
             
-            png(paste0(pathn,"/pos-",t,classn,"_",trtype,".png"), height=500, width=500)
-            pl = barchart(score~feature, sbs, groups=metric, las=1, ylim=c(0,1),
-                          main="feature (actual,overlap,hypothetical) \noverlap / actual (p) vs hypothetical (r)",
-                          auto.key = list(space = "top"),
-                          scales = list(x = list(rot=45)), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
-            print(pl)
-            graphics.off()
+            
+            for (t in c("real","influenced")) {
+              if (t=="real") sig = rsig
+              if (t=="influenced") sig = hsig
+              # sig = switch(t, real = rsig, influenced = hsig)
+              sbs = ldply(tb$feat, function(i) {
+                overlap = sum(asig[[i]] & sig[[i]])
+                if (overlap==0) {
+                  rec = prec = f = 0
+                } else {
+                  rec = overlap/sum(asig[[i]])
+                  prec = overlap/sum(sig[[i]])
+                  f = 2*((prec*rec)/(prec+rec))
+                }
+                return(data.frame(feature=paste0(i," (",sum(asig[[i]]),",",overlap,",",sum(sig[[i]]),")"), type=t,
+                                  sig=sum(sig[[i]]), actual=sum(asig[[i]]),
+                                  metric=c("recall","precision","f"),
+                                  score=c(rec,prec,f)))
+              })
+              
+              png(paste0(pathn,"/pos-",t,classn,"_",trtype,".png"), height=500, width=500)
+              pl = barchart(score~feature, sbs, groups=metric, las=1, ylim=c(0,1),
+                            main="feature (actual,overlap,hypothetical) \noverlap / actual (p) vs hypothetical (r)",
+                            auto.key = list(space = "top"),
+                            scales = list(x = list(rot=45)), cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+              print(pl)
+              graphics.off()
+            }
           }
         }
-      }
       }
     }
   }    
@@ -524,12 +525,12 @@ time_output(start1)
 
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
-  l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
-                        grepl("prop$|countAdj$|expect$",tbl$feat)
-                      ), no_cores), function(ii) {try({
-     # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
-      
-    #   for (i in ii) {
+l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
+                      grepl("prop$|countAdj$|expect$",tbl$feat)
+), no_cores), function(ii) { try({
+  # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
+  
+  #   for (i in ii) {
   # for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
   for (i in ii) { 
     print(tbl$pathp[i])
@@ -582,51 +583,49 @@ start1 = Sys.time()
     # label_ind = rep(F,length(p))
     # label_ind_ = p+mo/2
     # label_ind[which(p_)[head(order(label_ind_[p_]),5)]] = T
-    if (grepl("^ctrl|^pos",tbl$data[i])) {
-      label_ind = p_ & !grepl("[-]",names(p_))
-      gr$v$label = paste0(gr$v$name,":",round(mcmu,3))#,"/",round(mfmc,3))
-      gr$v$size = mfmdiff
-      main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
+    for (siz in c("sd","")) {
+      if (siz=="sd") {
+        label_ind = p_ & !grepl("[-]",names(p_))
+        gr$v$label = paste0(gr$v$name,":",round(mcmu,3))#,"/",round(mfmc,3))
+        gr$v$size = mfmdiff
+        main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
+        
+      } else {
+        label_ind = rep(F,length(p))
+        # label_ind_ = p+mo/2
+        label_ind[which(p_)[tail(order(mfmdiff[p_]),20)]] = T
+        gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
+        gr$v$size = -log(p)
+        gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
+        main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
+      }
       
-    } else {
-      label_ind = rep(F,length(p))
-      # label_ind_ = p+mo/2
-      label_ind[which(p_)[tail(order(mfmdiff[p_]),20)]] = T
-      gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
-      gr$v$size = -log(p)
-      gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
-      main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
       
-    }
-    
-    gpp = gggraph(
-      gr, v_ind=p_, vb_ind=rep(F,nrow(gr$v)), main=main,
-      e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_],
-      label_ind=rep(F,nrow(gr$v)))
-    # gpp = gpp + geom_point(data=gr$v[p_,],aes(x=x,y=y),size=2,color="grey")
-    gp = gpp + geom_label_repel(
-      data=gr$v[label_ind,],
-      aes(x=x,y=y,label=label, color=color),
-      nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-    
-    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-    
-    if (mfm_tf) {
-      # if (grepl("^pos",tbl$data[i])) {
-      #   gr$v$color = (mfmu_-mcmu)/mcmu # node colour
-      # }
-      gr$v$label = paste0(gr$v$name,":",round(mfmu_,3),"/",round(mfmc_,3))
+      gpp = gggraph(
+        gr, v_ind=p_, vb_ind=rep(F,nrow(gr$v)), main=main,
+        e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_],
+        label_ind=rep(F,nrow(gr$v)))
+      # gpp = gpp + geom_point(data=gr$v[p_,],aes(x=x,y=y),size=2,color="grey")
       gp = gpp + geom_label_repel(
         data=gr$v[label_ind,],
-        aes(x=x,y=y,color=color,label=label),
+        aes(x=x,y=y,label=label, color=color),
         nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
       
-      ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      ggsave(paste0(pathn,"/gr",siz,classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      
+      if (mfm_tf) {
+        # if (grepl("^pos",tbl$data[i])) {
+        #   gr$v$color = (mfmu_-mcmu)/mcmu # node colour
+        # }
+        gr$v$label = paste0(gr$v$name,":",round(mfmu_,3),"/",round(mfmc_,3))
+        gp = gpp + geom_label_repel(
+          data=gr$v[label_ind,],
+          aes(x=x,y=y,color=color,label=label),
+          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+        
+        ggsave(paste0(pathn,"/gr",siz,classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      }
     }
-    
-    
-  
-    
     
     try ({
       pn = names(p)[p_ & mo<overlapmin]
@@ -656,7 +655,6 @@ start1 = Sys.time()
       #   igr, v_ind=rep(T,nrow(igr$v)), vb_ind=rep(F,nrow(igr$v)), main="",
       #   e_ind=rep(T,nrow(igr$e)),
       #   label_ind=rep(F,nrow(gr$v)))
-      
       
       # rules plot
       dir.create(paste0(pathn,"/arules/",tbl$class[i]), showWarnings=F, recursive=T)
@@ -689,177 +687,183 @@ start1 = Sys.time()
       gr$v$label = paste0(gr$v$name,":",ic[ivm])
       lbnotna = !grepl("NA$",gr$v$label)
       label_ind[!lbnotna] = F
-
-    main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
-    gpp = gggraph(
-      gr, v_ind=lbnotna, vb_ind=rep(F,nrow(gr$v)), main=main,
-      e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna],
-      label_ind=rep(F,nrow(gr$v)))
-    gp = gpp + geom_label_repel(
-      data=gr$v[label_ind,],
-      aes(x=x,y=y,label=label, color=color),
-      nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-    
-    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-    
-    gp = gpp + geom_label_repel(
-      data=gr$v[lbnotna,],
-      aes(x=x,y=y,label=label, color=color),
-      nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-    
-    ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset_alllabellled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-    
-    
+      
+      main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
+      gpp = gggraph(
+        gr, v_ind=lbnotna, vb_ind=rep(F,nrow(gr$v)), main=main,
+        e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna],
+        label_ind=rep(F,nrow(gr$v)))
+      gp = gpp + geom_label_repel(
+        data=gr$v[label_ind,],
+        aes(x=x,y=y,label=label, color=color),
+        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      
+      ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      
+      gp = gpp + geom_label_repel(
+        data=gr$v[lbnotna,],
+        aes(x=x,y=y,label=label, color=color),
+        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      
+      ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset_alllabellled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      
+      
     })
     
-    
-    
-    
-    
-    
-    
-    if (!grepl("short",tbl$feat[i])) {
-      posind = !grepl("[-]",names(p))
-      pp = p[posind] # p
-      pp_ = pp<pt # p sig
-      # ptrp_ = ptr_[posind] # p sig train only
-      # ptep_ = pte_[posind] # p sig test only
-      mfmcp = mfmc[match(names(pp),names(mfmc))] # prop control
-      mfmup = mfmu[match(names(pp),names(mfmu))] # prop exp
-      if (mfm_tf) {
-        mfmcp_ = mfmc_[match(names(pp),names(mfmc_))] # prop control
-        mfmup_ = mfmu_[match(names(pp),names(mfmu_))] # prop exp
-      }
-      mfmdiffp = abs(mfmup-mfmcp)/sd(mfmcp)
-      mcmcp = mcmc[match(names(pp),names(mcmc))] # prop control
-      mcmup = mcmu[match(names(pp),names(mcmu))] # prop exp
-      mop = mo0[match(names(pp),names(mo0))]
-      grp0 = grp0s[[tbl$data[i]]] # load graph
-      grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
-      grp0$v = data.frame(name=unlist(grp0$v))
-      grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
-      grp = layout_gr(grp0$e,grp0$v) # graph layout
-      grp = gpdf(grp) # add graph attributes
-      grp$v$label = paste0(grp$v$name,":",round(mfmup,3))
-      grp$v$color = ifelse(mfmup>mfmcp,"_increase","decrease") # node colour
-      # grp$v$colorb = ifelse(ptrp_,"set1","none") # node border colour
-      # grp$v$colorb[ptep_] = "set2"
-      # grp$v$colorb[(!ptep_ | !ptrp_) & pp_] = "all"
-      # grp$v$colorb = as.factor(grp$v$colorb)
-      # grp$v$fill = ifelse(ptep_ | ptrp_,F,T)
-      if (grepl("^ctrl|^pos",tbl$data[i])) {
-        label_ind = pp_ & !grepl("[-]",names(pp_))
-        grp$v$label = paste0(grp$v$name,":",round(mcmup,3))#,"/",round(mfmc,3))
-        grp$v$size = mfmdiffp
-        main = paste0(main0,"\npositive nodes only\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
-        
-      } else {
-        label_ind = rep(F,length(pp))
-        # label_ind_ = p+mo/2
-        label_ind[which(pp_)[tail(order(mfmdiffp[p_]),20)]] = T
-        grp$v$label = paste0(grp$v$name,":",round(mfmup,3))#,"/",round(mfmc,3))
-        grp$v$size = -log(p)
-        grp$v$size[is.infinite(grp$v$size)] = max(grp$v$size[!is.infinite(grp$v$size)])
-        main = paste0(main0,"\npositive nodes only\nsize=-ln(p value); label=feature value (prop if expect)")
-      }
-      
-      main = paste0(main0,"\ncolours=p value (if ctrl/pos, %change); size=1-overlap(control); label=prop(exp)\n")
-      gpp = gggraph(
-        grp, v_ind=pp_, vb_ind=rep(F,nrow(grp$v)), main=main,
-        e_ind=grp$e[,1]%in%grp$v$name[pp_] & grp$e[,2]%in%grp$v$name[pp_],
-        label_ind=rep(F,nrow(grp$v)))
-      gp = gpp + geom_label_repel(
-        data=grp$v[label_ind,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2) 
-      
-      ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-      
-      if (mfm_tf) {
-        if (grepl("^pos",tbl$data[i])) {
-          grp$v$color = (mfmup_-mcmup)/mcmup # node colour
-        }
-        grp$v$label = paste0(grp$v$name,":",round(mfmup_,3),"/",round(mfmcp_,3))
-        gp = gpp + geom_label_repel(
-          data=grp$v[label_ind,],
-          aes(x=x,y=y,color=color,label=label), 
-          nudge_x=-.1, direction="y", hjust=1, segment.size=.2) 
-        ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-      }
       
       
-      try ({
-        pn = names(pp)[pp_ & mop<overlapmin]
-        pnse = str_extract_all(pn,"[A-Za-z0-9]+[+|-]")
-        pnseu = sort(unique(unlist(pnse)))
-        templ = rep(0,length(pnseu))
-        pndf = Reduce(rbind,llply(loopInd(1:length(pnse),no_cores), function(ii) {
-          Reduce(rbind,llply(ii, function(i) {
-            x = pnse[[i]]
-            templ[match(x,pnseu)] = 1
-            templ
-          }))
-        }, .parallel=T))
-        colnames(pndf) = pnseu
-        rules = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=0.5))
-        dir.create(paste0(pathn,"/arules/",tbl$class[i]), showWarnings=F, recursive=T)
-        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_paracoord_pos.png"))
-        plot(rules, method="paracoord") # lines arrow
-        graphics.off()
-        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_graph_pos.png"))
-        plot(rules, method="graph") # dots with arrows point to them by lift
-        graphics.off()
-        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_scatterplot_pos.png"))
-        plot(rules, method="scatterplot")
-        graphics.off()
-        png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_grouped_pos.png"))
-        plot(rules, method="grouped") # item in LHs by RHS
-        graphics.off()
-        
-        
-        # itemset plot
-        itemsets = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=.1))#, confidence=0.5))
-        ic = itemsets@quality$count
-        idu = itemsets@items@itemInfo$labels
-        id = itemsets@items@data
-        # ia = is.subset(itemsets)
-        # colnames(ia) = rownames(ia) = gsub("[{|}|,]","",colnames(ia))
-        iv = sapply(1:ncol(id), function(j) paste(idu[id[,j]],collapse=""))
-        names(ic) = iv
-        
-        ivm = match(grp$v$name,names(ic))
-        grp$v$size = ic[ivm]
-        grp$v$label = paste0(grp$v$name,":",ic[ivm])
-        lbnotna = !grepl(":NA",grp$v$label)
-        # label_ind = rep(F,nrow(grp$v))
-        label_ind[!lbnotna] = F
-        
-        main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
-        gpp = gggraph(
-          grp, v_ind=lbnotna, vb_ind=rep(F,nrow(grp$v)), main=main,
-          e_ind=grp$e[,1]%in%grp$v$name[lbnotna] & grp$e[,2]%in%grp$v$name[lbnotna],
-          label_ind=rep(F,nrow(grp$v)))
-        gp = gpp + geom_label_repel(
-          data=grp$v[label_ind,],
-          aes(x=x,y=y,label=label, color=color),
-          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-        
-        ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-        
-        gp = gpp + geom_label_repel(
-          data=grp$v[lbnotna,],
-          aes(x=x,y=y,label=label, color=color),
-          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-        
-        ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset_alllabelled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-        
-        
-      })
       
       
-    }
+      
+      
+      
+      
+      
+      
+      
+      # if (!grepl("short",tbl$feat[i])) {
+      #   posind = !grepl("[-]",names(p))
+      #   pp = p[posind] # p
+      #   pp_ = pp<pt # p sig
+      #   # ptrp_ = ptr_[posind] # p sig train only
+      #   # ptep_ = pte_[posind] # p sig test only
+      #   mfmcp = mfmc[match(names(pp),names(mfmc))] # prop control
+      #   mfmup = mfmu[match(names(pp),names(mfmu))] # prop exp
+      #   if (mfm_tf) {
+      #     mfmcp_ = mfmc_[match(names(pp),names(mfmc_))] # prop control
+      #     mfmup_ = mfmu_[match(names(pp),names(mfmu_))] # prop exp
+      #   }
+      #   mfmdiffp = abs(mfmup-mfmcp)/sd(mfmcp)
+      #   mcmcp = mcmc[match(names(pp),names(mcmc))] # prop control
+      #   mcmup = mcmu[match(names(pp),names(mcmu))] # prop exp
+      #   mop = mo0[match(names(pp),names(mo0))]
+      #   grp0 = grp0s[[tbl$data[i]]] # load graph
+      #   grp0$v = grp0$v[match(names(pp),grp0$v$name),,drop=F]
+      #   grp0$v = data.frame(name=unlist(grp0$v))
+      #   grp0$e = grp0$e[grp0$e$from%in%grp0$v$name & grp0$e$to%in%grp0$v$name,]
+      #   grp = layout_gr(grp0$e,grp0$v) # graph layout
+      #   grp = gpdf(grp) # add graph attributes
+      #   grp$v$label = paste0(grp$v$name,":",round(mfmup,3))
+      #   grp$v$color = ifelse(mfmup>mfmcp,"_increase","decrease") # node colour
+      #   # grp$v$colorb = ifelse(ptrp_,"set1","none") # node border colour
+      #   # grp$v$colorb[ptep_] = "set2"
+      #   # grp$v$colorb[(!ptep_ | !ptrp_) & pp_] = "all"
+      #   # grp$v$colorb = as.factor(grp$v$colorb)
+      #   # grp$v$fill = ifelse(ptep_ | ptrp_,F,T)
+      #   if (grepl("^ctrl|^pos",tbl$data[i])) {
+      #     label_ind = pp_ & !grepl("[-]",names(pp_))
+      #     grp$v$label = paste0(grp$v$name,":",round(mcmup,3))#,"/",round(mfmc,3))
+      #     grp$v$size = mfmdiffp
+      #     main = paste0(main0,"\npositive nodes only\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
+      #     
+      #   } else {
+      #     label_ind = rep(F,length(pp))
+      #     # label_ind_ = p+mo/2
+      #     label_ind[which(pp_)[tail(order(mfmdiffp[p_]),20)]] = T
+      #     grp$v$label = paste0(grp$v$name,":",round(mfmup,3))#,"/",round(mfmc,3))
+      #     grp$v$size = -log(p)
+      #     grp$v$size[is.infinite(grp$v$size)] = max(grp$v$size[!is.infinite(grp$v$size)])
+      #     main = paste0(main0,"\npositive nodes only\nsize=-ln(p value); label=feature value (prop if expect)")
+      #   }
+      #   
+      #   main = paste0(main0,"\ncolours=p value (if ctrl/pos, %change); size=1-overlap(control); label=prop(exp)\n")
+      #   gpp = gggraph(
+      #     grp, v_ind=pp_, vb_ind=rep(F,nrow(grp$v)), main=main,
+      #     e_ind=grp$e[,1]%in%grp$v$name[pp_] & grp$e[,2]%in%grp$v$name[pp_],
+      #     label_ind=rep(F,nrow(grp$v)))
+      #   gp = gpp + geom_label_repel(
+      #     data=grp$v[label_ind,],
+      #     aes(x=x,y=y,label=label, color=color),
+      #     nudge_x=-.1, direction="y", hjust=1, segment.size=0.2) 
+      #   
+      #   ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      #   
+      #   if (mfm_tf) {
+      #     if (grepl("^pos",tbl$data[i])) {
+      #       grp$v$color = (mfmup_-mcmup)/mcmup # node colour
+      #     }
+      #     grp$v$label = paste0(grp$v$name,":",round(mfmup_,3),"/",round(mfmcp_,3))
+      #     gp = gpp + geom_label_repel(
+      #       data=grp$v[label_ind,],
+      #       aes(x=x,y=y,color=color,label=label), 
+      #       nudge_x=-.1, direction="y", hjust=1, segment.size=.2) 
+      #     ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      #   }
+      #   
+      #   
+      #   try ({
+      #     pn = names(pp)[pp_ & mop<overlapmin]
+      #     pnse = str_extract_all(pn,"[A-Za-z0-9]+[+|-]")
+      #     pnseu = sort(unique(unlist(pnse)))
+      #     templ = rep(0,length(pnseu))
+      #     pndf = Reduce(rbind,llply(loopInd(1:length(pnse),no_cores), function(ii) {
+      #       Reduce(rbind,llply(ii, function(i) {
+      #         x = pnse[[i]]
+      #         templ[match(x,pnseu)] = 1
+      #         templ
+      #       }))
+      #     }, .parallel=T))
+      #     colnames(pndf) = pnseu
+      #     rules = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=0.5))
+      #     dir.create(paste0(pathn,"/arules/",tbl$class[i]), showWarnings=F, recursive=T)
+      #     png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_paracoord_pos.png"))
+      #     plot(rules, method="paracoord") # lines arrow
+      #     graphics.off()
+      #     png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_graph_pos.png"))
+      #     plot(rules, method="graph") # dots with arrows point to them by lift
+      #     graphics.off()
+      #     png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_scatterplot_pos.png"))
+      #     plot(rules, method="scatterplot")
+      #     graphics.off()
+      #     png(paste0(pathn,"/arules/",tbl$class[i],"/",tbl$feat[i],"_grouped_pos.png"))
+      #     plot(rules, method="grouped") # item in LHs by RHS
+      #     graphics.off()
+      #     
+      #     
+      #     # itemset plot
+      #     itemsets = eclat(pndf, parameter=list(support=1/nrow(pndf)))#, confidence=.1))#, confidence=0.5))
+      #     ic = itemsets@quality$count
+      #     idu = itemsets@items@itemInfo$labels
+      #     id = itemsets@items@data
+      #     # ia = is.subset(itemsets)
+      #     # colnames(ia) = rownames(ia) = gsub("[{|}|,]","",colnames(ia))
+      #     iv = sapply(1:ncol(id), function(j) paste(idu[id[,j]],collapse=""))
+      #     names(ic) = iv
+      #     
+      #     ivm = match(grp$v$name,names(ic))
+      #     grp$v$size = ic[ivm]
+      #     grp$v$label = paste0(grp$v$name,":",ic[ivm])
+      #     lbnotna = !grepl(":NA",grp$v$label)
+      #     # label_ind = rep(F,nrow(grp$v))
+      #     label_ind[!lbnotna] = F
+      #     
+      #     main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
+      #     gpp = gggraph(
+      #       grp, v_ind=lbnotna, vb_ind=rep(F,nrow(grp$v)), main=main,
+      #       e_ind=grp$e[,1]%in%grp$v$name[lbnotna] & grp$e[,2]%in%grp$v$name[lbnotna],
+      #       label_ind=rep(F,nrow(grp$v)))
+      #     gp = gpp + geom_label_repel(
+      #       data=grp$v[label_ind,],
+      #       aes(x=x,y=y,label=label, color=color),
+      #       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      #     
+      #     ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      #     
+      #     gp = gpp + geom_label_repel(
+      #       data=grp$v[lbnotna,],
+      #       aes(x=x,y=y,label=label, color=color),
+      #       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      #     
+      #     ggsave(paste0(pathn,"/grpos",classn,"_",tbl$feat[i],"_itemset_alllabelled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      #     
+      #     
+      #   })
+      #   
+      #   
+      # }
   }
-})},.parallel=F)
+  
+}) },.parallel=T)
 time_output(start1)
 
 

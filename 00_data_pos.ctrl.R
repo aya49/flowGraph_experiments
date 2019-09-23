@@ -26,7 +26,7 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr")) # too much, but will use later on
 
 ## cores
-no_cores = detectCores()-1
+no_cores = 4#detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -77,19 +77,19 @@ p75 = quantile(cvd, .75)
 p25 = quantile(cvd, .25)
 thress0 = llply(markers, function(x) p50); names(thress0) = markers
 thress1 = thress2 = thress4 = thress0
-thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = p75
+thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = p25
 thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",8:11))) {
-    # for (ds in c("pos5")) {
+for (ds in c(paste0("pos",1:16))) {
+  # for (ds in c("pos5")) {
   # clear/load memory
   
   # start
   start2 = Sys.time()
-
+  
   
   # ouput directories
   result_dir = paste0(root, "/result/",ds)
@@ -129,9 +129,9 @@ for (ds in c(paste0("pos",8:11))) {
       for (j in 2:length(lastlcp)) 
         fex[(lastlncs[j-1]+1):lastlncs[j], lastlcpm[[j]]] = p75
       
-      if (!grepl("ctrl",ds)) {
-                if (as.numeric(gsub("pos","",ds))>6 ) f@exprs = fex
-      }
+      if (!grepl("ctrl",ds))
+        if (as.numeric(gsub("pos","",ds))>6 ) f@exprs = fex
+      
       
       
       thress = thress0
@@ -147,80 +147,96 @@ for (ds in c(paste0("pos",8:11))) {
           ftv0 = ftv0_ = ft@CellFreqs
           ftv0 = round(ftv0/ftv0[1],3)
         }
+        
+        ap = f@exprs[,1]>thress[[1]]
+        bp = f@exprs[,2]>thress[[2]]
+        cp = f@exprs[,3]>thress[[3]]
+        dp = f@exprs[,4]>thress[[4]]
+        ep = f@exprs[,5]>thress[[5]]
+        double = ap & bp
+        triple = ap & bp & cp
+        quad   = ap & bp & cp & dp
+        quint = ap & bp & cp & dp & ep
+        
         # change f values
-        if (ds=="pos1") { # A+ > .25
+        if (ds=="pos1") { # A+ > .75; A- > .25
           thress = thress1 
         } 
-        else if (ds=="pos2") { # A+, B+ > .25
+        else if (ds=="pos2") { # A+, B+ > .75; A-, B- > .25
           thress = thress2 
         } 
-        else {
-          ap = f@exprs[,1]>thress[[1]]
-          bp = f@exprs[,2]>thress[[2]]
-          cp = f@exprs[,3]>thress[[3]]
-          dp = f@exprs[,4]>thress[[4]]
-          ep = f@exprs[,5]>thress[[5]]
-          # ep = f@exprs[,5]>thress[[5]]
-          double = ap & bp
-          triple = (ap & bp & cp)
-          quad = ap & bp & cp & dp
-          # quint = ap & bp & cp & dp & ep
+        else if (ds=="pos3") { # A-B+ > A+B+ x1.5
+          tm = sum(double)/2
+          f@exprs[sample(which(bp & !ap),tm),1] = p75 # 
+          f@exprs[sample(which(ap & !bp),tm),1] = p25 # 
+          f@exprs[sample(which(!ap & !bp),tm),1] = p25 # 
+        }
+        else if (ds=="pos4") { # A-B+ > A+B+ x1.5; D+E- > D+E+ x1.5
+          tm = sum(double)/2
+          f@exprs[sample(which(bp & !ap),tm),1] = p75 # 
+          f@exprs[sample(which(ap & !bp),tm),1] = p25 # 
+          f@exprs[sample(which(!ap & !bp),tm),1] = p25 # 
           
-          if (ds=="pos3") { # A-B+C+ > A+B+C+ x1.5
-            tm = sum(triple)/2
-            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-            f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
-            f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
-            f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-            
-            # tm = sum(triple)/2/3
-            # f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
-            # f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
-            # f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
-            # f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
-            # 
-            # f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
-            # f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
-            # f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
-            # f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
-            # 
-            # f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
-            # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
-            # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-            # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-            
-          } else if (ds=="pos4") { # A-B+ > A+B+ x1.5
-            tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75 # bc
-            
-            # tn = sum(quad)/2
-            # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-            # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-            # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-            # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-            # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-            # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-            # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-            # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
-          } else if (ds=="pos5") { # A-B+ > A+B+ x1.5; E-D+ > E+D+ x1.5
-            tm = sum(double)/2
-            f@exprs[sample(which(bp & !ap),tm),1] = p75 # ab
-            f@exprs[sample(which(dp & !ep),tm),5] = p75 # ed
-            
-          } else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5
-            tm = sum(triple)/2
-            f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          } else if (ds=="pos7") { # change "all pos" leaf cell population > x2
-            f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
-            
-            # tm = sum(triple)/2/3
-            # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-            # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
-            # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
-          } else if (ds=="pos8") { # same as 7 but all neg leaf also > x2
-            f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
-            f@exprs = rbind(f@exprs, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
-            
+          f@exprs[sample(which(dp & !ep),tm),5] = p75 # 
+          f@exprs[sample(which(ep & !dp),tm),5] = p25 # 
+          f@exprs[sample(which(!dp & !ep),tm),5] = p25 # 
+        }
+        else if (ds=="pos5") { # A-B+C+ > A+B+C+ x1.5
+          tm = sum(triple)/2
+          f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+          f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
+          f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
+          f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+          
+          # tm = sum(triple)/2/3
+          # f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
+          # f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
+          # f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
+          # f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
+          # 
+          # f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
+          # f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
+          # f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
+          # f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
+          # 
+          # f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
+          # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
+          # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+          # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
+        }
+        else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; C+D+E- > C+D+E+ x1.5
+          tm = sum(triple)/2
+          f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+          f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
+          f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
+          f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+          
+          f@exprs[sample(which(cp & dp & !ep),tm),5] = p75 # bc
+          f@exprs[sample(which(cp & ep & !dp),tm),5] = p25 # ac
+          f@exprs[sample(which(ep & dp & !cp),tm),5] = p25 # ab
+          f@exprs[sample(which(!cp & !dp & !ep),tm),5] = p75 # a
+          
+          # tn = sum(quad)/2
+          # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
+          # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
+          # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
+          # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
+          # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
+          # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
+          # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
+          # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
+        }
+        else if (ds=="pos7") { # A+B+C+D+E+ > x2
+          f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
+          
+          # tm = sum(triple)/2/3
+          # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+          # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
+          # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
+        } 
+        else if (ds=="pos8") { # A-B-C-D-E- > x2
+          f@exprs = rbind(fex, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
+          
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
           # f@exprs[sample(which(ap & !bp & cp & dp & ep),tn),1] = p25
@@ -241,21 +257,55 @@ for (ds in c(paste0("pos",8:11))) {
           # f@exprs[sample(which(ap & !bp & !cp & !dp & ep),tn),1] = p25
           # 
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
-          } else if (ds=="pos9") { # same as pos2 but with random last layer pops
-            tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
-            tm = sum(triple)/2
-            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          } else if (ds=="pos10") { #1.5x A+B+
-            tripleind = which(fex[,1]==p75 & fex[,2]==p75)
-            tm = sum(double)/2
-            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          } else if (ds=="pos11") { # 1.5x A+, B+
-            tripleind = which(fex[,1]==p75)
-            tm = sum(double)
-            f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-            tripleind = which(fex[,2]==p75)
-            f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
-          }
+        } 
+        else if (ds=="pos9") { # same as above but both
+          f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
+          f@exprs = rbind(f@exprs, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
+        } 
+        else if (ds=="pos10") { # A+, B+, E+
+          tripleind = which(fex[,1]==p75)
+          tm = sum(double)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          tripleind = which(fex[,2]==p75)
+          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
+          tripleind = which(fex[,5]==p75)
+          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos11") { # 1.5x A+
+          tripleind = which(fex[,1]==p75)
+          tm = sum(double)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos12") { # 1.5x A+, B+
+          tripleind = which(fex[,1]==p75)
+          tm = sum(double)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          tripleind = which(fex[,2]==p75)
+          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos13") { #1.5x A+B+
+          tripleind = which(fex[,1]==p75 & fex[,2]==p75)
+          tm = sum(double)/2
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos14") { #1.5x A+B+, D+E+
+          tm = sum(double)/2
+          tripleind = which(fex[,1]==p75 & fex[,2]==p75)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          tripleind = which(fex[,4]==p75 & fex[,5]==p75)
+          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos15") { #1.5x A+B+C+
+          tm = sum(triple)/2
+          tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+        } 
+        else if (ds=="pos16") { #1.5x A+B+C+, C+D+E+
+          tm = sum(triple)/2
+          tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
+          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
+          tripleind = which(fex[,3]==p75 & fex[,4]==p75 & fex[,5]==p75)
+          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
         } 
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
@@ -285,7 +335,7 @@ for (ds in c(paste0("pos",8:11))) {
           al$v$label = paste0(al$v$name,":",ftv)
           vind = abs(ftv_-ftv0_)/ftv0_ >.05 #& !grepl("[-]",al$v$name)
           gp = gggraph(al, v_ind=vind,
-                        e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
+                       e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
           gp = gp +
             geom_label_repel(
               # data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
@@ -298,7 +348,7 @@ for (ds in c(paste0("pos",8:11))) {
           alp$v$label = paste0(alp$v$name,":",ftv[vind_])
           vind = abs(ftv[vind_]-ftv0[vind_])/ftv0[vind_] >.05
           gp = gggraph(alp, v_ind=vind, 
-                        e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
+                       e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
           gp = gp +
             geom_label_repel(
               # data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],

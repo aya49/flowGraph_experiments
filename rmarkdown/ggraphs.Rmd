@@ -1,0 +1,72 @@
+---
+title: "flowtype_metric"
+output:
+  html_document:
+    theme: paper
+    highlight: zenburn
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+    # keep_md: true
+  # md_document:
+  #   variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## root directory
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
+setwd(root)
+
+## libraries
+source("source/_func.R")
+libr(c("foreach", "doMC", "plyr", "stringr",
+       "knitr", "png", "grid", "pander", "captioner", "kfigr")) # too much, but will use later on
+
+# figure caption
+fig_nums <- captioner(prefix = "Figure")
+
+```
+
+
+
+```{results='asis'}
+result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
+for (result_dir in result_dirs){
+  res = fileNames(result_dir)
+  if (grepl("^ctrl|pregnancy$|bodenmiller$",res)) next
+  cat("\n##", res, "\n")
+
+  cytodxdir = paste0(result_dir,"/cytodx")
+  for (class in list.dirs(cytodxdir)) {
+    cat("\n###", class, "\n")
+    if (grepl("paired",res)) cytodxdir = gsub("_paired","",cytodxdir)
+    cytodxdir1 = paste(cytodxdir,"/",class,"/tree1.png")
+    cat("\n![",,"](", cytodxdir1, ") \n", sep="")
+  }
+  
+  pngdir = paste0(result_dir,"/plot_pval/t-BY/pthres-0.01")
+  df_figs <- list.files(pngdir, pattern = ".png$", full.names=T)
+  if (grepl("bodenmiller|pregnancy",res))
+  for (i in df_figs) {  
+    name <- gsub("-",".",fileNames(i))
+    name <- gsub(".png","",name)  
+    i <- paste(".\\",i,sep="")
+    assign(name,readPNG(i))
+  }
+}
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

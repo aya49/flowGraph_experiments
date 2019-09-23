@@ -20,7 +20,7 @@ registerDoMC(no_cores)
 start = Sys.time()
 
 
-l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:11),"pregnancy"), function(data) {
+l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:16),"pregnancy"), function(data) {
 #for (data in c(paste0("pos",1:11))) {
   try({
     start1 = Sys.time()
