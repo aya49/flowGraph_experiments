@@ -20,53 +20,55 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
-setwd(root)
+# setwd(root)
+source(paste0(root,"/source/_func.R"))
 
 ## libraries
-source("source/_func.R")
 libr(c("foreach", "doMC", "plyr", "stringr",
        "knitr", "png", "grid", "pander", "captioner", "kfigr")) # too much, but will use later on
 
 # figure caption
-fig_nums <- captioner(prefix = "Figure")
+figs = captioner(prefix="Figure")
+# figs(name="LenFreq1","Length frequency of Ruffe captured in 1992.")
+# figs(name="WtFreq1","Weight frequency of Ruffe captured in 1992.")
 
 ```
 
 
 
-```{results='asis'}
-result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
+```{r results='asis'}
+
+# setwd(root)
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs){
   res = fileNames(result_dir)
   if (grepl("^ctrl|pregnancy$|bodenmiller$",res)) next
-  cat("\n##", res, "\n")
-
-  cytodxdir = paste0(result_dir,"/cytodx")
-  for (class in list.dirs(cytodxdir)) {
-    cat("\n###", class, "\n")
-    if (grepl("paired",res)) cytodxdir = gsub("_paired","",cytodxdir)
-    cytodxdir1 = paste(cytodxdir,"/",class,"/tree1.png")
-    cat("\n![",,"](", cytodxdir1, ") \n", sep="")
+  cat("\n#", res, "\n")
+  # resd = paste0("../../result/",res)
+  
+  cytodxdir = gsub("_paired","",paste0(result_dir,"/cytodx"))
+  for (class in list.files(cytodxdir)) {
+    cat("\n##", class, "\n")
+    cytodxdir1 = paste0(cytodxdir,"/",class,"/tree1.png")
+    # cytodxdir1 = gsub(" ","%20",cytodxdir1)
+    
+    cat("\n<img src=\"","../../","/", cytodxdir1,"\"/> \n",sep="")
   }
   
   pngdir = paste0(result_dir,"/plot_pval/t-BY/pthres-0.01")
-  df_figs <- list.files(pngdir, pattern = ".png$", full.names=T)
-  if (grepl("bodenmiller|pregnancy",res))
-  for (i in df_figs) {  
-    name <- gsub("-",".",fileNames(i))
-    name <- gsub(".png","",name)  
-    i <- paste(".\\",i,sep="")
-    assign(name,readPNG(i))
+  df_figs = list.files(pngdir, pattern = ".png$", full.names=T)
+  df_figs = df_figs[grepl("grsd",df_figs)]
+  df_figs = df_figs[!grepl("raw",df_figs)]
+  df_figs = df_figs[grepl("expect|countAdj|prop[.]",df_figs)]
+  if (length(df_figs)==0) next
+  for (i in df_figs){  
+    cat("\n<img src=\"","../../","/",i,"\"/> \n",sep="")
+    # name <- gsub("-",".",i)
+    # name <- gsub(".png","",name)  
+    # i <- paste(".\\",i,sep="")
+    # assign(name,readPNG(i))
   }
 }
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

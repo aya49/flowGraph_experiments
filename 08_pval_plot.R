@@ -525,7 +525,8 @@ time_output(start1)
 
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
-l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
+l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & 
+                      #grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
                       grepl("prop$|countAdj$|expect$",tbl$feat)
 ), no_cores), function(ii) { try({
   # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
@@ -863,7 +864,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("^pos",tb
       # }
   }
   
-}) },.parallel=T)
+}) },.parallel=F)
 time_output(start1)
 
 

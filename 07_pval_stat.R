@@ -30,7 +30,7 @@ options(na.rm=T)
 overwrite = F #overwrite?
 writecsv = F
 
-pthress = c(.05,.025,.01) # p value sig threshold for t test
+pthress = c(.05,.01) # p value sig threshold for t test
 
 ## calcuate p values!
 
@@ -50,6 +50,7 @@ start = Sys.time()
 table = NULL
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
+  if (grepl("bodenmiller$|pregnancy$",result_dir)) next
   data = fileNames(result_dir)
   
   ## input directories
@@ -82,7 +83,9 @@ for (i in 1:nrow(table))
 ## calculate corr
 start1 = Sys.time()
 # l_ply(loopInd(1:nrow(table),no_cores), function(ii) {
-for (i in 1:nrow(table)) {
+for (i in 1:nrow(table)) { 
+  # try ({
+  
   pvs = get(load(table$pathp[i]))
   
   ## calculate correlations between p values test & train/2
@@ -98,6 +101,7 @@ for (i in 1:nrow(table)) {
   }
   # pcorr2 = cor(pv_trl2,pv_tel, method="spearman")
   # pcorrp2 = cor.test(pv_trl2,pv_tel, method="spearman")$p.value
+# })
 }
 # },.parallel=T)
 time_output(start1)

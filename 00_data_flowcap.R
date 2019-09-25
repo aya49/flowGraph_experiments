@@ -82,7 +82,7 @@ for (tube in unique(meta_file0$tube)) {
   if (tube!=6) next # save only tube 6 for now
   
   # output directories
-  result_dir = paste0(result_dir0,tube)
+  result_dir = paste0(result_dir0,"_",tube)
   meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
   feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
   
