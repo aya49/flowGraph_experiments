@@ -864,7 +864,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 &
       # }
   }
   
-}) },.parallel=F)
+}) },.parallel=T)
 time_output(start1)
 
 

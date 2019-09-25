@@ -60,7 +60,7 @@ for (result_dir in result_dirs){
   df_figs = list.files(pngdir, pattern = ".png$", full.names=T)
   df_figs = df_figs[grepl("grsd",df_figs)]
   df_figs = df_figs[!grepl("raw",df_figs)]
-  df_figs = df_figs[grepl("expect|countAdj|prop[.]",df_figs)]
+  df_figs = df_figs[grepl("expect.png|countAdj.png|prop.png",df_figs)]
   if (length(df_figs)==0) next
   for (i in df_figs){  
     cat("\n\n![](",i,")",sep="")
