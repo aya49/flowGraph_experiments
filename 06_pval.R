@@ -222,7 +222,7 @@ for (result_dir in result_dirs) {
                  wilcox=list(all=pvs[,2],train=pvs[,4],test=pvs[,6]))
       
 
-      for (ptype in names(pvs)) {
+      for (ptype in "t"){#names(pvs)) {
         for (adj in adjust) {
           pvs_ = NULL
           for (tretype in names(pvs[[ptype]])) {
