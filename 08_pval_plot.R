@@ -528,8 +528,10 @@ start1 = Sys.time()
 l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & 
                       #grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
                       grepl("prop$|countAdj$|expect$",tbl$feat)
-), no_cores), function(ii) { try({
+), no_cores), function(ii) {# try({
   # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
+  
+  # which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("prop$|countAdj$|expect$",tbl$feat))
   
   #   for (i in ii) {
   # for (i in which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none")) {
@@ -554,6 +556,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 &
     p = pv$all
     # if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("D|E|F|G|H",names(p))]
     # if (tbl$data[i]%in%c("pos6")) p = p[!grepl("E|F|G|H",names(p))]
+    if (tbl$data[i]=="pregnancy_paired") p = p[str_count(names(p),"[+]|[-]")<4]
     
     p_ = p<pt
     # ptr_ = ptr<pt & pte>pt
@@ -587,14 +590,14 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 &
     for (siz in c("sd","")) {
       if (siz=="sd") {
         label_ind = p_ & !grepl("[-]",names(p_))
-        gr$v$label = paste0(gr$v$name,":",round(mcmu,3))#,"/",round(mfmc,3))
+        gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
         
       } else {
         label_ind = rep(F,length(p))
         # label_ind_ = p+mo/2
-        label_ind[which(p_)[tail(order(mfmdiff[p_]),20)]] = T
+        label_ind[which(p_)[tail(order(mfmdiff[p_]),7)]] = T
         gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
         gr$v$size = -log(p)
         gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
@@ -864,7 +867,8 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 &
       # }
   }
   
-}) },.parallel=T)
+#}) 
+},.parallel=F)
 time_output(start1)
 
 

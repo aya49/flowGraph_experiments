@@ -63,8 +63,7 @@ for (result_dir in result_dirs) {
   feat_file_cell_lnpropexpect_dir = paste(feat_dir, "/file-cell-lnpropexpect",sep="")
   feat_file_cell_lncountexpect_dir = paste(feat_dir, "/file-cell-lncountexpect",sep="")
   
-  feat_file_cell_lnpropexpectshort_dir = paste(feat_dir, "/file-cell-lnpropexpectshort",sep="")
-  
+
   
 
   start = Sys.time()
@@ -514,15 +513,20 @@ for (result_dir in result_dirs) {
   # lnpropexpect1[exp1==0] = log(mpe[exp1==0])
   # lnpropexpect1[mpe==0] = 0
   
-  exp11 = exp1[,!grepl("[-]",colnames(exp1))]
-  save(exp11, file=paste0(feat_file_cell_lnpropexpect_dir,"-short-raw.Rdata"))
-  lnpropexpect11 = lnpropexpect1[,!grepl("[-]",colnames(lnpropexpect1))]
-  save(lnpropexpect11, file=paste0(feat_file_cell_lnpropexpect_dir,"-short.Rdata"))
   
-  expc11 = expc1[,!grepl("[-]",colnames(expc1))]
-  save(expc11, file=paste0(feat_file_cell_lncountexpect_dir,"-short-raw.Rdata"))
-  lncountexpect11 = lncountexpect1[,!grepl("[-]",colnames(lncountexpect1))]
-  save(lncountexpect11, file=paste0(feat_file_cell_lncountexpect_dir,"-short.Rdata"))
+  
+  
+  
+  # ## USE THIS ONE
+  # exp11 = exp1[,!grepl("[-]",colnames(exp1))]
+  # save(exp11, file=paste0(feat_file_cell_lnpropexpect_dir,"-short-raw.Rdata"))
+  # lnpropexpect11 = lnpropexpect1[,!grepl("[-]",colnames(lnpropexpect1))]
+  # save(lnpropexpect11, file=paste0(feat_file_cell_lnpropexpect_dir,"-short.Rdata"))
+  # 
+  # expc11 = expc1[,!grepl("[-]",colnames(expc1))]
+  # save(expc11, file=paste0(feat_file_cell_lncountexpect_dir,"-short-raw.Rdata"))
+  # lncountexpect11 = lncountexpect1[,!grepl("[-]",colnames(lncountexpect1))]
+  # save(lncountexpect11, file=paste0(feat_file_cell_lncountexpect_dir,"-short.Rdata"))
   
   
 
