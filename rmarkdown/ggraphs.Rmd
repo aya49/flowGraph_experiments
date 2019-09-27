@@ -41,7 +41,7 @@ figs = captioner(prefix="Figure")
 # setwd(root)
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
-for (result_dir in result_dirs){
+for (result_dir in paste0(root,"/result/",c(paste0("pos",c(1:26)),paste0("flowcap_6",c("","_ctrl","_pos")),"bodenmiller_paired","pregnancy_paired","genentech"))){
   res = fileNames(result_dir)
   if (grepl("^ctrl|pregnancy$|bodenmiller$",res)) next
   cat("\n\n#", res)
