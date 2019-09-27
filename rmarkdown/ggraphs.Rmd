@@ -58,7 +58,7 @@ for (result_dir in result_dirs){
   
   pngdir = paste0(result_dir,"/plot_pval/t-BY/pthres-0.01")
   df_figs = list.files(pngdir, pattern = ".png$", full.names=T)
-  df_figs = df_figs[grepl("grsd",df_figs)]
+  df_figs = df_figs[grepl("grsd_|gr_",df_figs)]
   df_figs = df_figs[!grepl("raw",df_figs)]
   df_figs = df_figs[grepl("expect.png|countAdj.png|prop.png",df_figs)]
   if (length(df_figs)==0) next
