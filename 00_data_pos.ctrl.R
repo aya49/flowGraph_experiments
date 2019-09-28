@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",1:26))) {
+for (ds in c(paste0("pos",25:26))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -344,17 +344,14 @@ for (ds in c(paste0("pos",1:26))) {
           tripleind = which(dp & ep)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         } 
-        else if (ds=="pos25") { #1.5x A+B+C+
-          tm = sum(triple)/2
-          tripleind = which(ap & bp & cp)
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+        else if (ds=="pos25") { #1.5x A+B+; decrease other ones accordingly
+          tm = sum(double)/2
+          f@exprs[sample(which(!ap & !bp),tm/3) | sample(which(ap & !bp),tm/3) | sample(which(!ap & bp),tm/3),c(1,2)] = p75
         } 
-        else if (ds=="pos26") { #1.5x A+B+C+, C+D+E+
-          tm = sum(triple)/2
-          tripleind = which(ap & bp & cp)
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tripleind = which(cp & dp & ep)
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+        else if (ds=="pos26") { #1.5x A+B+, D+E+, like above
+          tm = sum(double)/2
+          f@exprs[sample(which(!ap & !bp),tm/3) | sample(which(ap & !bp),tm/3) | sample(which(!ap & bp),tm/3),c(1,2)] = p75
+          f@exprs[sample(which(!dp & !ep),tm/3) | sample(which(dp & !ep),tm/3) | sample(which(!dp & ep),tm/3),c(4,5)] = p75
         }
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1

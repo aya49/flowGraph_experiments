@@ -45,7 +45,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   print(result_dir)
-  # if (!grepl("flowcap",result_dir)) next
+  if (!grepl("pos25|pos26",result_dir)) next
   
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
