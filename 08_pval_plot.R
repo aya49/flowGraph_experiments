@@ -185,6 +185,57 @@ time_output(start1)
 
 
 
+## sig cell population histograms --------------------
+start1 = Sys.time()
+inds = which(tbl$m_all_sig>0 & tbl$test_adj!="none")
+l_ply(loopInd(sample(inds,length(inds)),no_cores), function(ii) {
+  i_d = i_f = ""
+  for (i in ii) {
+    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",pa,"/overlap/",tbl$class[i],"/",tbl$feat[i])
+    dir.create(pathn, showWarnings=F, recursive=T)
+    
+    # load p values
+    pvs = get(load(tbl$pathp[i]))$all
+    mo = get(load(tbl$patho[i]))$all
+    
+    i_d_ = i_d==tbl$data[i]
+    i_f_ = i_f==tbl$feat[i]
+    if (!i_d_) 
+      sm0 = get(load(paste0(root,"/result/",tbl$data[i],"/meta/file.Rdata")))
+    
+    if (!i_f_ | !i_d_) {
+      m0 = get(load(paste0(root,"/result/",tbl$data[i],"/feat/",tbl$feat[i],".Rdata")))
+      sm = sm0[match(rownames(m0),sm0$id),]
+    }
+    m = m0
+    mc = m[sm$class=="control",]
+    me = m[sm$class==tbl$class[i],]
+    
+    for (j in names(pvs)[pvs<tbl$pthres[i]]) {
+      moi = names(mo)==j
+      if (mo[moi]==1) next()
+      if (mo[moi]>overlapmin) next() # & grepl("^ctrl|^pos",tbl$data[i])) next()
+      mi = colnames(m)==j
+      png(paste0(pathn,"/",round(mo[moi],3),"_",j,".png"))
+      mr = range(c(mc[,mi],me[,mi]))
+      h = hist(mc[,mi], plot=F)
+      h$counts <- h$counts / sum(h$counts)
+      plot(h, col=rgb(1,0,0,0.5),xlim=c(mr[1],mr[2]), ylim=c(0,1), main="red=control; blue=experiment")
+      par(new=T)
+      h_ = hist(me[,mi], plot=F)
+      h_$counts <- h_$counts / sum(h_$counts)
+      plot(h_, col=rgb(0,0,1,0.5),xlim=c(mr[1],mr[2]), ylim=c(0,1), add=T)
+      graphics.off()
+    }
+    
+    i_d = tbl$data[i]
+    i_f = tbl$feat[i]
+  }
+}, .parallel=T)
+time_output(start1)
+
+
+
 ## histograms o ----------------------------------
 start1 = Sys.time()
 l_ply(loopInd(which(tbl$pthres==c_pts[1] & tbl$pmethod_adj==c_pas[1]), no_cores), function(ii) {
@@ -465,55 +516,6 @@ time_output(start1)
 
 
 
-## sig cell population histograms --------------------
-start1 = Sys.time()
-inds = which(tbl$m_all_sig>0 & tbl$test_adj!="none")
-l_ply(loopInd(sample(inds,length(inds)),no_cores), function(ii) {
-  i_d = i_f = ""
-  for (i in ii) {
-    pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",pa,"/overlap/",tbl$class[i],"/",tbl$feat[i])
-    dir.create(pathn, showWarnings=F, recursive=T)
-    
-    # load p values
-    pvs = get(load(tbl$pathp[i]))$all
-    mo = get(load(tbl$patho[i]))$all
-    
-    i_d_ = i_d==tbl$data[i]
-    i_f_ = i_f==tbl$feat[i]
-    if (!i_d_) 
-      sm0 = get(load(paste0(root,"/result/",tbl$data[i],"/meta/file.Rdata")))
-    
-    if (!i_f_ | !i_d_) {
-      m0 = get(load(paste0(root,"/result/",tbl$data[i],"/feat/",tbl$feat[i],".Rdata")))
-      sm = sm0[match(rownames(m0),sm0$id),]
-    }
-    m = m0
-    mc = m[sm$class=="control",]
-    me = m[sm$class==tbl$class[i],]
-    
-    for (j in names(pvs)[pvs<tbl$pthres[i]]) {
-      moi = names(mo)==j
-      if (mo[moi]==1) next()
-      if (mo[moi]>overlapmin) next() # & grepl("^ctrl|^pos",tbl$data[i])) next()
-      mi = colnames(m)==j
-      png(paste0(pathn,"/",round(mo[moi],3),"_",j,".png"))
-      mr = range(c(mc[,mi],me[,mi]))
-      h = hist(mc[,mi], plot=F)
-      h$counts <- h$counts / sum(h$counts)
-      plot(h, col=rgb(1,0,0,0.5),xlim=c(mr[1],mr[2]), ylim=c(0,1), main="red=control; blue=experiment")
-      par(new=T)
-      h_ = hist(me[,mi], plot=F)
-      h_$counts <- h_$counts / sum(h_$counts)
-      plot(h_, col=rgb(0,0,1,0.5),xlim=c(mr[1],mr[2]), ylim=c(0,1), add=T)
-      graphics.off()
-    }
-    
-    i_d = tbl$data[i]
-    i_f = tbl$feat[i]
-  }
-}, .parallel=T)
-time_output(start1)
-
 
 
 
@@ -525,7 +527,7 @@ time_output(start1)
 
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
-l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("pos",tbl$data) &
+l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tbl$data) &
                       #grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
                       grepl("prop$|countAdj$|expect$",tbl$feat)
 ), no_cores), function(ii) {# try({
@@ -547,7 +549,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("pos",tbl
     main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",round(ptl,3))
     mfm = mfms[[tbl$data[i]]][[tbl$feat[i]]]
     mcm = mcms[[tbl$data[i]]]
-    mfm_tf = grepl("expect",tbl$feat[i])
+    mfm_tf = grepl("propexpect",tbl$feat[i])
     if (mfm_tf) mfm_ = mfms[[tbl$data[i]]][[paste0(tbl$feat[i],"-raw")]]
     mo0 = get(load(tbl$patho[i]))$all
     pv = get(load(tbl$pathp[i]))
@@ -587,18 +589,22 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("pos",tbl
     # label_ind = rep(F,length(p))
     # label_ind_ = p+mo/2
     # label_ind[which(p_)[head(order(label_ind_[p_]),5)]] = T
+    gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
+    if (mfm_tf) {
+      # if (grepl("^pos",tbl$data[i])) {
+      #   gr$v$color = (mfmu_-mcmu)/mcmu # node colour
+      # }
+      gr$v$label = paste0(gr$v$name,":",round(mfmu,3),"/",round(mfmu_,3))
+    }
     for (siz in c("sd","")) {
       if (siz=="sd") {
         label_ind = p_ & !grepl("[-]",names(p_))
-        gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
-        
       } else {
         label_ind = rep(F,length(p))
         # label_ind_ = p+mo/2
         label_ind[which(p_)[tail(order(mfmdiff[p_]),7)]] = T
-        gr$v$label = paste0(gr$v$name,":",round(mfmu,3))#,"/",round(mfmc,3))
         gr$v$size = -log(p)
         gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
         main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
@@ -617,18 +623,6 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & grepl("pos",tbl
       
       ggsave(paste0(pathn,"/gr",siz,classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
-      if (mfm_tf) {
-        # if (grepl("^pos",tbl$data[i])) {
-        #   gr$v$color = (mfmu_-mcmu)/mcmu # node colour
-        # }
-        gr$v$label = paste0(gr$v$name,":",round(mfmu_,3),"/",round(mfmc_,3))
-        gp = gpp + geom_label_repel(
-          data=gr$v[label_ind,],
-          aes(x=x,y=y,color=color,label=label),
-          nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-        
-        ggsave(paste0(pathn,"/gr",siz,classn,"_",tbl$feat[i],"-raw.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
-      }
     }
     
     try ({

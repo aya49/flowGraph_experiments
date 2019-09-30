@@ -27,7 +27,6 @@ for (result_dir in result_dirs) {
   result = ldply(feat_types, function(feat_type) {
     ## upload and prep feature matrix + meta
     m = as.matrix(Matrix(get(load(paste0(feat_dir,"/", feat_type,".Rdata")))))
-
     return(data.frame(data=data, feat=feat_type, nrow=nrow(m), ncol=ncol(m), inf=sum(is.infinite(m)), na=sum(is.na(m)), nan= sum(is.nan(m)), neg=sum(m<0), pos=sum(m>0), zero=sum(m==0), max=max(m[is.finite(m)])))
   })
   tab = rbind(tab,result)

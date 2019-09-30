@@ -79,7 +79,7 @@ if (writecsv) write.csv(meta_file, file=paste0(meta_dir,"/file.csv"), row.names=
 feat_dir = gsub("meta","feat",meta_dir); dir.create(feat_dir, showWarnings=F, recursive=T)
 feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
 
-m0 = m00
+# m0 = m00
 save(m00, file=paste0(feat_file_cell_count_dir,".Rdata"))
 if (writecsv) write.csv(m00, file=paste0(feat_file_cell_count_dir,".csv"), row.names=T)
 

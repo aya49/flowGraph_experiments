@@ -32,7 +32,7 @@ registerDoMC(no_cores)
 
 ## options
 writecsv = F
-nsample = 1000 # # of samples to create per data set
+nsample = 1000 # # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
 nctrl = .5 # % of control samples
 markern = 5 # # of markers
 maxmarker = 6
@@ -82,8 +82,8 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 
 # start = Sys.time()
-# for (ds in c(paste0("pos",1:9),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",25:26))) {
+# for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
+for (ds in c(paste0("ctrl",0:9))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -407,7 +407,7 @@ for (ds in c(paste0("pos",25:26))) {
       }
       fe = f@exprs
       colnames(fe) = LETTERS[1:ncol(fe)]
-      save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
+      if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds)) save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
       flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                Thresholds=thress, 
