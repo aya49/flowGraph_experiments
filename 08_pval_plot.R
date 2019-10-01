@@ -64,11 +64,11 @@ c_pts = unique(tbl$pthres)
 
 ## default counts/props
 mcms = llply(c_datas, function(data) {
-  m = get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
-  llply(m, function(mc) {
-    mcm = mc - min(mc)
-    mcm/max(mcm)
-  })
+  get(load(paste0(root,"/result/",data,"/feat_mean/file-cell-prop.Rdata")))
+  # llply(m, function(mc) {
+  #   mcm = mc - min(mc)
+  #   mcm/max(mcm)
+  # })
   
   # sm =   get(load(paste0(root,"/result/",data,"/meta/", "file",".Rdata")))
   # sm = sm[match(rownames(m),sm$id),]
@@ -547,9 +547,10 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     pathn = paste0(root,"/result/",tbl$data[i],"/plot_pval/",tbl$pmethod_adj[i],"/pthres-",pt)
     
     main0 = paste0("data: ",tbl$data[i],"; feat: ",tbl$feat[i], "; class: ",tbl$class[i], "; pthres: ",round(ptl,3))
-    mfm = mfms[[tbl$data[i]]][[tbl$feat[i]]]
-    mcm = mcms[[tbl$data[i]]]
     mfm_tf = grepl("propexpect",tbl$feat[i])
+    mfm = mfms[[tbl$data[i]]][[tbl$feat[i]]]
+    if (mfm_tf) mfm = mfms[[tbl$data[i]]][["file-cell-prop"]]
+    mcm = mcms[[tbl$data[i]]]
     if (mfm_tf) mfm_ = mfms[[tbl$data[i]]][[paste0(tbl$feat[i],"-raw")]]
     mo0 = get(load(tbl$patho[i]))$all
     pv = get(load(tbl$pathp[i]))
@@ -595,10 +596,12 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       #   gr$v$color = (mfmu_-mcmu)/mcmu # node colour
       # }
       gr$v$label = paste0(gr$v$name,":",round(mfmu,3),"/",round(mfmu_,3))
+      main0 = paste0(main0,"\nlabel=prop / expected prop")
     }
     for (siz in c("sd","")) {
       if (siz=="sd") {
         label_ind = p_ & !grepl("[-]",names(p_))
+        if (mfm_tf) label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.02
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
       } else {
@@ -696,14 +699,14 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
         aes(x=x,y=y,label=label, color=color),
         nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
       
-      ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
       gp = gpp + geom_label_repel(
         data=gr$v[lbnotna,],
         aes(x=x,y=y,label=label, color=color),
         nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
       
-      ggsave(paste0(pathn,"/gr",classn,"_",tbl$feat[i],"_itemset_alllabellled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],"_alllabellled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
       
     })

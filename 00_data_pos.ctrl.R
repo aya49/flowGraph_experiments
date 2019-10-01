@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("ctrl",0:9))) {
+for (ds in c(paste0("pos",1:26))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
