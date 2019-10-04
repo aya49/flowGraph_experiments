@@ -37,7 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  if (!grepl("ctrl",result_dir)) next
+  # if (!grepl("pos",result_dir)) next
   # if (grepl("/pos",result_dir)) next
   print(result_dir)
 
@@ -354,7 +354,7 @@ for (result_dir in result_dirs) {
   start1 = Sys.time()
   cat("ln prop/expected")
   
-  # markern = str_length(meta_cell[1,2])
+  markern = str_length(meta_cell[1,2])
   
   cellis1 = meta_cell$phenotype[meta_cell$phenolevel==1]
   cellis1 = append("",cellis1[cellis1%in%names(meta_cell_parent_names)])
@@ -434,6 +434,65 @@ for (result_dir in result_dirs) {
   save(lncountexpect1, file=paste0(feat_file_cell_lncountexpect_dir,".Rdata"))
 
   time_output(start1)
+  
+  
+  
+  
+  
+  
+  expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
+    # expect1 = foreach(ic=ii, .combine="cbind") %do% {
+    #   i = cellis[ic]
+    #   il = cellisn[ic]
+    #   pnames = meta_cell_parent_names_[[i]]
+    #   parent = mpe[,pnames,drop=F]
+    #   numrtr = apply(parent, 1, prod)^(il-1)
+    #   
+    #   gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+    #   if (gnames=="") gnames = colnames(mpe)==""
+    #   grprnt = mpe[,gnames,drop=F]
+    #   denmtr = apply(grprnt, 1, prod)
+    #   
+    #   expect = (numrtr/denmtr)^(1/choose(il,2))
+    #   return(expect)
+    # }
+    expect2 = foreach(ic=ii, .combine="cbind") %do% {
+      i = cellis[ic]
+      il = cellisn[ic]
+      pnames = meta_cell_parent_names_[[i]]
+      parent = mpe[,pnames,drop=F]
+      numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
+      
+      gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+      if (gnames[1]=="") gnames = colnames(mpe)==""
+      grprnt = mpe[,gnames,drop=F]
+      denmtr = apply(grprnt, 1, function(x) prod(x)^2)
+      
+      expect = (numrtr/denmtr)^(1/(ncol(grprnt)*2/il))
+      expect[numrtr==0 & denmtr==0] = 0
+      return(expect)
+    }
+    return(expect2)
+  }, .parallel=T)
+  expec = Reduce("cbind", expec)
+  # which(is.na(expec),arr.ind=T)
+  colnames(expec) = cellis
+  exp1 = as.matrix(cbind(expe1,expec))
+  expc1 = exp1*m[,1]
+  lnpropexpect1 = log(mpe/exp1)
+  mei = m[,match(colnames(expc1),colnames(m))]
+  lncountexpect1 = log(mei/expc1)
+  lnpropexpect1[exp1==0] = log(mpe[exp1==0])
+  lncountexpect1[expc1==0] = log(mei[expc1==0])
+  lnpropexpect1[mpe==0] = lncountexpect1[mei==0] = 0
+  
+  save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"2-raw.Rdata"))
+  save(expc1, file=paste0(feat_file_cell_lncountexpect_dir,"2-raw.Rdata"))
+  save(lnpropexpect1, file=paste0(feat_file_cell_lnpropexpect_dir,"2.Rdata"))
+  save(lncountexpect1, file=paste0(feat_file_cell_lncountexpect_dir,"2.Rdata"))
+  
+  time_output(start1)
+  
   
   
   ## expected count
