@@ -410,7 +410,7 @@ for (result_dir in result_dirs) {
       grprnt = mpe[,gnames,drop=F]
       denmtr = apply(grprnt, 1, prod)
       
-      expect = (numrtr/denmtr)^(1/choose(il,2))
+      expect = (numrtr/denmtr)^(1/ncol(grprnt))
       expect[numrtr==0 & denmtr==0] = 0
       return(expect)
     }
@@ -457,8 +457,26 @@ for (result_dir in result_dirs) {
     #   return(expect)
     # }
     expect2 = foreach(ic=ii, .combine="cbind") %do% {
+      # mpe0 = mpe
+      # mpe = matrix(colMeans(mpe[501:1000,]),nrow=1)
+      # colnames(mpe) = colnames(mpe0)
+      
       i = cellis[ic]
       il = cellisn[ic]
+      
+      # pnames = meta_cell_parent_names_[[i]]
+      # if (il>3)
+      #   for (z in 1:(il-3)) {
+      #     pnames = unique(unlist(meta_cell_parent_names_[pnames]))
+      #     parent = mpe[,pnames,drop=F]
+      #     numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
+      #     
+      #     gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+      #     if (gnames[1]=="") gnames = colnames(mpe)==""
+      #     grprnt = mpe[,gnames,drop=F]
+      #     denmtr = apply(grprnt, 1, function(x) prod(x)^2)
+      #   }
+        
       pnames = meta_cell_parent_names_[[i]]
       parent = mpe[,pnames,drop=F]
       numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
@@ -468,8 +486,9 @@ for (result_dir in result_dirs) {
       grprnt = mpe[,gnames,drop=F]
       denmtr = apply(grprnt, 1, function(x) prod(x)^2)
       
-      expect = (numrtr/denmtr)^(1/(ncol(grprnt)*2/il))
+      expect = (numrtr/denmtr)^(1/(il-1))
       expect[numrtr==0 & denmtr==0] = 0
+      
       return(expect)
     }
     return(expect2)

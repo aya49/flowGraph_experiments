@@ -602,7 +602,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     for (siz in c("sd","")) {
       if (siz=="sd") {
         label_ind = p_ & !grepl("[-]",names(p_))
-        if (mfm_tf) label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.02
+        if (mfm_tf) label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.05
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
       } else {
