@@ -601,33 +601,54 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     }
     for (siz in c("sd","")) {
       if (siz=="sd") {
-        label_ind = p_ & !grepl("[-]",names(p_))
-        if (mfm_tf) label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.05
+        gr$v$label_ind = p_ & !grepl("[-]",names(p_))
+        if (mfm_tf) gr$v$label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.05
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
       } else {
-        label_ind = rep(F,length(p))
-        # label_ind_ = p+mo/2
-        label_ind[which(p_)[tail(order(mfmdiff[p_]),7)]] = T
+        gr$v$label_ind = rep(F,length(p))
+        # lgr$v$abel_ind_ = p+mo/2
+        gr$v$label_ind[which(p_)[tail(order(mfmdiff[p_]),7)]] = T
         gr$v$size = -log(p)
         gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
         main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
       }
       
+      gr$v$v_ind = p_
+      gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] &gr$e[,2]%in%gr$v$name[p_]
+      gr$v$label_ind = rep(F,nrow(gr$v))
       
-      gpp = gggraph(
-        gr, v_ind=p_, vb_ind=rep(F,nrow(gr$v)), main=main,
-        e_ind=gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_],
-        label_ind=rep(F,nrow(gr$v)))
+      gp = gpp = gggraph(gr, main=main)
       # gpp = gpp + geom_point(data=gr$v[p_,],aes(x=x,y=y),size=2,color="grey")
-      gp = gpp + geom_label_repel(
-        data=gr$v[label_ind,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      # gp = gpp + geom_label_repel(
+      #   data=gr$v[label_ind,],
+      #   aes(x=x,y=y,label=label, color=color),
+      #   nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
       
       ggsave(paste0(pathn,"/gr",siz,classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
     }
+    
+    
+    
+    
+    ## comment out, this is only for one population
+    cpop = "A+B+C+D+"
+    gr_ = list()
+    gr_$e = gr$e[gr$e$to==cpop,,drop=F]
+    cpopl = gr_$e$from
+    while (cpopl[1]!="") {
+      etemp = gr$e[gr$e$to%in%cpopl,,drop=F]
+      gr_$e = rbind(gr_$e, etemp)
+      cpopl = unique(etemp$from)
+    }
+    gr_$v = gr$v[gr$v$name%in%unique(unlist(gr_$e[,c(1,2)])),,drop=F]
+    gr_$v$label_ind = T
+    gp = gggraph(gr_, main=cpop)
+    plot(gp)
+    
+    
+    
     
     try ({
       pn = names(p)[p_ & mo<overlapmin]

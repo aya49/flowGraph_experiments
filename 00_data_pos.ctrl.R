@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",25:28))) {
+for (ds in c(paste0("pos",28))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -357,13 +357,12 @@ for (ds in c(paste0("pos",25:28))) {
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         } 
         else if (ds=="pos27") { #1.5x A+B+; decrease other ones accordingly
-          tm = sum(double)/2
-          f@exprs[sample(which(!ap & !bp),tm/3) | sample(which(ap & !bp),tm/3) | sample(which(!ap & bp),tm/3),c(1,2)] = p75
+          tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
+          f@exprs[c(sample(which(!ap & !bp),tm/3) , sample(which(ap & !bp),tm/3) , sample(which(!ap & bp),tm/3)),c(1,2)] = p75
         } 
         else if (ds=="pos28") { #1.5x A+B+, D+E+, like above
           tm = sum(double)/2
-          f@exprs[sample(which(!ap & !bp),tm/3) | sample(which(ap & !bp),tm/3) | sample(which(!ap & bp),tm/3),c(1,2)] = p75
-          f@exprs[sample(which(!dp & !ep),tm/3) | sample(which(dp & !ep),tm/3) | sample(which(!dp & ep),tm/3),c(4,5)] = p75
+          f@exprs[c(sample(which(!ap & !bp),tm/3) , sample(which(ap & !bp),tm/3) , sample(which(!ap & bp),tm/3)),c(1,2)] = p75
         }
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
@@ -381,40 +380,36 @@ for (ds in c(paste0("pos",25:28))) {
           names(ftv) = ftcell
           a = getPhenCP(cp=ftcell,no_cores=no_cores)
           al = layout_gr(a$gr$e,a$gr$v)
-          alp = layout_gr(a$grp$e,a$grp$v)
+          # alp = layout_gr(a$grp$e,a$grp$v)
           al = gpdf(al)
           al$v$color = ifelse(ftv_>ftv0_,"increase","decrease")
           vind_ = !grepl("-",al$v$name)
-          alp = gpdf(alp)
-          alp$v$color = ifelse(ftv_[vind_]>ftv0_[vind_],"increase","decrease") #ftv[vind_]
+          # alp = gpdf(alp)
+          # alp$v$color = ifelse(ftv_[vind_]>ftv0_[vind_],"increase","decrease") #ftv[vind_]
           al$v$size=1
           al$v$sizeb=1
           
           al$v$label = paste0(al$v$name,":",ftv)
-          vind = abs(ftv_-ftv0_)/ftv0_ >.05 #& !grepl("[-]",al$v$name)
-          gp = gggraph(al, v_ind=vind,
-                       e_ind=al$e[,1]%in%al$v$name[vind] & al$e[,2]%in%al$v$name[vind])
-          gp = gp +
-            geom_label_repel(
-              # data=al$v[str_count(al$v$name,"[-+]")==la & vind,],
-              data=al$v[vind & !grepl("[-]",al$v$name),],
-              aes(x=x,y=y,label=label, color=color),
-              nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
+          al$v$v_ind = abs(ftv_-ftv0_)/ftv0_ >.05 #& !grepl("[-]",al$v$name)
+          al$v$label_ind = al$v$v_ind & !grepl("[-]",al$v$name)
+          al$e$e_ind = al$e[,1]%in%al$v$name[al$v$v_ind] & al$e[,2]%in%al$v$name[al$v$v_ind]
           
+          gp = gggraph(al)
+
           ggsave(paste0(meta_dir,"/all_sig.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
           
-          alp$v$label = paste0(alp$v$name,":",ftv[vind_])
-          vind = abs(ftv[vind_]-ftv0[vind_])/ftv0[vind_] >.05
-          gp = gggraph(alp, v_ind=vind, 
-                       e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
-          gp = gp +
-            geom_label_repel(
-              # data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
-              data=alp$v[vind & !grepl("[-]",al$v$name)[vind_],],
-              aes(x=x,y=y,label=label, color=color),
-              nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
-          
-          ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
+          # alp$v$label = paste0(alp$v$name,":",ftv[vind_])
+          # vind = abs(ftv[vind_]-ftv0[vind_])/ftv0[vind_] >.05
+          # gp = gggraph(alp, v_ind=vind, 
+          #              e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
+          # gp = gp +
+          #   geom_label_repel(
+          #     # data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
+          #     data=alp$v[vind & !grepl("[-]",al$v$name)[vind_],],
+          #     aes(x=x,y=y,label=label, color=color),
+          #     nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
+          # 
+          # ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
         }
       }
       fe = f@exprs

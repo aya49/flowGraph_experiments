@@ -37,8 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  # if (!grepl("pos",result_dir)) next
-  # if (grepl("/pos",result_dir)) next
+  if (grepl("/pos28",result_dir)) next
   print(result_dir)
 
   ## input directories
@@ -94,7 +93,41 @@ for (result_dir in result_dirs) {
   save(grp, file=paste0(meta_cell_graphpos_dir, ".Rdata"))
   # graphs are saved; one with all cell populations, one with only positive ones a+b+... these can be converted to igraph with graph_from_data_frame
   
-
+  
+  
+  
+  # prepare parent list and list of cell populations
+  markern = str_length(meta_cell[1,2])
+  
+  # for expected proportions only
+  cellis1 = meta_cell$phenotype[meta_cell$phenolevel==1]
+  cellis1 = append("",cellis1[cellis1%in%names(meta_cell_parent_names)])
+  cellis = meta_cell$phenotype[meta_cell$phenolevel>1]
+  cellis = cellis[cellis%in%names(meta_cell_parent_names)]
+  
+  cellis_ = append(cellis1,cellis)
+  
+  expe1 = matrix(.5,nrow=nrow(mp), ncol=length(cellis1), dimnames=list(rownames(mp),cellis1))
+  expe1[,1] = 1
+  
+  mpe = mp
+  # mpe[mpe==0] = min(mp[mp!=0])
+  mpe = mpe[,match(append(cellis1,cellis),colnames(mpe))]
+  
+  meta_cell_parent_names_ = meta_cell_parent_names[names(meta_cell_parent_names)%in%colnames(mpe)]
+  meta_cell_parent_names_[cellis] = llply(meta_cell_parent_names_[cellis], function(x) {
+    a = x[x%in%colnames(mpe)]
+    if (length(a)==0) return(NULL)
+    return(a)
+  })
+  meta_cell_parent_names_ = plyr::compact(meta_cell_parent_names_)
+  
+  
+  # goodind = cellis%in%names(meta_cell_parent_names_)
+  # cellis = cellis[goodind]
+  # mpe = mpe[,goodind]
+  cellisn = str_count(cellis,"[+-]")
+  
   
   
   
@@ -104,31 +137,30 @@ for (result_dir in result_dirs) {
   
   #mlist=list()
   cat("childprop")
-  childprop = foreach(ii = loopInd(1:length(meta_cell_childpn_names),no_cores), .combine="cbind") %dopar% { #for each phenotype
-    childprop1 = foreach(i=ii, .combine="cbind") %do% {
+  childprop_ = foreach(ii = loopInd(2:length(cellis_),no_cores), .combine="cbind") %dopar% { #for each phenotype
+    childprop1 = foreach(ic=ii, .combine="cbind") %do% {
       #for (i in 1:length(meta_cell_childpn_names)) {
-      pnames = names(meta_cell_childpn_names)[i]
-      pnames = pnames[pnames%in%colnames(m)]
-      parent = m[,match(pnames,colnames(m)),drop=F]
-      cnames = unlist(meta_cell_childpn_names[[i]])
-      cnames = cnames[cnames%in%colnames(m)]
-      childr = m[,match(cnames,colnames(m)),drop=F]
-      if (ncol(parent)==0 | ncol(childr)==0) return(NULL)
-      childr[childr<1] = parent[parent<1] = 1
-      
+      i = cellis_[ic]
+      pnames = meta_cell_parent_names_[[i]]
+      if (pnames[1]=="") {
+        parent = mpe[,colnames(mpe)=="",drop=F]
+      } else {
+        parent = mpe[,pnames,drop=F]
+      }
       # tryCatch({
-      childprop2 = exp(childr/as.vector(parent))
+      childprop2 = mpe[,i]/parent
       # }, error = function(err) { 
       #   parent = unlist(parent)
       #   childprop = childr
       #   for (j in 1:ncol(childr)) childprop[,j] = exp(unlist(childr[,j])/parent)
       # })
-      colnames(childprop2) = paste0(pnames, "_", cnames)
+      colnames(childprop2) = paste0(pnames, "_", i)
       return(childprop2)
     }
     return(childprop1)
   }
-  childprop = as.matrix(childprop)
+  childprop_[is.nan(childprop_)] = 0
+  childprop = exp(as.matrix(childprop_))
   # for (i in 1:length(childprop)) {
   #   colnames(childprop[[i]]) = paste0(names(childprop)[i], "_", colnames(childprop[[i]]))
   # }
@@ -138,6 +170,9 @@ for (result_dir in result_dirs) {
   time_output(start1)
   
   
+  
+  
+  if (F) {
   
   ## child pn ratio --------------------------------------------
   
@@ -349,38 +384,16 @@ for (result_dir in result_dirs) {
   
   
   
+  }
+  
+  
+  
+  
   ## prop/expected ---------------------------------------------------
   
   start1 = Sys.time()
   cat("ln prop/expected")
   
-  markern = str_length(meta_cell[1,2])
-  
-  cellis1 = meta_cell$phenotype[meta_cell$phenolevel==1]
-  cellis1 = append("",cellis1[cellis1%in%names(meta_cell_parent_names)])
-  
-  cellis = meta_cell$phenotype[meta_cell$phenolevel>1]
-  cellis = cellis[cellis%in%names(meta_cell_parent_names)]
-
-  expe1 = matrix(.5,nrow=nrow(mp), ncol=length(cellis1), dimnames=list(rownames(mp),cellis1))
-  expe1[,1] = 1
-  
-  mpe = mp
-  # mpe[mpe==0] = min(mp[mp!=0])
-  mpe = mpe[,match(append(cellis1,cellis),colnames(mpe))]
-  
-  meta_cell_parent_names_ = meta_cell_parent_names[names(meta_cell_parent_names)%in%colnames(mpe)]
-  meta_cell_parent_names_[cellis] = llply(meta_cell_parent_names_[cellis], function(x) {
-    a = x[x%in%colnames(mpe)]
-    if (length(a)==0) return(NULL)
-    return(a)
-  })
-  meta_cell_parent_names_ = plyr::compact(meta_cell_parent_names_)
-  
-  # goodind = cellis%in%names(meta_cell_parent_names_)
-  # cellis = cellis[goodind]
-  # mpe = mpe[,goodind]
-  cellisn = str_count(cellis,"[+-]")
   
   expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
     # expect1 = foreach(ic=ii, .combine="cbind") %do% {
@@ -438,6 +451,8 @@ for (result_dir in result_dirs) {
   
   
   
+  start1 = Sys.time()
+  cat("ln prop/expected2")
   
   
   expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
@@ -511,6 +526,87 @@ for (result_dir in result_dirs) {
   save(lncountexpect1, file=paste0(feat_file_cell_lncountexpect_dir,"2.Rdata"))
   
   time_output(start1)
+  
+  
+  
+  start1 = Sys.time()
+  cat("ln prop/expected3")
+  
+  childprop_names = Reduce("rbind",str_split(colnames(childprop_),"_"))
+  colnames(childprop_names) = c("from","to")
+  childprop_names = as.data.frame(childprop_names)
+  rownames(childprop_names) = 1:nrow(childprop_names)
+  
+  expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
+    # expect1 = foreach(ic=ii, .combine="cbind") %do% {
+    #   i = cellis[ic]
+    #   il = cellisn[ic]
+    #   pnames = meta_cell_parent_names_[[i]]
+    #   parent = mpe[,pnames,drop=F]
+    #   numrtr = apply(parent, 1, prod)^(il-1)
+    #   
+    #   gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+    #   if (gnames=="") gnames = colnames(mpe)==""
+    #   grprnt = mpe[,gnames,drop=F]
+    #   denmtr = apply(grprnt, 1, prod)
+    #   
+    #   expect = (numrtr/denmtr)^(1/choose(il,2))
+    #   return(expect)
+    # }
+    expect2 = foreach(ic=ii, .combine="cbind") %do% {
+      # mpe0 = mpe
+      # mpe = matrix(colMeans(mpe[501:1000,]),nrow=1)
+      # colnames(mpe) = colnames(mpe0)
+      
+      cpop = i = cellis[ic]
+      il = cellisn[ic]
+      
+      ge_ = childprop_names[childprop_names$to==cpop,,drop=F]
+      cpopl = ge_$from
+      while (cpopl[1]!="") {
+        etemp = childprop_names[childprop_names$to%in%cpopl,,drop=F]
+        ge_ = rbind(ge_, etemp)
+        cpopl = unique(etemp$from)
+      }
+      ge = childprop_[,as.numeric(rownames(ge_)),drop=F]
+      # gem = colMeans(ge[501:1000,]) # check positive controls with this
+      ge_ = cbind(ge_,ge[1,])
+      
+      pnames = meta_cell_parent_names_[[i]]
+      parent = mpe[,pnames,drop=F]
+      numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
+      
+      gnames = unique(unlist(meta_cell_parent_names_[pnames]))
+      if (gnames[1]=="") gnames = colnames(mpe)==""
+      grprnt = mpe[,gnames,drop=F]
+      denmtr = apply(grprnt, 1, function(x) prod(x)^2)
+      
+      expect = (numrtr/denmtr)^(1/(il-1))
+      expect[numrtr==0 & denmtr==0] = 0
+      
+      return(expect)
+    }
+    return(expect2)
+  }, .parallel=T)
+  expec = Reduce("cbind", expec)
+  # which(is.na(expec),arr.ind=T)
+  colnames(expec) = cellis
+  exp1 = as.matrix(cbind(expe1,expec))
+  expc1 = exp1*m[,1]
+  lnpropexpect1 = log(mpe/exp1)
+  mei = m[,match(colnames(expc1),colnames(m))]
+  lncountexpect1 = log(mei/expc1)
+  lnpropexpect1[exp1==0] = log(mpe[exp1==0])
+  lncountexpect1[expc1==0] = log(mei[expc1==0])
+  lnpropexpect1[mpe==0] = lncountexpect1[mei==0] = 0
+  
+  save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"3-raw.Rdata"))
+  save(expc1, file=paste0(feat_file_cell_lncountexpect_dir,"3-raw.Rdata"))
+  save(lnpropexpect1, file=paste0(feat_file_cell_lnpropexpect_dir,"3.Rdata"))
+  save(lncountexpect1, file=paste0(feat_file_cell_lncountexpect_dir,"3.Rdata"))
+  
+  time_output(start1)
+  
   
   
   

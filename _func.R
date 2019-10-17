@@ -219,7 +219,7 @@ ggblank = function(gr_v=NULL) {
     plot.background = element_blank())
 }
 
-gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NULL) { # indices of whether to apply color size etc
+gggraph = function(a, main="") { # indices of whether to apply color size etc
   # gr_v: name x y label size color sizeb colorb
   # gr_e: from to from.x from.y to.x to.y color
   require(ggrepel)
@@ -227,10 +227,11 @@ gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NU
   
   gr_v = a$v
   gr_e = a$e
-  if (is.null(label_ind)) label_ind = rep(F,nrow(gr_v))
-  if (is.null(v_ind)) v_ind = rep(F,nrow(gr_v))
-  if (is.null(vb_ind)) vb_ind = rep(F,nrow(gr_v))
-  if (is.null(e_ind)) e_ind = rep(F,nrow(gr_e))
+  label_ind = gr_v$label_ind
+  v_ind = gr_v$v_ind
+  vb_ind = gr_v$vb_ind
+  e_ind = gr_e$e_ind
+  
   # base graph
   gp = ggblank() + ggtitle(main) +
     scale_fill_brewer(palette="Pastel2") +
@@ -242,15 +243,19 @@ gggraph = function(a, main="", label_ind=NULL, v_ind=NULL, vb_ind=NULL, e_ind=NU
     # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
     geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
     geom_label_repel(data=gr_v[label_ind,],
-                     aes(x=x,y=y,label=label, color=color))
+                     aes(x=x,y=y,label=label, color=color),
+                     nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  
+
   return(gp)
 }
 
 gpdf = function(a) {
   gr_e = a$e
   gr_v = a$v
-  return(list(e=data.frame(gr_e,width=1,color=""),
-              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="",fill="",label=gr_v$name)))
+  return(list(e=data.frame(gr_e,width=1,color="", e_ind=F),
+              v=data.frame(gr_v,size=1, color="",sizeb=1, colorb="",fill="",label=gr_v$name, label_ind=F, v_ind=F, vb_ind=F)))
+
 }
 
 # image functions -----------------------------------
