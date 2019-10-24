@@ -38,3 +38,9 @@ Positive: increase on last layer count
 Positive: abc random, def not random thresholds
 
 Decrease size of lattice
+
+change upper layer, descendants and non-descendants
+
+Example posted on overleaf
+
+Assume there will be no descendant/ancestor relationship between real changed cell populations
