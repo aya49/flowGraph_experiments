@@ -632,20 +632,20 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     
     
     
-    ## comment out, this is only for one population
-    cpop = "A+B+C+D+"
-    gr_ = list()
-    gr_$e = gr$e[gr$e$to==cpop,,drop=F]
-    cpopl = gr_$e$from
-    while (cpopl[1]!="") {
-      etemp = gr$e[gr$e$to%in%cpopl,,drop=F]
-      gr_$e = rbind(gr_$e, etemp)
-      cpopl = unique(etemp$from)
-    }
-    gr_$v = gr$v[gr$v$name%in%unique(unlist(gr_$e[,c(1,2)])),,drop=F]
-    gr_$v$label_ind = T
-    gp = gggraph(gr_, main=cpop)
-    plot(gp)
+    # ## comment out, this is only for one population
+    # cpop = "A+B+C+D+"
+    # gr_ = list()
+    # gr_$e = gr$e[gr$e$to==cpop,,drop=F]
+    # cpopl = gr_$e$from
+    # while (cpopl[1]!="") {
+    #   etemp = gr$e[gr$e$to%in%cpopl,,drop=F]
+    #   gr_$e = rbind(gr_$e, etemp)
+    #   cpopl = unique(etemp$from)
+    # }
+    # gr_$v = gr$v[gr$v$name%in%unique(unlist(gr_$e[,c(1,2)])),,drop=F]
+    # gr_$v$label_ind = T
+    # gp = gggraph(gr_, main=cpop)
+    # plot(gp)
     
     
     
@@ -710,25 +710,20 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       gr$v$label = paste0(gr$v$name,":",ic[ivm])
       lbnotna = !grepl("NA$",gr$v$label)
       label_ind[!lbnotna] = F
+      gr$v$v_ind = lcnotna
+      gr$v$vb_ind = rep(F,nrow(gr$v))
+      gr$v$label_ind = rep(F,nrow(gr$v))
+      gr$e$e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna]
       
       main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")
-      gpp = gggraph(
-        gr, v_ind=lbnotna, vb_ind=rep(F,nrow(gr$v)), main=main,
-        e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna],
-        label_ind=rep(F,nrow(gr$v)))
-      gp = gpp + geom_label_repel(
-        data=gr$v[label_ind,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+      gpp = gggraph(gr, main=main)
+
+      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],".png"), plot=gpp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
-      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],".png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      gr$v$label_ind = lbnotna
+      gpp = gggraph(gr, main=main)
       
-      gp = gpp + geom_label_repel(
-        data=gr$v[lbnotna,],
-        aes(x=x,y=y,label=label, color=color),
-        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
-      
-      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],"_alllabellled.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+      ggsave(paste0(pathn,"/itemset",classn,"_",tbl$feat[i],"_alllabellled.png"), plot=gpp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
       
       
     })

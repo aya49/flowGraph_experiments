@@ -37,7 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  if (grepl("/pos28",result_dir)) next
+  if (!grepl("/pos",result_dir)) next
   print(result_dir)
 
   ## input directories
@@ -570,7 +570,7 @@ for (result_dir in result_dirs) {
       }
       ge = childprop_[,as.numeric(rownames(ge_)),drop=F]
       # gem = colMeans(ge[501:1000,]) # check positive controls with this
-      ge_ = cbind(ge_,ge[1,])
+      ge_ = cbind(ge_,ge[501,])
       
       pnames = meta_cell_parent_names_[[i]]
       parent = mpe[,pnames,drop=F]
