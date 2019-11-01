@@ -37,9 +37,9 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  if (!grepl("/pos",result_dir)) next
+  # if (!grepl("/pos23",result_dir)) next
   print(result_dir)
-
+  
   ## input directories
   meta_dir = paste0(result_dir,"/meta")
   meta_cell_parent_names_dir = paste(meta_dir, "/cell_parent_names",sep="") #specifies a phenotypes parents
@@ -63,9 +63,9 @@ for (result_dir in result_dirs) {
   feat_file_cell_lnpropexpect_dir = paste(feat_dir, "/file-cell-lnpropexpect",sep="")
   feat_file_cell_lncountexpect_dir = paste(feat_dir, "/file-cell-lncountexpect",sep="")
   
-
   
-
+  
+  
   start = Sys.time()
   
   
@@ -173,217 +173,217 @@ for (result_dir in result_dirs) {
   
   
   if (F) {
-  
-  ## child pn ratio --------------------------------------------
-  
-  start1 = Sys.time()
-  cat("childratio")
-  
-  pnratio = foreach(ii = loopInd(1:length(meta_cell_childpn_names),no_cores), .combine="cbind") %dopar% { #for each phenotype
-    pnratio1 = foreach(i=ii, .combine="cbind") %do% {
-      pnames = names(meta_cell_childpn_names)[i]
-      pnames = pnames[pnames%in%colnames(m)]
-      cnamen = unlist(meta_cell_childpn_names[[i]]$neg)
-      cnamen = cnamen[cnamen%in%colnames(m)]
-      cnamep = unlist(meta_cell_childpn_names[[i]]$pos)
-      cnamep = cnamep[cnamep%in%colnames(m)]
-      if (length(cnamen)==0 | length(cnamep)==0) return(NULL)
-      
-      cnamen = cnamen[match(gsub("[+-]","",cnamep),gsub("[+-]","",cnamen))]
-      cnamen = cnamen[!is.na(cnamen)]
-      cnamep = cnamep[match(gsub("[+-]","",cnamen),gsub("[+-]","",cnamep))]
-      cnamep = cnamep[!is.na(cnamep)]
-      
-      
-      parent = m[,match(pnames,colnames(m)),drop=F]
-      childp = m[,match(cnamep,colnames(m)),drop=F]
-      childn = m[,match(cnamen,colnames(m)),drop=F]
-      if (ncol(parent)==0 | ncol(childp)==0 | ncol(childn)==0) return(NULL)
-      
-      # P/N ratio matrix
-      pnratio2 = childp/childn #get rid of 0, Inf
-      pnratio2[childp==0 & childn==0] = 1
-      pnratio2[childp==0 & childn!=0] = 1 / childn[childp==0 & childn!=0]
-      pnratio2[childp!=0 & childn==0] = childp[childp!=0 & childn==0]
-      pnratio2 = log(pnratio2)
-      
-      if (is.null(dim(pnratio2))) pnratio2 = matrix(pnratio2,ncol=1) #safeguard... probs don't need it but, just want a matrix output not vector
-      if (sum(parent==0)>0) pnratio2[which(parent==0),] = rep(0,length(cnamen))
-      colnames(pnratio2) = paste0(pnames, "_", cnamen)
-      
-      #mlist[[i]] = list(pnratio=pnratio, childprop=childprop)
-      return(pnratio2) #ratio = +child_prop / -child_prop
+    
+    ## child pn ratio --------------------------------------------
+    
+    start1 = Sys.time()
+    cat("childratio")
+    
+    pnratio = foreach(ii = loopInd(1:length(meta_cell_childpn_names),no_cores), .combine="cbind") %dopar% { #for each phenotype
+      pnratio1 = foreach(i=ii, .combine="cbind") %do% {
+        pnames = names(meta_cell_childpn_names)[i]
+        pnames = pnames[pnames%in%colnames(m)]
+        cnamen = unlist(meta_cell_childpn_names[[i]]$neg)
+        cnamen = cnamen[cnamen%in%colnames(m)]
+        cnamep = unlist(meta_cell_childpn_names[[i]]$pos)
+        cnamep = cnamep[cnamep%in%colnames(m)]
+        if (length(cnamen)==0 | length(cnamep)==0) return(NULL)
+        
+        cnamen = cnamen[match(gsub("[+-]","",cnamep),gsub("[+-]","",cnamen))]
+        cnamen = cnamen[!is.na(cnamen)]
+        cnamep = cnamep[match(gsub("[+-]","",cnamen),gsub("[+-]","",cnamep))]
+        cnamep = cnamep[!is.na(cnamep)]
+        
+        
+        parent = m[,match(pnames,colnames(m)),drop=F]
+        childp = m[,match(cnamep,colnames(m)),drop=F]
+        childn = m[,match(cnamen,colnames(m)),drop=F]
+        if (ncol(parent)==0 | ncol(childp)==0 | ncol(childn)==0) return(NULL)
+        
+        # P/N ratio matrix
+        pnratio2 = childp/childn #get rid of 0, Inf
+        pnratio2[childp==0 & childn==0] = 1
+        pnratio2[childp==0 & childn!=0] = 1 / childn[childp==0 & childn!=0]
+        pnratio2[childp!=0 & childn==0] = childp[childp!=0 & childn==0]
+        pnratio2 = log(pnratio2)
+        
+        if (is.null(dim(pnratio2))) pnratio2 = matrix(pnratio2,ncol=1) #safeguard... probs don't need it but, just want a matrix output not vector
+        if (sum(parent==0)>0) pnratio2[which(parent==0),] = rep(0,length(cnamen))
+        colnames(pnratio2) = paste0(pnames, "_", cnamen)
+        
+        #mlist[[i]] = list(pnratio=pnratio, childprop=childprop)
+        return(pnratio2) #ratio = +child_prop / -child_prop
+      }
+      return(pnratio1)
     }
-    return(pnratio1)
-  }
-  pnratio = as.matrix(pnratio)
-  save(pnratio, file=paste0(feat_file_edge_pnratio_dir, ".Rdata"))
-  if (writecsv) write.csv(pnratio, file=paste0(feat_file_edge_pnratio_dir, ".csv"))
-  
-  time_output(start1)
-  
-  
-  
-  ## child entropy --------------------------------------------
-  
-  start1 = Sys.time()
-  cat("childentropy")
-  
-  meta_cell_childpn_names_ = meta_cell_childpn_names
-  for (i in names(meta_cell_childpn_names)) {
-    if (length(meta_cell_childpn_names[[i]])<2) meta_cell_childpn_names_[[i]] = NULL
-  }
-  enc = a = as.matrix(foreach(ii = loopInd(1:length(meta_cell_childpn_names_),no_cores), .combine="cbind") %dopar% { #for each phenotype
-    return(foreach(i=ii, .combine="cbind") %do% {
-      if (length(meta_cell_childpn_names_[[i]])<2) return(NULL)
-      # i = which(names(meta_cell_childpn_names_)==ii)
-      pnames = names(meta_cell_childpn_names_)[i]
-      pnames = pnames[pnames%in%colnames(m)]
-      parent = m[,match(pnames,colnames(m)),drop=F]
-      cnames = unlist(meta_cell_childpn_names_[[i]])
-      cnames = cnames[cnames%in%colnames(m)]
-      childr = m[,match(cnames,colnames(m)),drop=F]
-      # childr[childr<1] = parent[parent<1] = 1
-      
-      # Entropy matrix
-      en = rep(0,nrow(m))
-      if (ncol(parent)==0 | ncol(childr)==0) return(NULL)
-      
-      no_child = length(cnames)
-      non0parents = parent>0
-      non0childs = Reduce("&",llply(1:ncol(childr),function(x) childr[,x]>0))
-      if (sum(non0parents & non0childs)>0) en[non0parents & non0childs] = sapply(which(non0parents & non0childs), function(x) entropy(childr[x,]/parent[x])/no_child) #average entropy over # of markers added
-      
-      en = matrix(en, ncol=1)
-      colnames(en) = names(meta_cell_childpn_names_)[i]
-      
-      #mlist[[i]] = list(pnratio=pnratio, childprop=childprop)
-      return(en) #ratio = +child_prop / -child_prop
+    pnratio = as.matrix(pnratio)
+    save(pnratio, file=paste0(feat_file_edge_pnratio_dir, ".Rdata"))
+    if (writecsv) write.csv(pnratio, file=paste0(feat_file_edge_pnratio_dir, ".csv"))
+    
+    time_output(start1)
+    
+    
+    
+    ## child entropy --------------------------------------------
+    
+    start1 = Sys.time()
+    cat("childentropy")
+    
+    meta_cell_childpn_names_ = meta_cell_childpn_names
+    for (i in names(meta_cell_childpn_names)) {
+      if (length(meta_cell_childpn_names[[i]])<2) meta_cell_childpn_names_[[i]] = NULL
+    }
+    enc = a = as.matrix(foreach(ii = loopInd(1:length(meta_cell_childpn_names_),no_cores), .combine="cbind") %dopar% { #for each phenotype
+      return(foreach(i=ii, .combine="cbind") %do% {
+        if (length(meta_cell_childpn_names_[[i]])<2) return(NULL)
+        # i = which(names(meta_cell_childpn_names_)==ii)
+        pnames = names(meta_cell_childpn_names_)[i]
+        pnames = pnames[pnames%in%colnames(m)]
+        parent = m[,match(pnames,colnames(m)),drop=F]
+        cnames = unlist(meta_cell_childpn_names_[[i]])
+        cnames = cnames[cnames%in%colnames(m)]
+        childr = m[,match(cnames,colnames(m)),drop=F]
+        # childr[childr<1] = parent[parent<1] = 1
+        
+        # Entropy matrix
+        en = rep(0,nrow(m))
+        if (ncol(parent)==0 | ncol(childr)==0) return(NULL)
+        
+        no_child = length(cnames)
+        non0parents = parent>0
+        non0childs = Reduce("&",llply(1:ncol(childr),function(x) childr[,x]>0))
+        if (sum(non0parents & non0childs)>0) en[non0parents & non0childs] = sapply(which(non0parents & non0childs), function(x) entropy(childr[x,]/parent[x])/no_child) #average entropy over # of markers added
+        
+        en = matrix(en, ncol=1)
+        colnames(en) = names(meta_cell_childpn_names_)[i]
+        
+        #mlist[[i]] = list(pnratio=pnratio, childprop=childprop)
+        return(en) #ratio = +child_prop / -child_prop
+      })
     })
-  })
-  rownames(enc) = rownames(m)
-  enc = enc[,apply(enc,2,function(x) any(x!=0))]
-  
-  enc = as.matrix(enc)
-  save(enc, file=paste0(feat_file_cell_entropychild_dir, ".Rdata"))
-  if (writecsv) write.csv(enc, file=paste0(feat_file_cell_entropychild_dir, ".csv"))
-  
-  time_output(start1)
-  
-  
-  
-  ## parent entropy --------------------------------------------
-  
-  start1 = Sys.time()
-  cat("parententropy")
-  
-  meta_cell_parent_names_ = meta_cell_parent_names
-  for (i in names(meta_cell_parent_names))
-    if (length(meta_cell_parent_names[[i]])<2) meta_cell_parent_names_[[i]] = NULL
-  enp = as.matrix(foreach(ii = loopInd(1:length(meta_cell_parent_names_), no_cores), .combine='cbind') %dopar% { #for each phenotype
-    # Entropy matrix
-    enpi = foreach(i=ii, .combine='cbind') %do% { #for each phenotype
-      
-      pnames = meta_cell_parent_names_[[i]]
-      pnames = pnames[pnames%in%colnames(m)]
-      parent = m[,pnames,drop=F]
-      
-      cnames = names(meta_cell_parent_names_)[i]
-      cnames = cnames[cnames%in%colnames(m)]
-      childr = m[,match(cnames,colnames(m)),drop=F]
-      
-      en = rep(0,nrow(m))
-      if (ncol(parent)==0 | ncol(childr)==0) return(NULL)
-      childr[childr<1] = parent[parent<1] = 1
-      
-      no_paren = length(cnames)
-      non0childrs = childr>0
-      non0paren = Reduce("&",llply(1:ncol(parent),function(x) parent[,x]>0))
-      if (sum(non0paren & non0childrs)>0) en[non0paren & non0childrs] = sapply(which(non0paren & non0childrs), function(x) entropy(rep(childr[x],ncol(parent))/parent[x,])/no_paren) #average entropy over # of markers added
-      
-      
-      en = matrix(en, ncol=1)
-      colnames(en) = names(meta_cell_parent_names_)[i]
-      
-      return(en) #ratio = +child_prop / -child_prop
-    }
-    return(enpi)
-  })
-  rownames(enp) = rownames(m)
-  enp = enp[,!apply(enp,2,function(x) all(x==0))]
-  
-  enp = as.matrix(enp)
-  save(enp, file=paste0(feat_file_cell_entropyparent_dir, ".Rdata"))
-  if (writecsv) write.csv(enp, file=paste0(feat_file_cell_entropyparent_dir, ".csv"))
-  
-  time_output(start1)
-  
-  
-  
-  ## group entropy & variance ---------------------------------------
-  
-  start1 = Sys.time()
-  cat("groupentropy")
-  
-  allplus = which(!grepl("[-]",colnames(m)) & grepl("[+]",colnames(m)))
-  nonp = gsub("[-|+]","",colnames(m))
-  nonpu = unique(nonp)
-  groupi = match(nonp, nonp)
-  groups = llply(allplus, function(i) {
-    ii = which(groupi==groupi[i])
-    if (length(ii)>1) return(ii)
-    return(NULL)
-  })
-  names(groups) = colnames(m)[allplus]
-  groups = plyr::compact(groups)
-  
-  a = llply(loopInd(1:length(groups),no_cores), function(gi) 
-    sapply(groups[gi],function(i) apply(m[,i],1, function(x) {
-      if (all(x==0)) return(0)
-      return(entropy(x))
-    } )), .parallel=T)
-  feat_file_group_entropy = Reduce("cbind",a)
-  b = llply(loopInd(1:length(groups),no_cores), function(gi) 
-    sapply(groups[gi],function(i) apply(m[,i],1,var)), .parallel=T)
-  feat_file_group_var = Reduce("cbind",b)
-  e = llply(loopInd(1:length(groups),no_cores), function(gi) 
-    sapply(groups[gi],function(i) apply(mp[,i],1, function(x) {
-      if (all(x==0)) return(0)
-      return(entropy(x))
-    } )),.parallel=T)
-  feat_file_group_entropyp = Reduce("cbind",e)
-  f = llply(loopInd(1:length(groups),no_cores), function(gi) 
-    sapply(groups[gi],function(i) apply(mp[,i],1,var)), .parallel=T)
-  feat_file_group_varp = Reduce("cbind",f)
-  
-  colnames(feat_file_group_entropy) = colnames(feat_file_group_var) = colnames(feat_file_group_entropyp) = colnames(feat_file_group_varp) =  names(groups)
-  rownames(feat_file_group_entropy) = rownames(feat_file_group_var) = rownames(feat_file_group_entropyp) = rownames(feat_file_group_varp) = rownames(m)
-  
-  feat_file_group_entropy = feat_file_group_entropy[,apply(feat_file_group_entropy,2,function(x) !all(x==x[1]))]
-  feat_file_group_var = feat_file_group_var[,apply(feat_file_group_var,2,function(x) !all(x==x[1]))]
-  feat_file_group_entropyp = feat_file_group_entropyp[,apply(feat_file_group_entropyp,2,function(x) !all(x==x[1]))]
-  feat_file_group_varp = feat_file_group_varp[,apply(feat_file_group_varp,2,function(x) !all(x==x[1]))]
-  
-  feat_file_group_entropy = as.matrix(feat_file_group_entropy)
-  save(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".Rdata"))
-  if (writecsv) write.csv(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".csv"))
-  
-  feat_file_group_var = as.matrix(feat_file_group_var)
-  save(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".Rdata"))
-  if (writecsv) write.csv(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".csv"))
-  
-  feat_file_group_entropyp = as.matrix(feat_file_group_entropyp)
-  save(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.Rdata"))
-  if (writecsv) write.csv(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.csv"))
-  
-  feat_file_group_varp = as.matrix(feat_file_group_varp)
-  save(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.Rdata"))
-  if (writecsv) write.csv(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.csv"))
-  
-  time_output(start1)
-  
-  
-  
+    rownames(enc) = rownames(m)
+    enc = enc[,apply(enc,2,function(x) any(x!=0))]
+    
+    enc = as.matrix(enc)
+    save(enc, file=paste0(feat_file_cell_entropychild_dir, ".Rdata"))
+    if (writecsv) write.csv(enc, file=paste0(feat_file_cell_entropychild_dir, ".csv"))
+    
+    time_output(start1)
+    
+    
+    
+    ## parent entropy --------------------------------------------
+    
+    start1 = Sys.time()
+    cat("parententropy")
+    
+    meta_cell_parent_names_ = meta_cell_parent_names
+    for (i in names(meta_cell_parent_names))
+      if (length(meta_cell_parent_names[[i]])<2) meta_cell_parent_names_[[i]] = NULL
+    enp = as.matrix(foreach(ii = loopInd(1:length(meta_cell_parent_names_), no_cores), .combine='cbind') %dopar% { #for each phenotype
+      # Entropy matrix
+      enpi = foreach(i=ii, .combine='cbind') %do% { #for each phenotype
+        
+        pnames = meta_cell_parent_names_[[i]]
+        pnames = pnames[pnames%in%colnames(m)]
+        parent = m[,pnames,drop=F]
+        
+        cnames = names(meta_cell_parent_names_)[i]
+        cnames = cnames[cnames%in%colnames(m)]
+        childr = m[,match(cnames,colnames(m)),drop=F]
+        
+        en = rep(0,nrow(m))
+        if (ncol(parent)==0 | ncol(childr)==0) return(NULL)
+        childr[childr<1] = parent[parent<1] = 1
+        
+        no_paren = length(cnames)
+        non0childrs = childr>0
+        non0paren = Reduce("&",llply(1:ncol(parent),function(x) parent[,x]>0))
+        if (sum(non0paren & non0childrs)>0) en[non0paren & non0childrs] = sapply(which(non0paren & non0childrs), function(x) entropy(rep(childr[x],ncol(parent))/parent[x,])/no_paren) #average entropy over # of markers added
+        
+        
+        en = matrix(en, ncol=1)
+        colnames(en) = names(meta_cell_parent_names_)[i]
+        
+        return(en) #ratio = +child_prop / -child_prop
+      }
+      return(enpi)
+    })
+    rownames(enp) = rownames(m)
+    enp = enp[,!apply(enp,2,function(x) all(x==0))]
+    
+    enp = as.matrix(enp)
+    save(enp, file=paste0(feat_file_cell_entropyparent_dir, ".Rdata"))
+    if (writecsv) write.csv(enp, file=paste0(feat_file_cell_entropyparent_dir, ".csv"))
+    
+    time_output(start1)
+    
+    
+    
+    ## group entropy & variance ---------------------------------------
+    
+    start1 = Sys.time()
+    cat("groupentropy")
+    
+    allplus = which(!grepl("[-]",colnames(m)) & grepl("[+]",colnames(m)))
+    nonp = gsub("[-|+]","",colnames(m))
+    nonpu = unique(nonp)
+    groupi = match(nonp, nonp)
+    groups = llply(allplus, function(i) {
+      ii = which(groupi==groupi[i])
+      if (length(ii)>1) return(ii)
+      return(NULL)
+    })
+    names(groups) = colnames(m)[allplus]
+    groups = plyr::compact(groups)
+    
+    a = llply(loopInd(1:length(groups),no_cores), function(gi) 
+      sapply(groups[gi],function(i) apply(m[,i],1, function(x) {
+        if (all(x==0)) return(0)
+        return(entropy(x))
+      } )), .parallel=T)
+    feat_file_group_entropy = Reduce("cbind",a)
+    b = llply(loopInd(1:length(groups),no_cores), function(gi) 
+      sapply(groups[gi],function(i) apply(m[,i],1,var)), .parallel=T)
+    feat_file_group_var = Reduce("cbind",b)
+    e = llply(loopInd(1:length(groups),no_cores), function(gi) 
+      sapply(groups[gi],function(i) apply(mp[,i],1, function(x) {
+        if (all(x==0)) return(0)
+        return(entropy(x))
+      } )),.parallel=T)
+    feat_file_group_entropyp = Reduce("cbind",e)
+    f = llply(loopInd(1:length(groups),no_cores), function(gi) 
+      sapply(groups[gi],function(i) apply(mp[,i],1,var)), .parallel=T)
+    feat_file_group_varp = Reduce("cbind",f)
+    
+    colnames(feat_file_group_entropy) = colnames(feat_file_group_var) = colnames(feat_file_group_entropyp) = colnames(feat_file_group_varp) =  names(groups)
+    rownames(feat_file_group_entropy) = rownames(feat_file_group_var) = rownames(feat_file_group_entropyp) = rownames(feat_file_group_varp) = rownames(m)
+    
+    feat_file_group_entropy = feat_file_group_entropy[,apply(feat_file_group_entropy,2,function(x) !all(x==x[1]))]
+    feat_file_group_var = feat_file_group_var[,apply(feat_file_group_var,2,function(x) !all(x==x[1]))]
+    feat_file_group_entropyp = feat_file_group_entropyp[,apply(feat_file_group_entropyp,2,function(x) !all(x==x[1]))]
+    feat_file_group_varp = feat_file_group_varp[,apply(feat_file_group_varp,2,function(x) !all(x==x[1]))]
+    
+    feat_file_group_entropy = as.matrix(feat_file_group_entropy)
+    save(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".Rdata"))
+    if (writecsv) write.csv(feat_file_group_entropy, file=paste0(feat_file_group_entropy_dir, ".csv"))
+    
+    feat_file_group_var = as.matrix(feat_file_group_var)
+    save(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".Rdata"))
+    if (writecsv) write.csv(feat_file_group_var, file=paste0(feat_file_group_var_dir, ".csv"))
+    
+    feat_file_group_entropyp = as.matrix(feat_file_group_entropyp)
+    save(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.Rdata"))
+    if (writecsv) write.csv(feat_file_group_entropyp, file=paste0(feat_file_group_entropy_dir, "p.csv"))
+    
+    feat_file_group_varp = as.matrix(feat_file_group_varp)
+    save(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.Rdata"))
+    if (writecsv) write.csv(feat_file_group_varp, file=paste0(feat_file_group_var_dir, "p.csv"))
+    
+    time_output(start1)
+    
+    
+    
   }
   
   
@@ -440,12 +440,12 @@ for (result_dir in result_dirs) {
   lnpropexpect1[exp1==0] = log(mpe[exp1==0])
   lncountexpect1[expc1==0] = log(mei[expc1==0])
   lnpropexpect1[mpe==0] = lncountexpect1[mei==0] = 0
-
+  
   save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"-raw.Rdata"))
   save(expc1, file=paste0(feat_file_cell_lncountexpect_dir,"-raw.Rdata"))
   save(lnpropexpect1, file=paste0(feat_file_cell_lnpropexpect_dir,".Rdata"))
   save(lncountexpect1, file=paste0(feat_file_cell_lncountexpect_dir,".Rdata"))
-
+  
   time_output(start1)
   
   
@@ -491,7 +491,7 @@ for (result_dir in result_dirs) {
       #     grprnt = mpe[,gnames,drop=F]
       #     denmtr = apply(grprnt, 1, function(x) prod(x)^2)
       #   }
-        
+      
       pnames = meta_cell_parent_names_[[i]]
       parent = mpe[,pnames,drop=F]
       numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
@@ -561,34 +561,97 @@ for (result_dir in result_dirs) {
       cpop = i = cellis[ic]
       il = cellisn[ic]
       
-      ge_ = childprop_names[childprop_names$to==cpop,,drop=F]
-      cpopl = ge_$from
-      while (cpopl[1]!="") {
-        etemp = childprop_names[childprop_names$to%in%cpopl,,drop=F]
-        ge_ = rbind(ge_, etemp)
-        cpopl = unique(etemp$from)
-      }
-      ge = childprop_[,as.numeric(rownames(ge_)),drop=F]
-      # gem = colMeans(ge[501:1000,]) # check positive controls with this
-      ge_ = cbind(ge_,ge[501,])
+      # ## gets all ancestors
+      # ge_ = childprop_names[childprop_names$to==cpop,,drop=F]
+      # cpopl = ge_$from
+      # while (cpopl[1]!="") {
+      #   etemp = childprop_names[childprop_names$to%in%cpopl,,drop=F]
+      #   ge_ = rbind(ge_, etemp)
+      #   cpopl = unique(etemp$from)
+      # }
+      # ge = childprop_[,as.numeric(rownames(ge_)),drop=F]
+      # # gem = colMeans(ge[501:1000,]) # check positive controls with this
+      # ge_ = cbind(ge_,ge[501,])
       
       pnames = meta_cell_parent_names_[[i]]
       parent = mpe[,pnames,drop=F]
-      numrtr = apply(parent, 1, function(x) prod(x)^(il-1))
+      # parentmin_ = apply(parent,1,min)
+      # parentmax_ = apply(parent,1,max)
+      # parentmean_ = rowMeans(cbind(parentmax_,parentmin_))
+      # parentsd_ = apply(cbind(parentmax_,parentmin_),1,sd)
+      parento = laply(1:nrow(parent), function(xi) order(parent[xi,]))#, decreasing=T))
       
-      gnames = unique(unlist(meta_cell_parent_names_[pnames]))
-      if (gnames[1]=="") gnames = colnames(mpe)==""
-      grprnt = mpe[,gnames,drop=F]
-      denmtr = apply(grprnt, 1, function(x) prod(x)^2)
       
-      expect = (numrtr/denmtr)^(1/(il-1))
-      expect[numrtr==0 & denmtr==0] = 0
+      pedges = Reduce(cbind,llply(1:length(pnames), function(gi) {
+        gname = meta_cell_parent_names_[[pnames[gi]]]
+        cns = paste0(pnames[gi],"_",gname)
+        if (gname[1]=="") gname = colnames(mpe)==""
+        grprnt = mpe[,gname,drop=F]
+        edges = parent[,gi]/grprnt # matrix
+        colnames(edges) = cns
+        edges
+      }))
       
+      ## take the man of min and max
+      # parentr = apply(parent,1,function(x) max(x)/min(x))
+      expect1 = expect2 = rep(0, nrow(parent))
+      for (colj in unique(parento[,1])) {
+        jind = parento[,1]==colj
+        
+        parentjmin = parent[jind,colj]
+        # parentjmax = parentmax_[jind]
+        # parentjmean = parentmean_[jind]
+        # parentsd = parentsd_[jind]
+        
+        pnamej = gsub("[+]","[+]",pnames[colj])
+        pnamej = gsub("[-]","[-]",pnamej)
+        pedgesnj = pedges[jind,!grepl(pnamej,colnames(pedges)),drop=F]
+        
+        # shrink ratio, value too extreme otherwise
+        # pedgesnjr = apply(pedgesnj,1,function(x) max(x)/min(x))
+        # 
+        # pedgesnjmax = apply(pedgesnj, 1, max)
+        # pedgesnjmin = apply(pedgesnj, 1, min)
+        # pedgesncbind = cbind(pedgesnjmin,pedgesnjmax)
+        # pedgesnjmean = rowMeans(pedgesncbind)
+        # pedgesnjsd = apply(pedgesncbind,1,sd)
+        # 
+        # parentjr = parentr[jind]
+        # ebig = pedgesnjsd>parentsd
+        # ebig[is.na(ebig)] = F
+        # if (sum(ebig)>0) {
+        #   pedgesnjmax[ebig] = pedgesnjmean[ebig] + (pedgesnjmax[ebig]-pedgesnjmean[ebig])*(parentsd[ebig]/pedgesnjsd[ebig])
+        # }
+        # pbig = pedgesnjsd<=parentsd
+        # pbig[is.na(pbig)] = F
+        # if (sum(pbig)>0) {
+        #   parentjmin[pbig] = parentjmean[pbig] + (parentjmin[pbig]-parentjmean[pbig])*(pedgesnjsd[pbig]/parentsd[pbig])
+        # }
+        # expect[which(jind)[(ebig | pbig)]] = parentjmin[(ebig | pbig)] * pedgesnjmax[(ebig | pbig)]
+        
+        expect1[jind] = apply(pedgesnj,1,max) * parentjmin
+      }
+      
+      # for (colj in unique(parento[,ncol(parento)])) {
+      #   jind = parento[,ncol(parento)]==colj
+      #   
+      #   parentjmax = parent[jind,colj]
+      # 
+      #   pnamej = gsub("[+]","[+]",pnames[colj])
+      #   pnamej = gsub("[-]","[-]",pnamej)
+      #   pedgesnj = pedges[jind,!grepl(pnamej,colnames(pedges)),drop=F]
+      #   
+      #   expect2[jind] = apply(pedgesnj,1,min) * parentjmax
+      # }
+      
+      expect = expect1 #rowMeans(cbind(expect1,expect2))
       return(expect)
+      
     }
     return(expect2)
   }, .parallel=T)
   expec = Reduce("cbind", expec)
+  expec[is.nan(expec)] = 0
   # which(is.na(expec),arr.ind=T)
   colnames(expec) = cellis
   exp1 = as.matrix(cbind(expe1,expec))
@@ -704,7 +767,7 @@ for (result_dir in result_dirs) {
   # save(lncountexpect11, file=paste0(feat_file_cell_lncountexpect_dir,"-short.Rdata"))
   
   
-
+  
   # time_output(start1)
 }
 

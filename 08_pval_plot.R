@@ -528,8 +528,8 @@ time_output(start1)
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
 l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tbl$data) &
-                      #grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat)
-                    grepl("prop$|countAdj$|expect$|expect2$",tbl$feat)
+                      grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat) &
+                    grepl("prop$|countAdj$|expect",tbl$feat)
                     # grepl("expect2",tbl$feat)
 ), no_cores), function(ii) {# try({
   # l_ply(loopInd(1:nrow(tbl), no_cores), function(ii) {
@@ -602,7 +602,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     for (siz in c("sd","")) {
       if (siz=="sd") {
         gr$v$label_ind = p_ & !grepl("[-]",names(p_))
-        if (mfm_tf) gr$v$label_ind = p_ & abs(mfmu_-mfmu)/mfmu>.05
+        if (mfm_tf) gr$v$label_ind = p_ #& abs(mfmu_-mfmu)/mfmu>.05
         gr$v$size = mfmdiff
         main = paste0(main0,"\nsize=# of sd apart; label=prop(if pos/ctrl/prop)")
       } else {
@@ -616,7 +616,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       
       gr$v$v_ind = p_
       gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] &gr$e[,2]%in%gr$v$name[p_]
-      gr$v$label_ind = rep(F,nrow(gr$v))
+      # gr$v$label_ind = rep(F,nrow(gr$v))
       
       gp = gpp = gggraph(gr, main=main)
       # gpp = gpp + geom_point(data=gr$v[p_,],aes(x=x,y=y),size=2,color="grey")
@@ -709,10 +709,10 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       gr$v$size = ic[ivm]
       gr$v$label = paste0(gr$v$name,":",ic[ivm])
       lbnotna = !grepl("NA$",gr$v$label)
-      label_ind[!lbnotna] = F
-      gr$v$v_ind = lcnotna
+      gr$v$label_ind[!lbnotna] = F
+      gr$v$v_ind = lbnotna
       gr$v$vb_ind = rep(F,nrow(gr$v))
-      gr$v$label_ind = rep(F,nrow(gr$v))
+      # gr$v$label_ind = rep(F,nrow(gr$v))
       gr$e$e_ind=gr$e[,1]%in%gr$v$name[lbnotna] & gr$e[,2]%in%gr$v$name[lbnotna]
       
       main = paste0(main0,"\ncolours=p value (if pos_, %change expect/prop); size=frequent itemset count; label=see size")

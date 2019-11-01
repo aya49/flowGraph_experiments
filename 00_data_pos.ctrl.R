@@ -34,7 +34,7 @@ registerDoMC(no_cores)
 writecsv = F
 nsample = 1000 # # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
 nctrl = .5 # % of control samples
-markern = 5 # # of markers
+markern = 4 # # of markers
 maxmarker = 6
 
 normean = 300000 # 301234.7 for pregnancy
@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",28:32))) {
+for (ds in c(paste0("pos",30:31))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -152,11 +152,11 @@ for (ds in c(paste0("pos",28:32))) {
         bp = f@exprs[,2]>thress[[2]]
         cp = f@exprs[,3]>thress[[3]]
         dp = f@exprs[,4]>thress[[4]]
-        ep = f@exprs[,5]>thress[[5]]
+        # ep = f@exprs[,5]>thress[[5]]
         double = ap & bp
         triple = ap & bp & cp
         quad   = ap & bp & cp & dp
-        quint = ap & bp & cp & dp & ep
+        # quint = ap & bp & cp & dp & ep
         
         # change f values
         if (ds=="pos1") { # A+ > .75; A- > .25
@@ -171,15 +171,15 @@ for (ds in c(paste0("pos",28:32))) {
           f@exprs[sample(which(ap & !bp),tm),1] = p25 # 
           f@exprs[sample(which(!ap & !bp),tm),1] = p25 # 
         }
-        else if (ds=="pos4") { # A-B+ > A+B+ x1.5; D+E- > D+E+ x1.5
-          tm = sum(double)/2
+        else if (ds=="pos4") { # A-B+ > A+B+ x1.5; D+c- > D+c+ x1.5
+          tm = round(sum(double)/2)
           f@exprs[sample(which(bp & !ap),tm),1] = p75 # 
           f@exprs[sample(which(ap & !bp),tm),1] = p25 # 
           f@exprs[sample(which(!ap & !bp),tm),1] = p25 # 
           
-          f@exprs[sample(which(dp & !ep),tm),5] = p75 # 
-          f@exprs[sample(which(ep & !dp),tm),5] = p25 # 
-          f@exprs[sample(which(!dp & !ep),tm),5] = p25 # 
+          f@exprs[sample(which(dp & !cp),tm),3] = p75 # 
+          f@exprs[sample(which(cp & !dp),tm),3] = p25 # 
+          f@exprs[sample(which(!dp & !cp),tm),3] = p25 # 
         }
         else if (ds=="pos5") { # A-B+C+ > A+B+C+ x1.5
           tm = sum(triple)/2
@@ -204,17 +204,17 @@ for (ds in c(paste0("pos",28:32))) {
           # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
           # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
         }
-        else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; C+D+E- > C+D+E+ x1.5
+        else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; b+D+c- > b+D+c+ x1.5
           tm = sum(triple)/2
           f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
           f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
           f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
           f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
           
-          f@exprs[sample(which(cp & dp & !ep),tm),5] = p75 # bc
-          f@exprs[sample(which(cp & ep & !dp),tm),5] = p25 # ac
-          f@exprs[sample(which(ep & dp & !cp),tm),5] = p25 # ab
-          f@exprs[sample(which(!cp & !dp & !ep),tm),5] = p75 # a
+          f@exprs[sample(which(bp & cp & !dp),tm),3] = p75 # bc
+          f@exprs[sample(which(bp & dp & !cp),tm),3] = p25 # ac
+          f@exprs[sample(which(dp & cp & !bp),tm),3] = p25 # ab
+          f@exprs[sample(which(!bp & !cp & !dp),tm),3] = p75 # a
           
           # tn = sum(quad)/2
           # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
@@ -226,8 +226,8 @@ for (ds in c(paste0("pos",28:32))) {
           # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
           # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
         }
-        else if (ds=="pos7") { # A+B+C+D+E+ > x2
-          f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp & ep,])
+        else if (ds=="pos7") { # A+B+C+D+ > x2
+          f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
           
           # tm = sum(triple)/2/3
           # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
@@ -235,7 +235,7 @@ for (ds in c(paste0("pos",28:32))) {
           # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
         } 
         else if (ds=="pos8") { # A-B-C-D-E- > x2
-          f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp & !ep,])
+          f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
           
           # tn = sum(quint)/2
           # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
@@ -259,11 +259,11 @@ for (ds in c(paste0("pos",28:32))) {
           # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
         } 
         else if (ds=="pos9") { # same as above but both
-          f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp & ep,])
-          f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp & !ep,])
+          f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
+          f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
         } 
-        else if (ds=="pos10") { # A+, B+, E+
-          f@exprs = Reduce(rbind,list(f@exprs, f@exprs[sample(which(ap),sum(double)),], f@exprs[sample(which(bp),sum(double)),], f@exprs[sample(which(ep),sum(double)),]))
+        else if (ds=="pos10") { # A+, B+, c+
+          f@exprs = Reduce(rbind,list(f@exprs, f@exprs[sample(which(ap),sum(double)),], f@exprs[sample(which(bp),sum(double)),], f@exprs[sample(which(cp),sum(double)),]))
         } 
         else if (ds=="pos11") { # 1.5x A+
           tripleind = which(fex[,1]==p75)
@@ -282,11 +282,11 @@ for (ds in c(paste0("pos",28:32))) {
           tm = sum(double)/2
           f@exprs = rbind(fex,fex[sample(tripleind,tm),])
         } 
-        else if (ds=="pos14") { #1.5x A+B+, D+E+
+        else if (ds=="pos14") { #1.5x A+B+, D+c+
           tm = sum(double)/2
           tripleind = which(fex[,1]==p75 & fex[,2]==p75)
           f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          tripleind = which(fex[,4]==p75 & fex[,5]==p75)
+          tripleind = which(fex[,4]==p75 & fex[,3]==p75)
           f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
         } 
         else if (ds=="pos15") { #1.5x A+B+C+
@@ -294,11 +294,11 @@ for (ds in c(paste0("pos",28:32))) {
           tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
           f@exprs = rbind(fex,fex[sample(tripleind,tm),])
         } 
-        else if (ds=="pos16") { #1.5x A+B+C+, C+D+E+
+        else if (ds=="pos16") { #1.5x A+B+C+, C+D+b+
           tm = sum(triple)/2
           tripleind = which(fex[,1]==p75 & fex[,2]==p75 & fex[,3]==p75)
           f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          tripleind = which(fex[,3]==p75 & fex[,4]==p75 & fex[,5]==p75)
+          tripleind = which(fex[,3]==p75 & fex[,4]==p75 & fex[,2]==p75)
           f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
         } 
         else if (ds=="pos17") { # A+B+C+D+E+ > x2
@@ -311,13 +311,13 @@ for (ds in c(paste0("pos",28:32))) {
           f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
           f@exprs = rbind(f@exprs, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
         } 
-        else if (ds=="pos20") { # A+, B+, E+
+        else if (ds=="pos20") { # A+, B+, c+
           tripleind = which(fex[,1]==p75)
           tm = sum(double)
           f@exprs = rbind(fex,fex[sample(tripleind,tm),])
           tripleind = which(fex[,2]==p75)
           f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
-          tripleind = which(fex[,5]==p75)
+          tripleind = which(fex[,3]==p75)
           f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
         } 
         else if (ds=="pos21") { # 1.5x A+
@@ -337,11 +337,11 @@ for (ds in c(paste0("pos",28:32))) {
           tripleind = which(ap & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         } 
-        else if (ds=="pos24") { #1.5x A+B+, D+E+
+        else if (ds=="pos24") { #1.5x A+B+, C+D+
           tm = sum(double)/2
           tripleind = which(ap & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tripleind = which(dp & ep)
+          tripleind = which(dp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         } 
         else if (ds=="pos25") {
@@ -349,53 +349,46 @@ for (ds in c(paste0("pos",28:32))) {
           tripleind = which(ap & bp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos26") { #1.5x A+B+C+, C+D+E+
+        else if (ds=="pos26") { #1.5x A+B+C+, B+C+D+
           tm = sum(triple)/2
           tripleind = which(ap & bp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tripleind = which(cp & dp & ep)
+          tripleind = which(cp & dp & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         } 
         else if (ds=="pos27") { #1.5x A+B+; decrease other ones accordingly
           tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
           f@exprs[c(sample(which(!ap & !bp),tm/3) , sample(which(ap & !bp),tm/3) , sample(which(!ap & bp),tm/3)),c(1,2)] = p75
         } 
-        else if (ds=="pos28") { #1.5x A+B+, D+E+, like above
+        else if (ds=="pos28") { #1.5x A+B+, C+D+, like above
           tm = sum(double)/2
           f@exprs[c(sample(which(!ap & !bp),tm/3) , sample(which(ap & !bp),tm/3) , sample(which(!ap & bp),tm/3)),c(1,2)] = p75
         }
-        else if (ds=="pos29") { #1.5x A+B+, A+B+C+D+E+
-          tm = sum(quint)/2
-          tripleind = which(ap & bp & cp & dp & ep)
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tm = sum(double)*1.5-sum(ap & bp)
-          tripleind = which(f@exprs[,1]>thress[[1]] & f@exprs[,2]>thress[[2]])
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-        }
-        else if (ds=="pos30") { #1.5x A+B+, C+D+E+
+        else if (ds=="pos29") { #1.5x A+, A+B+C+
           tm = sum(triple)/2
           tripleind = which(ap & bp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tripleind = which(cp & dp & ep)
+          tm = sum(ap)*1.5-sum(ap)
+          tripleind = which(f@exprs[,1]>thress[[1]] & f@exprs[,2]>thress[[2]])
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos31") { #1.5x A+B+, C+D+E+
-          tm = sum(double)/2
-          tripleind = which(ap & bp)
+        else if (ds=="pos30") { #1.5x A+, B+C+A+
+          tm = sum(ap)/2
+          tripleind = which(ap)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
           tm = sum(triple)/2
-          tripleind = which(cp & dp & ep)
+          tripleind = which(cp & ap & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos32") { #1.5x A+B+, B+C+D+E+
-          tm = sum(double)/2
-          tripleind = which(ap & bp)
+        else if (ds=="pos31") { #1.5x A+B+, B+C+D+
+          tm = sum(ap)/2
+          tripleind = which(ap)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-          tm = sum(quad)/2
-          tripleind = which(bp & cp & dp & ep)
+          tm = sum(triple)/2
+          tripleind = which(cp & dp & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        
+
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
           # if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
