@@ -146,12 +146,12 @@ for (result_dir in result_dirs) {
   ## trim & save
   
   #trim columns with too many 0's or low values
-  minclassn = min(table(meta_file$class))
-  col_min0 = apply(m00, 2, function(x) sum(x>0)>(minclassn*.5))
-  maxx = max(x[is.finite(x)])
-  col_cnts = apply(m00, 2, function(x) any(x>cellCountThres*maxx))
-  finalinds = col_min0 & col_cnts
-  
+  # minclassn = min(table(meta_file$class))
+  # col_min0 = apply(m00, 2, function(x) sum(x>0)>(minclassn*.5))
+  # maxx = max(x[is.finite(x)])
+  # col_cnts = apply(m00, 2, function(x) any(x>cellCountThres*maxx))
+  # finalinds = col_min0 & col_cnts
+  finalinds = apply(m00, 2, function(x) any(x>0))
   
   m0 = m00[,finalinds]
   save(m0, file=paste0(feat_file_cell_countAdj_dir,".Rdata"))

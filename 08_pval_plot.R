@@ -528,7 +528,7 @@ time_output(start1)
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
 l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tbl$data) &
-                      grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat) &
+                      #grepl("^pos",tbl$data) & #grepl("lnpropexpect",tbl$feat) &
                     grepl("prop$|countAdj$|expect",tbl$feat)
                     # grepl("expect2",tbl$feat)
 ), no_cores), function(ii) {# try({
@@ -632,20 +632,6 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     
     
     
-    # ## comment out, this is only for one population
-    # cpop = "A+B+C+D+"
-    # gr_ = list()
-    # gr_$e = gr$e[gr$e$to==cpop,,drop=F]
-    # cpopl = gr_$e$from
-    # while (cpopl[1]!="") {
-    #   etemp = gr$e[gr$e$to%in%cpopl,,drop=F]
-    #   gr_$e = rbind(gr_$e, etemp)
-    #   cpopl = unique(etemp$from)
-    # }
-    # gr_$v = gr$v[gr$v$name%in%unique(unlist(gr_$e[,c(1,2)])),,drop=F]
-    # gr_$v$label_ind = T
-    # gp = gggraph(gr_, main=cpop)
-    # plot(gp)
     
     
     

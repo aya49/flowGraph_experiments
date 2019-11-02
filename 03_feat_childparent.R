@@ -537,7 +537,8 @@ for (result_dir in result_dirs) {
   childprop_names = as.data.frame(childprop_names)
   rownames(childprop_names) = 1:nrow(childprop_names)
   
-  expec = llply(loopInd(1:length(cellis),no_cores), function(ii) {
+  cpind = which(!grepl("[-]",cellis))
+  expecp = llply(loopInd(cpind,no_cores), function(ii) {
     # expect1 = foreach(ic=ii, .combine="cbind") %do% {
     #   i = cellis[ic]
     #   il = cellisn[ic]
@@ -650,18 +651,97 @@ for (result_dir in result_dirs) {
     }
     return(expect2)
   }, .parallel=T)
-  expec = Reduce("cbind", expec)
-  expec[is.nan(expec)] = 0
+  expecp = Reduce("cbind", expecp)
+  expecp[is.nan(expecp)] = 0
   # which(is.na(expec),arr.ind=T)
-  colnames(expec) = cellis
-  exp1 = as.matrix(cbind(expe1,expec))
+  colnames(expecp) = cellis[cpind]
+  expec = as.matrix(cbind(expe1,expecp))
+  cpopneg = setdiff(cellis,colnames(expec)) # cell pops to do
+  cpopnegno = str_count(cpopneg,"[-]") # number of negatives
+  for (negno in sort(unique(cpopnegno))) {
+    cpopi = cpopneg[cpopnegno==negno]
+    expec_temp = Reduce(cbind,llply(cpopi, function(cpi) {
+      cpig = gsub("[+-]","",cpi)
+      parnames = intersect(meta_cell_parent_names_[[cpi]],colnames(mpe))
+      a = NULL
+      for (parname in parnames) {
+        chilnames = unlist(pchild[[parname]])
+        chilnames = chilnames[chilnames!=cpi]
+        chilnamesg = gsub("[+-]","",chilnames)
+        chilgreat = chilnamesg==cpig & chilnames%in%colnames(expec)
+        if (any(chilgreat)) {
+          a = matrix(mpe[,parname]-expec[,chilnames[chilgreat]],ncol=1)
+          break
+        }
+      }
+      if (is.null(a)) {
+        a = b = mpe[,parnames,drop=F]
+        if (ncol(b)>1) a = matrix(apply(b,1,min), ncol=1)
+      }
+      colnames(a) = cpi
+      return(a)
+    }))
+    if (is.null(dim(expec_temp))) expec_temp = matrix(expec_temp,ncol=1)
+    # colnames(expec_temp) = cpopi
+    expec = cbind(expec, expec_temp)
+  }
+  exp1 = cbind(expe1,expec[,match(cellis,colnames(expec))])
+    
   expc1 = exp1*m[,1]
-  lnpropexpect1 = log(mpe/exp1)
+  a = mpe/exp1
+  a[is.infinite(a)] = max(a[is.finite(a)])
+  a[is.nan(a)] = 0
+  lnpropexpect1 = log(a)
+  lnpropexpect1[is.nan(lnpropexpect1)] = 0
   mei = m[,match(colnames(expc1),colnames(m))]
-  lncountexpect1 = log(mei/expc1)
+  a = mei/expc1
+  a = mpe/exp1
+  a[is.infinite(a)] = max(a[is.finite(a)])
+  a[is.nan(a)] = 0
+  lncountexpect1 = log(a)
+  lncountexpect1[is.nan(lncountexpect1)] = 0
   lnpropexpect1[exp1==0] = log(mpe[exp1==0])
   lncountexpect1[expc1==0] = log(mei[expc1==0])
   lnpropexpect1[mpe==0] = lncountexpect1[mei==0] = 0
+  
+  if (grepl("/pos",result_dir)) {
+    # plot to compare prop and expected prop
+    gr0 = get(load(paste0(result_dir,"/meta/cell_graph.Rdata")))
+    gr = layout_gr(gr0$e,gr0$v)
+    gr = gpdf(gr)
+    grorder = match(gr$v$name,colnames(exp1))
+    mfmc = colMeans(mpe[1:500,grorder])
+    mfmu = colMeans(mpe[501:1000,grorder])
+    memu = colMeans(exp1[501:1000,grorder])
+    gr$v$color = ifelse(mfmc>mfmu,"_increase","decrease") # node colour
+    gr$v$label = paste0(gr$v$name,":",round(mfmu,3),"/",round(memu,3))
+    main0 = paste0(result_dir,"\n specenrV3 = calc all positive cell pops first, others can be inferred \nlabel=prop / expected prop")
+    gr$v$size = abs(mfmu-memu)/mfmu
+    gr$v$label_ind = gr$v$v_ind = gr$v$size>.05
+    gr$e$e_ind = gr$e[,1]%in%gr$v$name[gr$v$v_ind] &gr$e[,2]%in%gr$v$name[gr$v$v_ind]
+    main = paste0(main0,"\nsize=(actual-expected)/actual")
+    
+    gp = gggraph(gr, main=main)
+    
+    ggsave(paste0(result_dir,"/meta/actualVSexpected3.png"), plot=gp, scale=1, width=9, height=9, units="in", dpi=500, limitsize=T)
+    
+    
+    # ## comment out, this is only for one population
+    # cpop = "A+B+C+D+"
+    # gr_ = list()
+    # gr_$e = gr$e[gr$e$to==cpop,,drop=F]
+    # cpopl = gr_$e$from
+    # while (cpopl[1]!="") {
+    #   etemp = gr$e[gr$e$to%in%cpopl,,drop=F]
+    #   gr_$e = rbind(gr_$e, etemp)
+    #   cpopl = unique(etemp$from)
+    # }
+    # gr_$v = gr$v[gr$v$name%in%unique(unlist(gr_$e[,c(1,2)])),,drop=F]
+    # gr_$v$label_ind = T
+    # gp = gggraph(gr_, main=cpop)
+    # plot(gp)
+    
+  }
   
   save(exp1, file=paste0(feat_file_cell_lnpropexpect_dir,"3-raw.Rdata"))
   save(expc1, file=paste0(feat_file_cell_lncountexpect_dir,"3-raw.Rdata"))
