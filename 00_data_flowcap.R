@@ -29,7 +29,7 @@ libr(c("flowCore", "flowType",
 
 
 ## cores
-no_cores = detectCores()-1
+no_cores = 5#detectCores()-1
 registerDoMC(no_cores)
 
 ## options
@@ -79,7 +79,7 @@ meta_file0 = meta_file0[match(rownames(m00),meta_file0$id),]
 ## save: split data by tube/panel
 # controli = NULL
 for (tube in unique(meta_file0$tube)) {
-  if (tube!=6) next # save only tube 6 for now
+  # if (tube!=6) next # save only tube 6 for now
   
   # output directories
   result_dir = paste0(result_dir0,"_",tube)

@@ -528,7 +528,7 @@ time_output(start1)
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
 l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tbl$data) &
-                      grepl("^flowcap",tbl$data) & grepl("prop",tbl$feat) &
+                      grepl("flowcap_6$|^pregnancy_paired$",tbl$data) & grepl("prop",tbl$feat) &
                     grepl("prop$|countAdj$|expect",tbl$feat)
                     # grepl("expect2",tbl$feat)
 ), no_cores), function(ii) {# try({
@@ -608,7 +608,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       } else {
         gr$v$label_ind = rep(F,length(p))
         # lgr$v$abel_ind_ = p+mo/2
-        gr$v$label_ind[which(p_)[tail(order(mfmdiff[p_]),7)]] = T
+        gr$v$label_ind[which(p_)[tail(order(mfmdiff[p_]),10)]] = T
         gr$v$size = -log(p)
         gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
         main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
@@ -618,7 +618,11 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] &gr$e[,2]%in%gr$v$name[p_]
       # gr$v$label_ind = rep(F,nrow(gr$v))
       
-      gp = gpp = gggraph(gr, main=main)
+      if (grepl("pos|ctrl",tbl$data[i])) {
+        gp = gpp = gggraph(gr, main=main)
+      } else {
+        gp = gpp = gggraph(gr, main=main, bgedges=F)
+      }
       # gpp = gpp + geom_point(data=gr$v[p_,],aes(x=x,y=y),size=2,color="grey")
       # gp = gpp + geom_label_repel(
       #   data=gr$v[label_ind,],
