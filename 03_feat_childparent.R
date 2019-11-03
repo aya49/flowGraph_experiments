@@ -14,7 +14,7 @@ setwd(root)
 
 ## libraries
 source("source/_func.R")
-libr(c("stringr", "Matrix", "entropy", "plyr",
+libr(c("stringr", "Matrix", "entropy", "plyr", "gsubfn",
        "foreach", "doMC"))
 
 
@@ -37,7 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  # if (!grepl("/pos23",result_dir)) next
+  if (!grepl("/pos",result_dir)) next
   print(result_dir)
   
   ## input directories
@@ -655,11 +655,31 @@ for (result_dir in result_dirs) {
   expecp[is.nan(expecp)] = 0
   # which(is.na(expec),arr.ind=T)
   colnames(expecp) = cellis[cpind]
+  
+  # infer rest of cell populations expected proportion
   expec = as.matrix(cbind(expe1,expecp))
   cpopneg = setdiff(cellis,colnames(expec)) # cell pops to do
-  cpopnegno = str_count(cpopneg,"[-]") # number of negatives
-  for (negno in sort(unique(cpopnegno))) {
-    cpopi = cpopneg[cpopnegno==negno]
+  cpopnegl = str_count(cpopneg,"[-+]")
+  p = proto(i = 1, j = 1, fun = function(this, x) if (count >= i && count <= j) "+" else x) # replaces whatever pattern only once with "+";   gsubfn("_", p, "A_B_C_")
+
+  for (lev in sort(unique(cpopnegl))) {
+    cpopl = cpopneg[cpopnegl==lev]
+    cpopnegno = str_count(cpopl,"[-]") # number of negatives
+    for (negno in sort(unique(cpopnegno))) {
+      cpopi = cpopl[cpopnegno==negno]
+      sibs = gsubfn("-", p, cpopi)
+      for (sib in unique(sibs)) {
+        sibpars = meta_cell_parent_names_[[sib]]
+        sibis = which(sibs==sib)
+        for (sibi in sibis) {
+          parsin = intersect(sibpars, meta_cell_parent_names_[[cpopi[sibi]]])
+          # parsin = parsin[which(parsin%in%colnames(mpe))[1]]
+          ex = mpe[,parsin] - mpe[,sib]
+          expec = cbind(expec, ex)
+          colnames(expec)[ncol(expec)] = cpopi[sibi]
+        }
+      }
+    }
     expec_temp = Reduce(cbind,llply(cpopi, function(cpi) {
       cpig = gsub("[+-]","",cpi)
       parnames = intersect(meta_cell_parent_names_[[cpi]],colnames(mpe))
@@ -713,7 +733,7 @@ for (result_dir in result_dirs) {
     mfmc = colMeans(mpe[1:500,grorder])
     mfmu = colMeans(mpe[501:1000,grorder])
     memu = colMeans(exp1[501:1000,grorder])
-    gr$v$color = ifelse(mfmc>mfmu,"_increase","decrease") # node colour
+    gr$v$color = ifelse(mfmc<mfmu,"_increase","decrease") # node colour
     gr$v$label = paste0(gr$v$name,":",round(mfmu,3),"/",round(memu,3))
     main0 = paste0(result_dir,"\n specenrV3 = calc all positive cell pops first, others can be inferred \nlabel=prop / expected prop")
     gr$v$size = abs(mfmu-memu)/mfmu

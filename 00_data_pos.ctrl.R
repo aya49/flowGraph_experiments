@@ -26,7 +26,7 @@ libr(c("flowCore", "flowType", "flowDensity", "flowViz",
        "foreach", "doMC", "plyr", "stringr")) # too much, but will use later on
 
 ## cores
-no_cores = 4#detectCores()-1
+no_cores = detectCores()-1
 registerDoMC(no_cores)
 
 
@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",1:31))) {
+for (ds in c(paste0("pos",1:32))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -372,7 +372,7 @@ for (ds in c(paste0("pos",1:31))) {
           tripleind = which(f@exprs[,1]>thress[[1]] & f@exprs[,2]>thress[[2]])
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos30") { #1.5x A+, B+C+A+
+        else if (ds=="pos30") { #1.5x A+, A+B+C+
           tm = sum(ap)/2
           tripleind = which(ap)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
@@ -380,7 +380,7 @@ for (ds in c(paste0("pos",1:31))) {
           tripleind = which(cp & ap & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos31") { #1.5x A+B+, B+C+D+
+        else if (ds=="pos31") { #1.5x A+, B+C+D+
           tm = sum(ap)/2
           tripleind = which(ap)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
@@ -388,7 +388,12 @@ for (ds in c(paste0("pos",1:31))) {
           tripleind = which(cp & dp & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-
+        else if (ds=="pos32") {
+          tm = sum(triple)/2
+          tripleind = which(!ap & !bp & !cp)
+          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+        }
+        
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
           # if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3

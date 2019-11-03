@@ -219,7 +219,7 @@ ggblank = function(gr_v=NULL) {
     plot.background = element_blank())
 }
 
-gggraph = function(a, main="") { # indices of whether to apply color size etc
+gggraph = function(a, main="", bgedges=T) { # indices of whether to apply color size etc
   # gr_v: name x y label size color sizeb colorb
   # gr_e: from to from.x from.y to.x to.y color
   require(ggrepel)
@@ -233,18 +233,33 @@ gggraph = function(a, main="") { # indices of whether to apply color size etc
   e_ind = gr_e$e_ind
   
   # base graph
-  gp = ggblank() + ggtitle(main) +
-    scale_fill_brewer(palette="Pastel2") +
-    geom_segment(data=gr_e[!e_ind,], color="grey",
-                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
-    geom_segment(data=gr_e[e_ind,], 
-                 aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
-    # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
-    # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
-    geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
-    geom_label_repel(data=gr_v[label_ind,],
-                     aes(x=x,y=y,label=label, color=color),
-                     nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  if (bgedges) { # keep greyed out edges on
+    gp = ggblank() + ggtitle(main) +
+      scale_fill_brewer(palette="Pastel2") +
+      geom_segment(data=gr_e[!e_ind,], color="grey",
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+      geom_segment(data=gr_e[e_ind,], 
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+      # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+      # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+      geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
+      geom_label_repel(data=gr_v[label_ind,],
+                       aes(x=x,y=y,label=label, color=color),
+                       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  } else {
+    gp = ggblank() + ggtitle(main) +
+      scale_fill_brewer(palette="Pastel2") +
+      # geom_segment(data=gr_e[!e_ind,], color="grey",
+      #              aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+      geom_segment(data=gr_e[e_ind,], 
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+      # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+      # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+      geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
+      geom_label_repel(data=gr_v[label_ind,],
+                       aes(x=x,y=y,label=label, color=color),
+                       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  }
   
 
   return(gp)
