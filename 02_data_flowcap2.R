@@ -77,7 +77,7 @@ for (result_dir in result_dirs) {
         weight*colSums(feat_file_cell_countAdj0[append(ri$normal,ri$aml),]) )))
       rownames(feat_file_cell_countAdj2) = c((1+nrow(feat_file_cell_countAdj0)):(nrow(feat_file_cell_countAdj2)+nrow(feat_file_cell_countAdj0)))
       m0 = rbind(feat_file_cell_countAdj0,feat_file_cell_countAdj2)
-      p0 = m0/m0[,1]
+      p0 = m0/m0[,colnames(m0)==""]
       
       
       ## meta/file
@@ -92,7 +92,7 @@ for (result_dir in result_dirs) {
     } else if (ds=="ctrl") {
       ## extract controls
       m0 = feat_file_cell_countAdj0[meta_file0$class=="control",]
-      p0 = m0/m0[,1]
+      p0 = m0/m0[,colnames(m0)==""]
       
       ## meta/file
       meta_file = meta_file0[meta_file0$class=="control",]

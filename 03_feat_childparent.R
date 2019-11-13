@@ -37,7 +37,7 @@ start = Sys.time()
 result_dirs = list.dirs(paste0(root, "/result"), full.names=T, recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("paired",result_dir)) next
-  if (!grepl("/pos",result_dir)) next
+  # if (!grepl("flowcap",result_dir)) next
   print(result_dir)
   
   ## input directories
@@ -73,7 +73,7 @@ for (result_dir in result_dirs) {
   m = get(load(paste0(feat_file_cell_countAdj_dir,".Rdata")))
   
   ## make prop
-  mp = m/m[,1]
+  mp = m/m[,colnames(m)==""]
   dimnames(mp) = dimnames(m)
   save(mp, file=paste0(feat_file_cell_prop_dir,".Rdata"))
   if (writecsv) write.csv(mp, file=paste0(feat_file_cell_prop_dir,".csv"), row.names=T)
@@ -433,7 +433,7 @@ for (result_dir in result_dirs) {
   # which(is.na(expec),arr.ind=T)
   colnames(expec) = cellis
   exp1 = as.matrix(cbind(expe1,expec))
-  expc1 = exp1*m[,1]
+  expc1 = exp1*m[,colnames(m)==""]
   lnpropexpect1 = log(mpe/exp1)
   mei = m[,match(colnames(expc1),colnames(m))]
   lncountexpect1 = log(mei/expc1)
@@ -512,7 +512,7 @@ for (result_dir in result_dirs) {
   # which(is.na(expec),arr.ind=T)
   colnames(expec) = cellis
   exp1 = as.matrix(cbind(expe1,expec))
-  expc1 = exp1*m[,1]
+  expc1 = exp1*m[,colnames(m)==""]
   lnpropexpect1 = log(mpe/exp1)
   mei = m[,match(colnames(expc1),colnames(m))]
   lncountexpect1 = log(mei/expc1)
@@ -593,7 +593,7 @@ for (result_dir in result_dirs) {
         edges
       }))
       
-      ## take the man of min and max
+      ## take the mean of min and max
       # parentr = apply(parent,1,function(x) max(x)/min(x))
       expect1 = expect2 = rep(0, nrow(parent))
       for (colj in unique(parento[,1])) {

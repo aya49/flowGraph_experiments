@@ -37,7 +37,7 @@ cellCountThres = .01 # don't use phenotypes with cell count all lower than cellC
 result_dirs =list.dirs(paste0(root,"/result"),full.names=T,recursive=F)
 for (result_dir in result_dirs) {
   if (grepl("ctrl|pos|paired",result_dir)) next
-  # if (!grepl("pregnancy",result_dir)) next
+  # if (!grepl("flowcap",result_dir)) next
   print(fileNames(result_dir))
   
   ## input directories
@@ -72,9 +72,9 @@ for (result_dir in result_dirs) {
   meta_file = meta_file0
   
   # prepare feat_file_cell_counts
-  x = x0 = as.matrix(feat_file_cell_count)[,-1] # take out total cell count
+  x = x0 = as.matrix(feat_file_cell_count)[,-which(colnames(feat_file_cell_count)=="")] # take out total cell count
   maxx = max(x0[is.finite(x0)])
-  rootc = feat_file_cell_count[,1]
+  rootc = feat_file_cell_count[,which(colnames(feat_file_cell_count)=="")]
   refsample = which.min(abs( rootc-median(rootc[meta_file$class=="control"]) )) #reference column: median total count out of all control files
   
   # extract cell populations that would define TMM (layer/count)

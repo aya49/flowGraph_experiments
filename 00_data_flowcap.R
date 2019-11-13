@@ -45,7 +45,7 @@ start = Sys.time()
 ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
 ftnames = fileNames(ft_dirs, "Rda")
 
-meta_filetemp = data.frame(read.csv(csv_dir)) # meta file
+mft = meta_filetemp = data.frame(read.csv(csv_dir)) # meta file
 meta_file_trt = read.csv(csv_dir2) # meta file  with with training/testing
 
 
@@ -79,7 +79,7 @@ meta_file0 = meta_file0[match(rownames(m00),meta_file0$id),]
 ## save: split data by tube/panel
 # controli = NULL
 for (tube in unique(meta_file0$tube)) {
-  # if (tube!=6) next # save only tube 6 for now
+  if (tube!=6) next # save only tube 6 for now
   
   # output directories
   result_dir = paste0(result_dir0,"_",tube)
@@ -104,8 +104,11 @@ for (tube in unique(meta_file0$tube)) {
   save(meta_file, file=paste0(meta_file_dir,".Rdata"))
   if (writecsv) write.csv(meta_file, file=paste0(meta_file_dir,".csv"), row.names=F)
   
-  f = read.FCS(paste0(fcs_dir,"/",str_pad(meta_file$id[1], 4, pad="0"),".fcs"))
+  fno = mft[which(mft[,"TubeNumber"]==tube)[1],"FCSFileName"]
+  f = read.FCS(paste0(fcs_dir,"/",str_pad(fno, 4, pad="0"),".FCS"))
   markers = str_extract(f@parameters@data$desc,"[A-Za-z0-9]+")
+  
+
   m0 = m00[tubei,]
   rownames(m0) = meta_file$id
   #colnames(m0) = laply(ft@PhenoCodes, function(x) decodePhenotype(x, markers, ft@PartitionsPerMarker) )

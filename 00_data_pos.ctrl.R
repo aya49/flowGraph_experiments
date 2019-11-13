@@ -83,7 +83,7 @@ thress4[gthresm[1:4]] = quantile(cvd, .501)
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",1:32))) {
+for (ds in c(paste0("pos",c(34)))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -311,15 +311,14 @@ for (ds in c(paste0("pos",1:32))) {
           f@exprs = rbind(fex, matrix(p75,nrow=lastln[lastlallposi], ncol=length(markers)))
           f@exprs = rbind(f@exprs, matrix(p25,nrow=lastln[lastlallnegi], ncol=length(markers)))
         } 
-        else if (ds=="pos20") { # A+, B+, c+
-          tripleind = which(fex[,1]==p75)
-          tm = sum(double)
-          f@exprs = rbind(fex,fex[sample(tripleind,tm),])
-          tripleind = which(fex[,2]==p75)
-          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
-          tripleind = which(fex[,3]==p75)
-          f@exprs = rbind(f@exprs,fex[sample(tripleind,tm),])
-        } 
+        else if (ds=="pos20") { #1.5x A+, B+C+D+
+          tm = sum(ap)/2
+          tripleind = which(ap)
+          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+          tm = sum(triple)/2
+          tripleind = which(cp & dp & bp)
+          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+        }
         else if (ds=="pos21") { # 1.5x A+
           tripleind = which(ap)
           tm = sum(double)
@@ -380,7 +379,51 @@ for (ds in c(paste0("pos",1:32))) {
           tripleind = which(cp & ap & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos31") { #1.5x A+, B+C+D+
+        else if (ds=="pos31") { # 1.5x A+
+          tripleind = which(ap)
+          tm = sum(double)
+          f@exprs = f@exprs[-sample(tripleind,tm),]
+        } 
+        else if (ds=="pos32") { # 1.5x A+, B+
+          tm = sum(double)
+          f@exprs = f@exprs[-unique(c(sample(which(bp),tm),sample(which(ap),tm))),]
+        } 
+        else if (ds=="pos33") { #1.5x A+B+
+          tm = sum(double)/2
+          tripleind = which(ap & bp)
+          f@exprs = f@exprs[-sample(tripleind,tm),]
+        } 
+        else if (ds=="pos34") { #1.5x A+B+, C+D+
+          tm = sum(double)/2
+          tind = sample(which(dp & cp),tm)
+          tind2 = sample(which(ap & bp),tm)
+          f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
+        } 
+        else if (ds=="pos35") {
+          tm = sum(triple)/2
+          tripleind = which(ap & bp & cp)
+          f@exprs = f@exprs[-sample(tripleind,tm),]
+        }
+        else if (ds=="pos36") { #1.5x A+B+C+, B+C+D+
+          tm = sum(triple)/2
+          tripleind = 
+          f@exprs = f@exprs[unique(c(which(ap & bp & cp),sample(which(cp & dp & bp),tm))),]
+        } 
+        else if (ds=="pos37") { #1.5x A+, A+B+C+
+          tm = sum(triple)/2
+          tripleind = which(ap & bp & cp)
+          f@exprs = rbind(f@exprs,f@exprs[-unique(c(sample(which(ap & bp & cp),sum(triple)/2),sample(which(ap),sum(ap)/2))),])
+        }
+        else if (ds=="pos38") { #1.5x A+, A+B+C+
+          tm = sum(triple)/2
+          tripleind = which(cp & ap & bp)
+          tm1 = sum(ap)/2
+          tripleind1 = which(ap)
+          tripleind1 = tripleind1[!tripleind1%in%tripleind]
+          f@exprs = f@exprs[-c(sample(tripleind1,tm1),sample(tripleind,tm)),]
+        }
+        
+        else if (ds=="pos39") { #1.5x A+, B+C+D+
           tm = sum(ap)/2
           tripleind = which(ap)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
@@ -388,12 +431,7 @@ for (ds in c(paste0("pos",1:32))) {
           tripleind = which(cp & dp & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds=="pos32") {
-          tm = sum(triple)/2
-          tripleind = which(!ap & !bp & !cp)
-          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-        }
-        
+
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
           # if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3

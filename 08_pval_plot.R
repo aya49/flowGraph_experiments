@@ -528,7 +528,7 @@ time_output(start1)
 start1 = Sys.time()
 # l_ply(loopInd(sample(which(tbl$m_all_sig>0 & tbl$data%in%names(grp0s) & tbl$test_adj!="none"),1050), no_cores), function(ii) {
 l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tbl$data) &
-                      grepl("flowcap_6$|^pregnancy_paired$",tbl$data) & grepl("prop",tbl$feat) &
+                      grepl("pos34",tbl$data) & grepl("propexpect3",tbl$feat) &
                     grepl("prop$|countAdj$|expect",tbl$feat)
                     # grepl("expect2",tbl$feat)
 ), no_cores), function(ii) {# try({
@@ -560,7 +560,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
     p = pv$all
     # if (tbl$data[i]%in%c("pos1","pos2")) p = p[!grepl("D|E|F|G|H",names(p))]
     # if (tbl$data[i]%in%c("pos6")) p = p[!grepl("E|F|G|H",names(p))]
-    if (tbl$data[i]=="pregnancy_paired") p = p[str_count(names(p),"[+]|[-]")<4]
+    # if (tbl$data[i]=="pregnancy_paired") p = p[str_count(names(p),"[+]|[-]")<4]
     
     p_ = p<pt
     # ptr_ = ptr<pt & pte>pt
@@ -599,6 +599,8 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
       gr$v$label = paste0(gr$v$name,":",round(mfmu,3),"/",round(mfmu_,3))
       main0 = paste0(main0,"\nlabel=prop / expected prop")
     }
+    # if (grepl("pregnancy_paired",tbl$data[i]))
+    #   p_ = p_ & round(mfmu,3)-round(mfmu_,3)>.001
     for (siz in c("sd","")) {
       if (siz=="sd") {
         gr$v$label_ind = p_ & !grepl("[-]",names(p_))
@@ -609,6 +611,7 @@ l_ply(loopInd(which(tbl$pmethod_adj=="t-BY" & tbl$p_thres==.01 & #grepl("pos",tb
         gr$v$label_ind = rep(F,length(p))
         # lgr$v$abel_ind_ = p+mo/2
         gr$v$label_ind[which(p_)[tail(order(mfmdiff[p_]),10)]] = T
+        # if (mfm_tf) gr$v$label_ind[abs(mfmu_-mfmu)<.03] = F
         gr$v$size = -log(p)
         gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
         main = paste0(main0,"\nsize=-ln(p value); label=feature value (prop if expect-raw)")
