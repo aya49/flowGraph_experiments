@@ -20,8 +20,8 @@ input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy" # ma
 
 ## libraries
 source("source/_func.R")
-libr(c("flowCore", "flowType", "flowDensity", "flowViz",
-       "CytoML", "flowWorkspace",
+libr(c("flowCore", "flowType", "flowDensity", #"flowViz",
+       #"CytoML", "flowWorkspace",
        "pracma", "tools", "MASS", "KernSmooth", #"fitdistrplus",
        "foreach", "doMC", "plyr", "stringr")) # too much, but will use later on
 
@@ -73,17 +73,20 @@ ci = c(1:markern); names(ci) = markers
 # marker thresholds
 cvd = rnorm(ncells[1],2,1)
 p50 = quantile(cvd, .5)
+p60 = quantile(cvd, .6)
 p75 = quantile(cvd, .75)
 p25 = quantile(cvd, .25)
 thress0 = llply(markers, function(x) p50); names(thress0) = markers
-thress1 = thress2 = thress4 = thress0
+thress1 = thress2 = thress4 = thress5 = thress0
 thress1[[gthresm[1]]] = thress2[gthresm[1:2]] = p25
 thress4[gthresm[1:4]] = quantile(cvd, .501)
+thress5[[gthresm[1]]] = c(p25,p50)
+thress5[[gthresm[2]]] = c(p25,p50,p60)
 
 
 # start = Sys.time()
 # for (ds in c(paste0("pos",1:26),paste0("ctrl",0:9))) {
-for (ds in c(paste0("pos",c(34)))) {
+for (ds in c(paste0("pos",c(40)))) {
   # for (ds in c("pos5")) {
   # clear/load memory
   
@@ -431,7 +434,12 @@ for (ds in c(paste0("pos",c(34)))) {
           tripleind = which(cp & dp & bp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-
+        else if (ds=="pos40") { #same as 25; A+B+C+ + 50%
+          tm = sum(triple)/2
+          tripleind = which(ap & bp & cp)
+          f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+        }
+        
         if (i == nsample*nctrl+1 & grepl("pos",ds)) {
           # if (ds%in%c("pos1","pos2","pos9")) la=1
           # if (ds%in%c("pos3","pos5","pos6","pos7","pos8")) la=3
@@ -483,14 +491,34 @@ for (ds in c(paste0("pos",c(34)))) {
       fe = f@exprs
       colnames(fe) = LETTERS[1:ncol(fe)]
       if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds)) save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
-      flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-               MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
-               Thresholds=thress, 
-               Methods='Thresholds', verbose=F, MemLimit=60)@CellFreqs
+      if (ds%in%c("pos40")) {
+        thress = thress5
+        ppm = rep(2,markern)
+        ppm[1] = 3
+        ppm[2] = 4
+        
+        ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+                      MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=ppm, 
+                      Thresholds=thress, 
+                      Methods='Thresholds', verbose=F, MemLimit=60)
+        
+        ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+          decodePhenotype(x, ft@MarkerNames, ppm) ))
+        ft = ft@CellFreqs
+        names(ft) = ftcell
+      } else {
+        ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+                 MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
+                 Thresholds=thress, 
+                 Methods='Thresholds', verbose=F, MemLimit=60)@CellFreqs
+      }
+      return(ft)
     })
   }, .parallel=T)
   ft = Reduce(rbind,unlist(ftl,recursive=F))
-  colnames(ft) = ftcell
+  if (ncol(ft)==length(ftcell)) {
+    colnames(ft) = ftcell
+  }
   rownames(ft) = meta_file$id
   
   save(meta_file, file=paste0(meta_dir,"/file.Rdata"))

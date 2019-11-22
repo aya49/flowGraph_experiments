@@ -312,7 +312,7 @@ getPhen = function(phen) {
 
 ##Input: matrix
 ##Output: if features (rownames) have +/- symbols, returns corresponding feature layers; else returns NULL
-cell_type_layers <- function(phen) str_count(phen, "[+-]")
+cell_type_layers <- function(phen) sapply(str_split(phen,"[+-]+"), function(x) sum(x!=""))
 
 
 
