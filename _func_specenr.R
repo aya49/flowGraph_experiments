@@ -947,7 +947,7 @@ flowgraph_prop_edge = function(fg, no_cores=1) {
   start1 = Sys.time()
   cat("preparing feature(s): proportion on edges ")
   
-  mc = fg@node_Features$count
+  mc = fg@node_features$count
   cells_ = colnames(mc)
   loop_ind = loop_ind_f(which(cells_!=""), no_cores)
   childprop_ = Reduce("cbind",llply(loop_ind, function(ii) {
