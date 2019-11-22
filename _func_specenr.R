@@ -1189,7 +1189,7 @@ flowgraph_p = function(
   node_features=NULL, edge_features=NULL, 
   control=NULL,
   overwrite=F, 
-  test_name="t_BY" # name your statistical test / adjustment method; if same name, overwrite=T will overwrite, overwrite=F will return nothing
+  test_name="t_BY", # name your statistical test / adjustment method; if same name, overwrite=T will overwrite, overwrite=F will return nothing
   diminish=F, # don't test if all parents are insignificant, stricter the lower the layer
   p_thres=.05, # only used if diminish=T
   diminish_level=3, # only used if diminish=T; >3 levels won't be tested if parent not significant
