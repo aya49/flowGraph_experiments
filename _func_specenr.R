@@ -947,6 +947,7 @@ flowgraph_prop_edge = function(fg, no_cores=1) {
   start1 = Sys.time()
   cat("preparing feature(s): proportion on edges ")
   
+  pparen_ = fg@edge_list$parent
   mc = fg@node_features$count
   cells_ = colnames(mc)
   loop_ind = loop_ind_f(which(cells_!=""), no_cores)
@@ -990,6 +991,7 @@ flowgraph_specenr = function(fg, no_cores=1) {
   mp = fg@node_features$prop
   if (!"prop"%in%names(fg@edge_features))
     fg = flowgraph_prop_edge(fg)
+  ep = fg@edge_features$prop
   
   ## feature: expected proportion
   
@@ -1386,18 +1388,25 @@ setMethod(
   "summary", "flowgraph",
   function(object) {
     show(object)
+    cat("\n\n")
     
-    summary_table = function(m) 
-      data.frame(data=data, feat=feat_type, nrow=nrow(m), ncol=ncol(m), 
+    summary_table = function(m, feat_type) 
+      data.frame(feat=feat_type, nrow=nrow(m), ncol=ncol(m), 
                  inf=sum(is.infinite(m)), na=sum(is.na(m)), nan= sum(is.nan(m)), 
-                 neg=sum(m<0), pos=sum(m>0), zero=sum(m==0), max=max(m[is.finite(m)]))
+                 neg=sum(m<0), pos=sum(m>0), zero=sum(m==0), max=max(m[is.finite(m)]), min=min(m[is.finite(m)]))
     
-    result1 = ldply(object@node_features, function(m) summary_table(m))
+    result1 = ldply(names(object@node_features), function(x) 
+      summary_table(object@node_features[[x]],x))
+    result1 = data.frame(type=rep("node",nrow(result1)),result1)
+    
     result2 = NULL
-    if (length(object@edge_features)>0) 
-      result2 = ldply(object@edge_features, function(m) summary_table(m))
+    if (length(object@edge_features)>0) {
+      result2 = ldply(names(object@edge_features), function(x)
+        summary_table(object@edge_features[[x]],x))
+      result2 = data.frame(type=rep("node",nrow(result2)),result2)
+    }
+    
     tab = rbind(result1,result2)
-    colnames(tab)[1] = "feature_type"
     return(tab)
   }
 )
