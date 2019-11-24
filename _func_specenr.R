@@ -752,7 +752,7 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
   
   # make parent list (for each cell popultion, list its parents)
   pccell = getPhenCP(meta_cell=meta_cell, no_cores=no_cores)
-  childprop_names = pccell$edf
+  edf = pccell$edf
   pchild = pccell$pchild # not used, returned
   pparen = pccell$pparen
   
@@ -787,15 +787,13 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
   })
   pchild_ = plyr::compact(pchild_)
   
+  edf = edf[edf$to%in%cells_ & edf$from%in%cells_,,drop=F]
+  
   time_output(start1)
   
   ## list of outputs
-  # mc # count matrix
-  # mp # proportion matrix
-  # childprop_ # edge proportion matrix (colnames = parent_child cell population)
-  
-  
-  gr = list(e=data.frame(childprop_names,width=1,color="", e_ind=F),
+
+  gr = list(e=data.frame(edf,width=1,color="", e_ind=F),
             v=data.frame(
               meta_cell, 
               size=1, color="", sizeb=1, colorb="", fill="", 
