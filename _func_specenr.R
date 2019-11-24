@@ -50,10 +50,14 @@ loop_ind_f = function(x,n) {
 ## flowgraph class definition -----------------
 
 setClass("flowgraph", 
-         slots=list(node_features="list", edge_features="list", 
-                    markers="character", graph="list", edge_list="list", 
-                    meta="data.frame", plot_layout="character", etc="list",
-                    node_p="list", edge_p="list", node_p_class="list", edge_p_class="list"))
+         slots=list(
+           feat="list",#list(node="list", edge="list"), 
+           feat_summary="list",#list(node="list", edge="list", 
+                             #desc=list(node="list", edge="list")),
+           meta="data.frame", 
+          markers="character", edge_list="list", 
+          graph="list", plot_layout="character",
+          etc="list"))
 
 
 ## flowgraph class modification ---------------
@@ -64,13 +68,13 @@ gsub_markers = function(object, markers_new, markers_old=NULL) {
   
   if (is.null(markers_old)) {
     if (length(markers_new)!=length(object@markers)) {
-      cat("incorrect number of markers")
+      cat("incorrect number of markers\n")
       return(object)
     }
     markers_old = object@markers
   } else {
     if (length(markers_old)!=length(markers_new)) {
-      cat("incorrect number of markers")
+      cat("incorrect number of markers\n")
       return(object)
     }
   }
@@ -92,13 +96,13 @@ gsub_markers = function(object, markers_new, markers_old=NULL) {
     names(object@edge_list$child) = gsub(markers_old[mi], markers_new[mi], names(object@edge_list$child))
     
   }
-  object@node_features = llply(object@node_features, function(x) {
+  object@feat$node = llply(object@feat$node, function(x) {
     colnames(x) = object@graph$v$phenotype
     x
   })
-  if (length(object@edge_features)>0) {
+  if (length(object@feat$edge)>0) {
     ecn = paste0(object@graph$e$from, "_", object@graph$e$to)
-    object@edge_features = llply(object@edge_features, function(x) {
+    object@feat$edge = llply(object@feat$edge, function(x) {
       colnames(x) = ecn
       x
     })
@@ -113,25 +117,25 @@ gsub_ids = function(object, ids_new, ids_old=NULL) {
   
   if (is.null(ids_old)) {
     if (length(ids_new)!=nrow(object@meta)) {
-      cat("incorrect number of ids")
+      cat("incorrect number of ids\n")
       return(object)
     }
     ids_old = object@meta$id
   } else {
     if (length(ids_old)!=length(ids_new)) {
-      cat("incorrect number of ids")
+      cat("incorrect number of ids\n")
       return(object)
     }
   }
   
   ids_ind = match(ids_old, object@meta$id)
   object@meta$id[ids_ind] = ids_new
-  object@node_features = llply(object@node_features, function(x) {
+  object@feat$node = llply(object@feat$node, function(x) {
     rownames(x)[ids_ind] = ids_new
     x
   })
-  if (length(object@edge_features)>0) {
-    object@edge_features = llply(object@edge_features, function(x) {
+  if (length(object@feat$edge)>0) {
+    object@feat$edge = llply(object@feat$edge, function(x) {
       rownames(x)[ids_ind] = ids_new
       x
     })
@@ -145,16 +149,16 @@ extract_samples = function(object, sample_ids) {
   require(plyr)
   
   if (!any(sample_ids%in%object@meta$id)) {
-    cat("please provide valid sample id's; see @meta$id")
+    cat("please provide valid sample id's; see @meta$id\n")
     return(object)
   }
   
   id_inds = match(sample_ids,object@meta$id)
   
   object@meta = object@meta[id_inds,]
-  object@node_features = llply(object@node_features, function(x) x[id_inds,,drop=F])
-  if (length(object@edge_features)>0) {
-    object@edge_features = llply(object@edge_features, function(x) x[id_inds,,drop=F])
+  object@feat$node = llply(object@feat$node, function(x) x[id_inds,,drop=F])
+  if (length(object@feat$edge)>0) {
+    object@feat$edge = llply(object@feat$edge, function(x) x[id_inds,,drop=F])
   }
   return(object)
 } 
@@ -165,7 +169,7 @@ extract_phenotypes = function(object, phenotypes) {
   require(plyr)
   
   if (!any(phenotypes%in%object@graph$v$phenotype)) {
-    cat("please provide valid phenotypes; see @graph$v")
+    cat("please provide valid phenotypes; see @graph$v\n")
     return(object)
   }
   
@@ -176,9 +180,9 @@ extract_phenotypes = function(object, phenotypes) {
   object@graph$e = object@graph$e[id_inds_,,drop=F]
   object@gr = set_layout_graph(object@gr, as.function(object@plot_layout))
   
-  object@node_features = llply(object@node_features, function(x) x[,id_inds,drop=F])
-  if (length(object@edge_features)>0) {
-    object@edge_features = llply(object@edge_features, function(x) x[,id_inds_,drop=F])
+  object@feat$node = llply(object@feat$node, function(x) x[,id_inds,drop=F])
+  if (length(object@feat$edge)>0) {
+    object@feat$edge = llply(object@feat$edge, function(x) x[,id_inds_,drop=F])
   }
   
   object@edge_list$child = 
@@ -218,26 +222,26 @@ merge_samples = function(obj1, obj2) {
   }
   colnames(meta2) = colnames(obj1@meta)
   object@meta = rbind(obj1@meta, meta2)
-  nfs = intersect(names(obj1@node_features),names(obj2@node_features))
-  object@node_features = 
+  nfs = intersect(names(obj1@feat$node),names(obj2@feat$node))
+  object@feat$node = 
     llply(nfs, function(xi) {
-      a = obj1@node_features[[xi]]
-      b = obj2@node_features[[xi]]
+      a = obj1@feat$node[[xi]]
+      b = obj2@feat$node[[xi]]
       abcol = intersect(colnames(a),colnames(b))
       ab = rbind(a[,match(abcol,colnames(a)),drop=F],
                  b[match(setdiff(rownames(b),rownames(a)),rownames(b)),match(abcol,colnames(b)),drop=F])
     })
-  names(object@node_features) = nfs
-  if (length(object@edge_features)>0) {
-    efs = intersect(names(obj1@edge_features),names(obj2@edge_features))
-    object@edge_features = llply(efs, function(xi) {
-      a = obj1@edge_features[[xi]]
-      b = obj2@edge_features[[xi]]
+  names(object@feat$node) = nfs
+  if (length(object@feat$edge)>0) {
+    efs = intersect(names(obj1@feat$edge),names(obj2@feat$edge))
+    object@feat$edge = llply(efs, function(xi) {
+      a = obj1@feat$edge[[xi]]
+      b = obj2@feat$edge[[xi]]
       abcol = intersect(colnames(a),colnames(b))
       ab = rbind(a[,match(abcol,colnames(a)),drop=F],
                  b[match(setdiff(rownames(b),rownames(a)),rownames(b)),match(abcol,colnames(b)),drop=F])
     })
-    names(object@edge_features) = efs
+    names(object@feat$edge) = efs
   }
   return(object)
 } 
@@ -364,71 +368,71 @@ tmm = function(x, x0=NULL, lib.size, refColumn, cutoff=Inf, pngnames=NULL, mains
     absE = absE[fin]
     v = v[fin]
     
-    if(max(abs(logR)) < minlogR) { return(list(f=1, fdiff=0)) # f[i] = 1
-    } else {
+    if(max(abs(logR)) < minlogR)
+      return(list(f=1, fdiff=0)) # f[i] = 1
+    
+    #taken from the original mean() function
+    n = length(logR)
+    loL = floor(n * logratioTrim) + 1
+    hiL = n + 1 - loL
+    loS = floor(n * sumTrim) + 1
+    hiS = n + 1 - loS
+    
+    #keep = (rank(logR) %in% loL:hiL) & (rank(absE) %in% loS:hiS)
+    #a fix from leonardo ivan almonacid cardenas, since rank() can return
+    #non-integer values when there are a lot of ties
+    keep = (rank(logR)>=loL & rank(logR)<=hiL) & (rank(absE)>=loS & rank(absE)<=hiS)
+    
+    if(doWeighting) {
+      fi = sum(logR[keep]/v[keep], na.rm=TRUE) / sum(1/v[keep], na.rm=TRUE)
+    } else { fi = mean(logR[keep], na.rm=TRUE) } #f[i] = mean(logR[keep], na.rm=TRUE) }
+    
+    #Results will be missing if the two libraries share no features with positive counts
+    #In this case, return unity
+    #if(is.na(f[i])) f[i] = 0
+    if(is.na(fi)) fi = 0
+    
+    #check if close to peak; if not, switch to peak
+    d = density(log2((obs)/ref), na.rm=T)
+    p = as.matrix(findpeaks(d$y)); if(ncol(p)==1) p = t(p)
+    p1 = d$x[p[which.max(p[,1]),2]]
+    #fdiff[i] = p1-f[i]
+    fdiffi = p1-fi
+    
+    if (plotimg) {
+      pngname = pngnames[i]
+      png (file=pngname , width=700, height=1800)
+      par(mfrow=c(3,1), mar=(c(5, 5, 4, 2) + 0.1))
       
-      #taken from the original mean() function
-      n = length(logR)
-      loL = floor(n * logratioTrim) + 1
-      hiL = n + 1 - loL
-      loS = floor(n * sumTrim) + 1
-      hiS = n + 1 - loS
+      #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue"); 
+      plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue"); 
       
-      #keep = (rank(logR) %in% loL:hiL) & (rank(absE) %in% loS:hiS)
-      #a fix from leonardo ivan almonacid cardenas, since rank() can return
-      #non-integer values when there are a lot of ties
-      keep = (rank(logR)>=loL & rank(logR)<=hiL) & (rank(absE)>=loS & rank(absE)<=hiS)
-      
-      if(doWeighting) {
-        fi = sum(logR[keep]/v[keep], na.rm=TRUE) / sum(1/v[keep], na.rm=TRUE)
-      } else { fi = mean(logR[keep], na.rm=TRUE) } #f[i] = mean(logR[keep], na.rm=TRUE) }
-      
-      #Results will be missing if the two libraries share no features with positive counts
-      #In this case, return unity
-      #if(is.na(f[i])) f[i] = 0
-      if(is.na(fi)) fi = 0
-      
-      #check if close to peak; if not, switch to peak
-      d = density(log2((obs)/ref), na.rm=T)
-      p = as.matrix(findpeaks(d$y)); if(ncol(p)==1) p = t(p)
-      p1 = d$x[p[which.max(p[,1]),2]]
-      #fdiff[i] = p1-f[i]
-      fdiffi = p1-fi
-      
-      if (plotimg) {
-        pngname = pngnames[i]
-        png (file=pngname , width=700, height=1800)
-        par(mfrow=c(3,1), mar=(c(5, 5, 4, 2) + 0.1))
-        
-        #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue"); 
-        plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue"); 
-        
-        plot((x0[,i]+x0[,refColumn])/2, log(x0[,i]/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
-        #abline(h=f[i], col="red")
-        abline(h=fi, col="red")
-      }
-      
-      #if f[i] too far from peak
-      #if (abs(f[i]-p1)>cutoff) {
-      if (abs(fi-p1)>cutoff) {
-        abline(h=p1, col="blue")
-        #f[i] = p1
-        fi = p1
-      }
-      
-      #f[i] = 1/2^f[i]
-      fi = 1/2^fi
-      
-      #plot((matrixCount[,i]+matrixCount[,refColumn])/2, log2((matrixCount[,i]*f[i])/matrixCount[,refColumn]), cex=.5, main=paste("AFTER CHANGE: mean count vs. log2 fold change: ", sampleMeta$gene[i]," over refColumn ", sampleMeta$gene[refColumn],": f=",f[i], sep=""))
-      if (plotimg) {
-        plot((x0[,i]+x0[,refColumn])/2, log((x0[,i]*fi)/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
-        abline(h=0, col="red")
-        dev.off()
-      }
-      
-      return(list(f=fi, fdiff=fdiffi))
-      
+      plot((x0[,i]+x0[,refColumn])/2, log(x0[,i]/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
+      #abline(h=f[i], col="red")
+      abline(h=fi, col="red")
     }
+    
+    #if f[i] too far from peak
+    #if (abs(f[i]-p1)>cutoff) {
+    if (abs(fi-p1)>cutoff) {
+      abline(h=p1, col="blue")
+      #f[i] = p1
+      fi = p1
+    }
+    
+    #f[i] = 1/2^f[i]
+    fi = 1/2^fi
+    
+    #plot((matrixCount[,i]+matrixCount[,refColumn])/2, log2((matrixCount[,i]*f[i])/matrixCount[,refColumn]), cex=.5, main=paste("AFTER CHANGE: mean count vs. log2 fold change: ", sampleMeta$gene[i]," over refColumn ", sampleMeta$gene[refColumn],": f=",f[i], sep=""))
+    if (plotimg) {
+      plot((x0[,i]+x0[,refColumn])/2, log((x0[,i]*fi)/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
+      abline(h=0, col="red")
+      dev.off()
+    }
+    
+    return(list(f=fi, fdiff=fdiffi))
+    
+    
   }
   #multiple of 1
   rm(x)
@@ -451,22 +455,26 @@ cell_type_layers = function(phen) sapply(str_split(phen,"[+-]+"), function(x) su
 
 ## input: Phenotype
 ## output: Phenotype, PhenoCode, Phenolevel (number of markers per phenotype)
-getPhen = function(phen) {
+getPhen = function(phen, phenocode=NULL) {
   require(stringr)
   pm = data.frame(phenotype=phen)
   markers = unique(unlist(str_split(phen,"[-+]")))
   markers = markers[markers!=""]
-  pm$phenocode = sapply(phen, function(x){
-    if (x=="") return(paste0(rep(0,length(markers)), collapse=""))
-    b = str_split(x,"[+-]+")[[1]]
-    b = b[-length(b)]
-    bo = match(markers,b)
-    phec = as.vector(sapply(str_extract_all(x,"[+-]+"), 
-                            function(y) str_count(y,"[+]"))+1)
-    c = phec[bo]
-    c[is.na(c)] = 0
-    paste0(c,collapse="")
-  })
+  if (is.null(phenocode)) {
+    pm$phenocode = sapply(phen, function(x){
+      if (x=="") return(paste0(rep(0,length(markers)), collapse=""))
+      b = str_split(x,"[+-]+")[[1]]
+      b = b[-length(b)]
+      bo = match(markers,b)
+      phec = as.vector(sapply(str_extract_all(x,"[+-]+"), 
+                              function(y) str_count(y,"[+]"))+1)
+      c = phec[bo]
+      c[is.na(c)] = 0
+      paste0(c,collapse="")
+    })
+  } else {
+    pm$phenocode = phenocode
+  }
   pm$phenolevel = cell_type_layers(phen)
   pm$phenotype = as.character(pm$phenotype)
   
@@ -486,102 +494,62 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   } else if (is.null(meta_cell)) {
     meta_cell = getPhen(cp)
   }
-  meta_cell_grid = ldply(1:nrow(meta_cell), function(i) {
-    pc = meta_cell$phenocode[i]
-    pc = as.numeric(laply(seq(1, nchar(pc), 1), function(i) substr(pc, i, i)))
-  })#, .parallel=parl)
-  mcsum = rowSums(meta_cell_grid)
-  lvl1ind = which(meta_cell$phenolevel==1 & rowSums(meta_cell_grid)==1)
-  lvl1order = lvl1ind[sapply(lvl1ind, function(x) which(meta_cell_grid[x,]==1))]
-  colnames(meta_cell_grid) = unique(gsub("[+-]","",meta_cell$phenotype[lvl1order]))
-  rownames(meta_cell_grid) = meta_cell$phenotype
-  mcpls = llply(unique(meta_cell$phenolevel), function(x) meta_cell$phenolevel==x)
-  names(mcpls) = unique(meta_cell$phenolevel)
-  maxl = max(meta_cell$phenolevel)
-  minl = min(meta_cell$phenolevel)
-  
-  ilevel = meta_cell$phenolevel==minl
-  iparen = NULL; ichild = meta_cell$phenolevel==minl+1
-  res = NULL
-  
-  cat("\n")
-  for (pl in sort(unique(meta_cell$phenolevel))) {
-    start2 = Sys.time()
-    cat("- ",sum(ilevel)," pops @ ")
-    
-    if(!is.null(ichild)) ccand = meta_cell_grid[ichild,,drop=F]
-    if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
-    
-    loop_ind = loop_ind_f(which(ilevel),no_cores)
-    result_ = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
-      resulti = NULL
-      
-      # children
-      if (pl==0) {
-        pos_ind = apply(ccand,1,function(x) 2%in%x)
-        resulti[[""]]$pos = meta_cell$phenotype[which(ichild)[pos_ind]]
-        resulti[[""]]$neg = meta_cell$phenotype[which(ichild)[!pos_ind]]
-      } else if(!is.null(ichild)) {
-        for (i in ii) {
-          ci = cn = cp = NULL
-          mci = meta_cell_grid[i,,drop=T]
-          ci_ind = llply(which(mci>0), function(j) ccand[,j]==mci[j])
-          ci = which(ichild)[Reduce("&",ci_ind)] # rows with the same stuff as i
-          names(ci) = meta_cell$phenotype[ci]
-          if (length(ci)>0) {
-            negcind = mcsum[ci]-1==mcsum[i] 
-            cn = ci[ negcind]; if(sum( negcind)==0) cn = NULL # A-
-            cp = ci[!negcind]; if(sum(!negcind)==0) cp = NULL # A+, A++, A+++ ...
-          }
-          resulti[[meta_cell$phenotype[i]]]$pos = names(cp)
-          resulti[[meta_cell$phenotype[i]]]$neg = names(cn)
-          
-        }
-      } else {
-        for (i in ii) resulti[[meta_cell$phenotype[i]]]$pos = NULL
-        for (i in ii) resulti[[meta_cell$phenotype[i]]]$neg = NULL
-      }
-      
-      # parent
-      if (pl==1) {
-        for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = ""
-      } else if(!is.null(iparen)) {
-        for (i in ii) {
-          mci = meta_cell_grid[i,,drop=T]
-          pi = NULL
-          pi_ind = sapply(which(mci>0), function(j) pcand[,j]==mci[j])
-          pi = which(iparen)[apply(pi_ind, 1, function(x) sum(!x)==1)]
-          names(pi) = meta_cell$phenotype[pi]
-          if (length(pi)>0)
-            resulti[[meta_cell$phenotype[i]]]$parent = names(pi)
-        }
-      } else {
-        for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = NULL
-      }
-      
-      return(resulti)
-    }, .parallel=parl)
-    result = Reduce("append",result_)
-    res = append(res, result)
-    
-    iparen = ilevel
-    ilevel = ichild
-    ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
-    time_output(start2,paste0("layer",pl))
-  }
-  
-  pchild = llply(res, function(x) {
-    a = NULL
-    if (!is.null(x$neg)) a$neg = x$neg
-    if (!is.null(x$pos)) a$pos = x$pos
-    return(a)
+  mcorder = order(meta_cell$phenolevel)
+  meta_cell = meta_cell[mcorder,]
+  meta_cell_grid = do.call(rbind, str_split(meta_cell$phenocode,""))
+  meta_cell_grid = apply(meta_cell_grid, 2, as.numeric)
+  meta_cell_grid = Matrix(meta_cell_grid,sparse=T)[mcorder,]
+  allcolu = llply(1:ncol(meta_cell_grid), function(j) unique(meta_cell_grid[,j]))
+  allcol = llply(1:length(allcolu), function(ci) {
+    a = llply(allcolu[[ci]], function(ui) 
+      meta_cell_grid[,ci]==ui)
+    names(a) = allcolu[[ci]]
+    a
   })
-  pchild = Filter(Negate(is.null), pchild)
   
-  pparen = llply(res, function(x) return(x$parent))
-  pparen = Filter(Negate(is.null), pparen)
   
-  return(list(pchild=pchild, pparen=pparen))
+  edf = data.frame(from="",to=meta_cell$phenotype[meta_cell$phenolevel==1])
+  jjl = unique(meta_cell$phenolevel)
+  if (sum(jjl>0)>0) {
+    jjl = jjl[jjl>0]
+    jj_inds = llply(jjl, function(l) which(meta_cell$phenolevel==as.numeric(l)))
+    meta_cell_ = meta_cell[jj_inds[[1]],,drop=F]
+    meta_cell_grid_ = meta_cell_grid[jj_inds[[1]],,drop=F]
+    cat("\n")
+    for (jjli in 1:(length(jj_inds)-1)) {
+      jjci = jj_inds[[jjli+1]]
+      meta_cell__ = meta_cell[jjci,,drop=F]
+      meta_cell_grid__ = meta_cell_grid[jjci,,drop=F]
+      
+      start1 = Sys.time()
+      cat("- ", nrow(meta_cell_), " pops @ layer ", jjli)
+      
+      #child
+      pchildl = do.call(rbind,llply(1:nrow(meta_cell_), function(j) {
+        colj1 = which(meta_cell_grid_[j,]>0)
+        rest = meta_cell_grid_[j,colj1]
+        chi = Reduce("&", llply(colj1, function(coli) 
+          allcol[[coli]][[as.character(rest[coli])]][jjci]) )
+        to = meta_cell__$phenotype[chi]
+        data.frame(from=rep(meta_cell_$phenotype[j], length(to)),
+                   to=to)
+      }, .parallel=parl))
+      edf = rbind(edf,pchildl)
+      
+      meta_cell_ = meta_cell__
+      meta_cell_grid_ = meta_cell_grid__
+      time_output(start1)
+    }
+  }
+  pareni = unique(edf$to)
+  pparen = llply(pareni, function(x) edf$from[edf$to==x])
+  names(pparen) = pareni
+
+  childi = unique(edf$from)
+  pchild = llply(childi, function(x) edf$to[edf$from==x])
+  names(pchild) = childi
+  
+  return(list(pchild=pchild, pparen=pparen, edf=edf))
 }
 
 
@@ -641,10 +609,17 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
 
 
 ## flowgraph initialization -----------------------------------
-flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, markers=NULL,
-                     specenr=T, normalize=T, norm_ind=0, norm_layer=3, norm_path=NULL, no_cores=1, ...) { # layout.circle
+flowgraph = function(input_, meta=NULL, no_cores=1, 
+           layout_fun=layout.reingold.tilford, 
+           markers=NULL,
+           cumsumpos=F, # whether to make positives + = +/++ (cumsum)
+           # prop=T,
+           specenr=T, 
+           normalize=T, 
+           norm_ind=0, norm_layer=3, norm_path=NULL, ...) { # layout.circle
   start = Sys.time()
   
+  require(Matrix)
   require(stringr)
   require(plyr)
   parl = parallel_backend(no_cores)
@@ -671,6 +646,7 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
   # convert input_ into a list of Phenotype objects input
   msg = "make sure input type is correct"
   
+  phenocode = NULL
   if (class(input_)=="integer" | class(input_)=="matrix") {
     ## feature: count (sample x cell population)
     if (is.null(dim(input_))) {
@@ -704,7 +680,7 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
     if (class(input_)=="Phenotypes") {
       ftl = list(input=input_)
     } else if (class(input_)=="list") {
-      testclass = llply(input_, function(x) class(x)=="Phenotypes")
+      testclass = laply(input_, function(x) class(x)=="Phenotypes")
       if (!all(testclass)) badinput = T
       ftl = input_
     } else if (class(input_)=="character") {
@@ -730,6 +706,7 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
       phenotype = laply(ftl[[1]]@PhenoCodes, function(x) 
         decodePhenotype(x, markers, ftl[[1]]@PartitionsPerMarker))
     }, silent=T)
+    if (is.null(phenotype))
     try({
       phenotype = rownames(ftl[[1]]@MFIs)
     }, silent=T)
@@ -737,6 +714,10 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
       print("no phenotype cell populations labels in Phenotype file")
       return(NULL)
     }
+    
+    try ({
+      phenocode = ftl[[1]]@PhenoCodes
+    }, silent=T)
     
     ## feature: count (sample x cell population)
     mc0 = as.matrix(ldply(ftl, function(ft) ft@CellFreqs))
@@ -760,15 +741,18 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
   
   colnames(mc) = phenotype
   rownames(mc) = sample_id
-  mc = mc[,apply(mc, 2, function(x) any(x>0)),drop=F] # remove all 0 columns
+  keepinds = apply(mc, 2, function(x) any(x>0))
+  mc = Matrix(mc[,keepinds,drop=F], sparse=T) # remove all 0 columns
   phenotype = colnames(mc)
+  if (!is.null(phenocode)) phenocode = phenocode[keepinds]
   
   ## make meta for cell populations FINAL
   # markern = length(markers)
-  meta_cell = getPhen(phenotype)
+  meta_cell = getPhen(phenotype,phenocode)
   
   # make parent list (for each cell popultion, list its parents)
   pccell = getPhenCP(meta_cell=meta_cell, no_cores=no_cores)
+  childprop_names = pccell$edf
   pchild = pccell$pchild # not used, returned
   pparen = pccell$pparen
   
@@ -805,19 +789,11 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
   
   time_output(start1)
   
-  time_output(start, "total time used")
-  
   ## list of outputs
   # mc # count matrix
   # mp # proportion matrix
   # childprop_ # edge proportion matrix (colnames = parent_child cell population)
   
-  
-  
-  childprop_names = Reduce("rbind", llply(names(pparen_), function(i) Reduce(rbind,llply(pparen_[[i]], function(j) c(j,i))) ))
-  colnames(childprop_names) = c("from","to")
-  childprop_names = as.data.frame(childprop_names)
-  rownames(childprop_names) = 1:nrow(childprop_names)
   
   gr = list(e=data.frame(childprop_names,width=1,color="", e_ind=F),
             v=data.frame(
@@ -829,11 +805,15 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
   
   if (is.null(meta)) meta = data.frame(id=sample_id)
   fg = new("flowgraph", 
-           node_features=
-             list(count=mc),
-           edge_features=list(), markers=markers,
+           feat=list(node=list(count=mc), edge=list()), 
+           markers=markers,
            graph=gr, edge_list=list(child=pchild_,parent=pparen_), 
-           meta=meta, plot_layout=as.character(substitute(layout_fun)), etc=list())
+           meta=meta, plot_layout=as.character(substitute(layout_fun)), etc=list(cumsumpos=cumsumpos))
+  
+  # if (prop) { # included in specenr
+    fg = flowgraph_prop(fg)
+    fg = flowgraph_prop_edge(fg, no_cores=no_cores)
+  # }
   
   if (normalize)
     fg = flowgraph_normalize(fg, norm_ind=norm_ind, norm_layer=norm_layer, norm_path=norm_path, no_cores=no_cores, ...)
@@ -841,17 +821,240 @@ flowgraph = function(input_, meta=NULL, layout_fun=layout.reingold.tilford, mark
   if (specenr)
     fg = flowgraph_specenr(fg, no_cores=no_cores)
   
+  time_output(start, "total time used")
   return(fg)
 }
 
 
-## feature(optional): normalized (adjusted) count 
-flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_cores=1, ...) {
+## feature: proportion
+flowgraph_prop = function(fg, overwrite=F) {
+  if (!overwrite & "prop"%in%names(fg@feat$node)) {
+    return(fg)
+  }
+  
+  start1 = Sys.time()
+  cat("preparing feature(s): proportion ")
+  
+  mc = fg@feat$node$count
+  mp = mc/mc[,colnames(mc)==""]
+  dimnames(mp) = dimnames(mc)
+  fg@feat$node$prop = mp
+  
+  time_output(start1)
+  return(fg)
+}
+
+
+## feature: edge proportions
+flowgraph_prop_edge = function(fg, no_cores=1, overwrite=F) {
+  if (!overwrite & "prop"%in%names(fg@feat$edge)) {
+    return(fg)
+  }
+
   require(plyr)
   parl = parallel_backend(no_cores)
   if (parl) if (no_cores>detectCores()) no_cores = detectCores()
   
-  mca = mc = fg@node_features$count
+  start1 = Sys.time()
+  cat("preparing feature(s): proportion on edges ")
+  
+  edf = fg@graph$e
+  mc = as.matrix(fg@feat$node$count)
+  rooti = which(colnames(mc)=="")
+  loop_ind = loop_ind_f(1:nrow(edf), no_cores)
+  childprop_ = do.call(cbind,llply(loop_ind, function(ii) {
+    do.call(cbind,llply(ii, function(i) {
+      pname = ifelse(edf$from[i]=="", rooti, edf$from[i])
+      mc[,edf$to[i]]/mc[,pname]
+    }))
+  }, .parallel=parl))
+  colnames(childprop_) = paste0(edf$from,"_",edf$to)
+  childprop_[is.nan(as.matrix(childprop_))] = 0
+  fg@feat$edge$prop = childprop_
+  
+  time_output(start1)
+  return(fg)
+}
+
+
+## feature: specenr
+flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
+  if (!overwrite & "specenr"%in%names(fg@feat$node)) 
+    return(fg)
+  
+  require(gsubfn)
+  require(stringr)
+  require(plyr)
+  parl = parallel_backend(no_cores)
+  if (parl) if (no_cores>detectCores()) no_cores = detectCores()
+  
+  mc = fg@feat$node$count
+  meta_cell = fg@graph$v
+  pparen = fg@edge_list$parent
+  root = which(colnames(mc)=="")
+  if (!"prop"%in%names(fg@feat$node))
+    fg = flowgraph_prop(fg)
+  mp = fg@feat$node$prop
+  if (!"prop"%in%names(fg@feat$edge))
+    fg = flowgraph_prop_edge(fg)
+  ep = fg@feat$edge$prop
+  
+  ## feature: expected proportion
+  
+  cells1 = meta_cell$phenotype[meta_cell$phenolevel==1]
+  cells1 = append("",cells1[cells1%in%names(pparen)])
+  cells = meta_cell$phenotype[meta_cell$phenolevel>1]
+  cells = cells[cells%in%names(pparen)]
+  cellsn = meta_cell$phenolevel
+  pparen = fg@edge_list$parent
+  pchild = fg@edge_list$child
+  ## calculate the expected proportions for cell populatins with positive marker conditions only
+  expe1 = matrix(.5,nrow=nrow(mp), ncol=length(cells1), dimnames=list(rownames(mp),cells1))
+  expe1[,1] = 1
+  
+  cells1_p = str_extract(cells1,"[+]+")
+  maxp = max(nchar(cells1_p[!is.na(cells1_p)]))
+  
+  start1 = Sys.time()
+  cat("preparing feature(s): expected proportion; ")
+  
+  cpind = which(!grepl("[-]",cells))
+  loop_ind = loop_ind_f(cpind,no_cores)
+  expecp = do.call(cbind, llply(loop_ind, function(ii) {
+    do.call(cbind, llply(ii, function(ic) {
+      cpop = i = cells[ic]
+      il = cellsn[ic]
+      
+      pnames = pparen[[i]]
+      parent = mp[,pnames,drop=F]
+      parento = laply(1:nrow(parent), function(xi) order(parent[xi,]))
+      if (is.null(dim(parento))) parento = matrix(parento,nrow=nrow(parent))
+      grprnt = unique(unlist(pparen[pnames]))
+      
+      pedges = do.call(cbind,llply(1:length(pnames), function(gi) {
+        gname = pparen[[pnames[gi]]]
+        cns = paste0(gname,"_",pnames[gi])
+        ep[,cns,drop=F]
+      }))
+      
+      expect1 = rep(0, nrow(parent))
+      for (colj in unique(parento[,1])) {
+        jind = parento[,1]==colj
+        
+        parentjmin = parent[jind,colj]
+        
+        pnamej = gsub("[+]","[+]",pnames[colj])
+        pnamej = gsub("[-]","[-]",pnamej)
+        pedgesnj = pedges[jind,!grepl(pnamej,colnames(pedges)),drop=F]
+        
+        expect1[jind] = apply(pedgesnj,1,max) * parentjmin
+      }
+      return(expect1)
+    }))
+  }, .parallel=parl))
+  expecp[is.nan(expecp)] = 0
+  colnames(expecp) = cells[cpind]
+  
+  
+  ## infer the expected proportion of cell populations with negative marker condition(s)
+  expec0 = expec = as.matrix(cbind(expe1,expecp))
+  cpopneg = setdiff(cells,colnames(expec))
+  cpopnegl = cell_type_layers(cpopneg)
+  
+  # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
+  p = proto(i=1, j=1, fun=function(this, x) if (count>=i && count<=j) "*" else x) 
+  
+  expecn = do.call(cbind,llply(sort(unique(cpopnegl)), function(lev) {
+    cpopl = cpopneg[cpopnegl==lev]
+    cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
+    
+    # ## version 1; DELETE ONE VERSION
+    # expec_temp = NULL
+    # for (negno in sort(unique(cpopnegno))) {
+    #   cpopi = cpopl[cpopnegno==negno]
+    #   sibs = gsubfn("-", p, cpopi)
+    #   for (sib in unique(sibs)) {
+    #     sib_ = sapply(1:maxp, function(pn) 
+    #       gsub("[*]", paste0(rep("+",pn),collapse=""), sib) )
+    #     sib_ = sib_[sib_%in%cells]
+    #     sib_sum = rowSums(mp[,sib_,drop=F])
+    #     sibpars = pparen[[sib_[1]]]
+    #     sibis = which(sibs==sib) # shouldn't be length(sibis)>1, but safe
+    #     for (sibi in sibis) {
+    #       parsin = intersect(sibpars, pparen[[cpopi[sibi]]])
+    #       # if (length(sibpars)>1) #there must be only 1 common parent
+    #       #   for (sibpar in sibpars)
+    #       #     parsin = intersect(sibpar, parsin)
+    #       expec_temp = cbind(expec_temp, mp[,parsin] - sib_sum)
+    #       colnames(expec_temp)[ncol(expec_temp)] = cpopi[sibi]
+    #     }
+    #   }
+    # }
+    
+    ## version 2
+    expec_temp = do.call(cbind,llply(cpopl, function(cpi) {
+      cpig = gsub("[+-]","",cpi)
+      parnames = intersect(pparen[[cpi]],colnames(mp))
+      a = NULL
+      for (parname in parnames) {
+        chilnames = unlist(pchild[[parname]])
+        chilnames = chilnames[chilnames!=cpi]
+        chilnamesg = gsub("[+-]","",chilnames)
+        chilgreat = chilnamesg==cpig & chilnames%in%colnames(expec)
+        if (any(chilgreat)) {
+          a = matrix(mp[,parname]-rowSums(expec[,chilnames[chilgreat],drop=F]),ncol=1)
+          break
+        }
+      }
+      if (is.null(a)) {
+        a = b = mp[,parnames,drop=F]
+        if (ncol(b)>1) a = matrix(apply(b,1,min), ncol=1)
+      }
+      colnames(a) = cpi
+      return(a)
+    }))
+    if (is.null(dim(expec_temp))) expec_temp = matrix(expec_temp,ncol=1)
+    
+    return(expec_temp)
+  }))
+  expec = cbind(expec,expecn)
+  
+  exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
+  a = mp/exp1
+  aa = as.matrix(a)
+  a[is.infinite(aa)] = max(a[is.finite(aa)])
+  a[is.nan(aa)] = 0
+  specenr1 = log(a)
+  specenr1[is.nan(as.matrix(specenr1))] = 0
+  suppressWarnings({ specenr1[exp1==0] = log(mp[exp1==0]) })
+  specenr1[mp==0] = 0
+  
+  fg@feat$node$expect_prop = exp1
+  fg@feat$node$specenr = specenr1
+  
+  if ("count_norm"%in%names(fg@feat$node)) {
+    mca = fg@feat$node$count_norm
+    expc1 = exp1*mca[,1]
+    fg@feat$node$expect_count_norm = expc1
+  }
+  
+  return(fg)
+  
+  time_output(start1)
+}
+
+
+## feature(optional): normalized (adjusted) count 
+flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_cores=1, overwrite=F, ...) {
+  require(plyr)
+  parl = parallel_backend(no_cores)
+  if (parl) if (no_cores>detectCores()) no_cores = detectCores()
+  
+  if (!overwrite & "count_norm"%in%names(fg@feat$node)) {
+    return(fg)
+  }
+  
+  mca = mc = fg@feat$node$count
   fdiff0 = rep(0,nrow(mc))
   f0 = rep(1,nrow(mc))
   root = which(colnames(mc)=="")
@@ -898,7 +1101,7 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
     f0 = fresult$f
     fdiff0 = fresult$fdiff
     
-    mca = Reduce(rbind,llply(c(1:nrow(mc)), function(x) mc[x,]*f0[x]))
+    mca = do.call(rbind,llply(c(1:nrow(mc)), function(x) mc[x,]*f0[x]))
     dimnames(mca) = dimnames(mc)
     
     # plot difference between TMM and peak for all files
@@ -911,227 +1114,15 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
     
     fg@etc$count_norm_factor = f0
     fg@etc$count_norm_factor_diffpeak = fdiff0
-    fg@node_features$count_norm = mca
+    fg@feat$node$count_norm = mca
     
-    if ("specenr"%in%names(fg@node_features))
-      fg@node_features$expect_count_norm = fg@node_features$specenr*mca[,1]
+    if ("specenr"%in%names(fg@feat$node))
+      fg@feat$node$expect_count_norm = fg@feat$node$specenr*mca[,1]
     
     time_output(start1)
   } # return f0 and fdiff0
   
   return(fg)
-}
-
-
-## feature: proportion
-flowgraph_prop = function(fg) {
-  start1 = Sys.time()
-  cat("preparing feature(s): proportion ")
-  
-  mc = fg@node_features$count
-  mp = fg@node_features$prop = mc/mc[,colnames(mc)==""]
-  dimnames(mp) = dimnames(mc)
-  fg@node_features$prop = mp
-  
-  time_output(start1)
-  return(fg)
-}
-
-
-## feature: edge proportions
-flowgraph_prop_edge = function(fg, no_cores=1) {
-  require(plyr)
-  parl = parallel_backend(no_cores)
-  if (parl) if (no_cores>detectCores()) no_cores = detectCores()
-  
-  start1 = Sys.time()
-  cat("preparing feature(s): proportion on edges ")
-  
-  pparen_ = fg@edge_list$parent
-  mc = fg@node_features$count
-  cells_ = colnames(mc)
-  loop_ind = loop_ind_f(which(cells_!=""), no_cores)
-  childprop_ = Reduce("cbind",llply(loop_ind, function(ii) {
-    Reduce("cbind",llply(ii, function(ic) {
-      i = cells_[ic]
-      pnames = pparen_[[i]]
-      if (pnames[1]=="") {
-        parent = mc[,colnames(mc)=="",drop=F]
-      } else {
-        parent = mc[,pnames,drop=F]
-      }
-      childprop2 = mc[,i]/parent
-      colnames(childprop2) = paste0(pnames, "_", i)
-      return(childprop2)
-    }))
-  }, .parallel=parl))
-  
-  childprop_[is.nan(childprop_)] = 0
-  fg@edge_features$prop = childprop_
-  
-  time_output(start1)
-  return(fg)
-}
-
-
-## feature: specenr
-flowgraph_specenr = function(fg, no_cores=1) {
-  require(gsubfn)
-  require(stringr)
-  require(plyr)
-  parl = parallel_backend(no_cores)
-  if (parl) if (no_cores>detectCores()) no_cores = detectCores()
-  
-  mc = fg@node_features$count
-  meta_cell = fg@graph$v
-  pparen = fg@edge_list$parent
-  root = which(colnames(mc)=="")
-  if (!"prop"%in%names(fg@node_features))
-    fg = flowgraph_prop(fg)
-  mp = fg@node_features$prop
-  if (!"prop"%in%names(fg@edge_features))
-    fg = flowgraph_prop_edge(fg)
-  ep = fg@edge_features$prop
-  
-  ## feature: expected proportion
-  
-  cells1 = meta_cell$phenotype[meta_cell$phenolevel==1]
-  cells1 = append("",cells1[cells1%in%names(pparen)])
-  cells = meta_cell$phenotype[meta_cell$phenolevel>1]
-  cells = cells[cells%in%names(pparen)]
-  cellsn = meta_cell$phenolevel
-  pparen_ = fg@edge_list$parent
-  
-  ## calculate the expected proportions for cell populatins with positive marker conditions only
-  expe1 = matrix(.5,nrow=nrow(mp), ncol=length(cells1), dimnames=list(rownames(mp),cells1))
-  expe1[,1] = 1
-  
-  cells1_p = str_extract(cells1,"[+]+")
-  maxp = max(nchar(cells1_p[!is.na(cells1_p)]))
-  
-  start1 = Sys.time()
-  cat("preparing feature(s): expected proportion; ")
-  
-  cpind = which(!grepl("[-]",cells))
-  loop_ind = loop_ind_f(cpind,no_cores)
-  expecp = Reduce("cbind", llply(loop_ind, function(ii) {
-    Reduce("cbind", llply(ii, function(ic) {
-      cpop = i = cells[ic]
-      il = cellsn[ic]
-      
-      pnames = pparen_[[i]]
-      parent = mp[,pnames,drop=F]
-      parento = laply(1:nrow(parent), function(xi) order(parent[xi,]))
-      if (is.null(dim(parento))) parento = matrix(parento,nrow=nrow(parent))
-      grprnt = unique(unlist(pparen_[pnames]))
-      
-      pedges = Reduce(cbind,llply(1:length(pnames), function(gi) {
-        gname = pparen_[[pnames[gi]]]
-        cns = paste0(gname,"_",pnames[gi])
-        ep[,cns,drop=F]
-      }))
-      
-      expect1 = rep(0, nrow(parent))
-      for (colj in unique(parento[,1])) {
-        jind = parento[,1]==colj
-        
-        parentjmin = parent[jind,colj]
-        
-        pnamej = gsub("[+]","[+]",pnames[colj])
-        pnamej = gsub("[-]","[-]",pnamej)
-        pedgesnj = pedges[jind,!grepl(pnamej,colnames(pedges)),drop=F]
-        
-        expect1[jind] = apply(pedgesnj,1,max) * parentjmin
-      }
-      return(expect1)
-    }))
-  }, .parallel=parl))
-  expecp[is.nan(expecp)] = 0
-  colnames(expecp) = cells[cpind]
-  
-  
-  ## infer the expected proportion of cell populations with negative marker condition(s)
-  expec = as.matrix(cbind(expe1,expecp))
-  cpopneg = setdiff(cells,colnames(expec))
-  cpopnegl = cell_type_layers(cpopneg)
-  
-  # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
-  p = proto(i=1, j=1, fun=function(this, x) if (count>=i && count<=j) "*" else x) 
-  
-  expecn = Reduce("cbind",llply(sort(unique(cpopnegl)), function(lev) {
-    cpopl = cpopneg[cpopnegl==lev]
-    cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
-    
-    ## version 1; DELETE ONE VERSION
-    expec_temp = NULL
-    for (negno in sort(unique(cpopnegno))) {
-      cpopi = cpopl[cpopnegno==negno]
-      sibs = gsubfn("-", p, cpopi)
-      for (sib in unique(sibs)) {
-        sib_ = sapply(1:maxp, function(pn) 
-          gsub("[*]", paste0(rep("+",pn),collapse=""), sib) )
-        sib_ = sib_[sib_%in%cells]
-        sib_sum = rowSums(mp[,sib_,drop=F])
-        sibpars = pparen_[[sib_[1]]]
-        sibis = which(sibs==sib) # shouldn't be length(sibis)>1, but safe
-        for (sibi in sibis) {
-          parsin = intersect(sibpars, pparen_[[cpopi[sibi]]])
-          # if (length(sibpars)>1) #there must be only 1 common parent
-          #   for (sibpar in sibpars)
-          #     parsin = intersect(sibpar, parsin)
-          expec_temp = cbind(expec_temp, mp[,parsin] - sib_sum)
-          colnames(expec_temp)[ncol(expec_temp)] = cpopi[sibi]
-        }
-      }
-    }
-    
-    # ## version 2
-    # expec_temp = Reduce(cbind,llply(cpopl, function(cpi) {
-    #   cpig = gsub("[+-]","",cpi)
-    #   parnames = intersect(pparen_[[cpi]],colnames(mp))
-    #   a = NULL
-    #   for (parname in parnames) {
-    #     chilnames = unlist(pchild[[parname]])
-    #     chilnames = chilnames[chilnames!=cpi]
-    #     chilnamesg = gsub("[+-]","",chilnames)
-    #     chilgreat = chilnamesg==cpig & chilnames%in%colnames(expec)
-    #     if (any(chilgreat)) {
-    #       a = matrix(mp[,parname]-rowSums(expec[,chilnames[chilgreat],drop=F]),ncol=1)
-    #       break
-    #     }
-    #   }
-    #   if (is.null(a)) {
-    #     a = b = mp[,parnames,drop=F]
-    #     if (ncol(b)>1) a = matrix(apply(b,1,min), ncol=1)
-    #   }
-    #   colnames(a) = cpi
-    #   return(a)
-    # }))
-    # if (is.null(dim(expec_temp))) expec_temp = matrix(expec_temp,ncol=1)
-    
-    return(expec_temp)
-  }))
-  expec = cbind(expec,expecn)
-  
-  exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
-  a = mp/exp1
-  a[is.infinite(a)] = max(a[is.finite(a)])
-  a[is.nan(a)] = 0
-  lnpropexpect1 = log(a)
-  lnpropexpect1[is.nan(lnpropexpect1)] = 0
-  lnpropexpect1[exp1==0] = log(mp[exp1==0])
-  lnpropexpect1[mp==0] = 0
-  
-  fg@node_features$expect_prop = exp1
-  fg@node_features$specenr = lnpropexpect1
-  
-  if ("count_norm"%in%names(fg@node_features)) {
-    mca = fg@node_features$count_norm
-    expc1 = exp1*mca[,1]
-    fg@node_features$expect_count_norm = expc1
-  }
-  
-  time_output(start1)
 }
 
 
@@ -1141,7 +1132,7 @@ flowgraph_mean_class = function(fg, class, no_cores=1, node_features=NULL, edge_
   if (parl) if (no_cores>detectCores()) no_cores = detectCores()
   
   if (!class%in%colnames(fg@meta)) {
-    cat("invalid class name, choose one from @meta")
+    cat("invalid class name, choose one from @meta\n")
     return(fg)
   }
   if (length(unique(fg@meta[,class]))<2) return(fg)
@@ -1153,32 +1144,32 @@ flowgraph_mean_class = function(fg, class, no_cores=1, node_features=NULL, edge_
       pii = classcol==pi
       m_ = m[pii,,drop=F]
       m_m = colMeans(m_)
-      m[pii,] = Reduce(rbind, llply(1:nrow(m_), function(i) m_[i,]-m_m ))
+      m[pii,] = do.call(rbind, llply(1:nrow(m_), function(i) m_[i,]-m_m ))
     }
     dimnames(m) = dimnames(m0)
     return(m)
   }
   
-  if (is.null(node_features)) node_features = names(fg@node_features)
-  node_features = node_features[node_features%in%names(fg@node_features)]
+  if (is.null(node_features)) node_features = names(fg@feat$node)
+  node_features = node_features[node_features%in%names(fg@feat$node)]
   node_features = node_features[!grepl("MEAN", names(node_features))]
   if (length(node_features)>0) {
-    fg_nodefs0 = fg@node_features[node_features]
+    fg_nodefs0 = fg@feat$node[node_features]
     fg_nodefs = llply(fg_nodefs0, function(m0) 
       meandiff(m0, fg@meta[,class]), .parallel=parl)
     names(fg_nodefs) = paste0(names(fg_nodefs),label)
-    fg@node_features = append(fg@node_features, fg_nodefs)
+    fg@feat$node = append(fg@feat$node, fg_nodefs)
   }
   
-  if (is.null(edge_features)) edge_features = names(fg@edge_features)
-  edge_features = edge_features[edge_features%in%names(fg@edge_features)]
+  if (is.null(edge_features)) edge_features = names(fg@feat$edge)
+  edge_features = edge_features[edge_features%in%names(fg@feat$edge)]
   edge_features = edge_features[!grepl("MEAN", names(edge_features))]
   if (length(edge_features)>0) {
-    fg_edgefs0 = fg@edge_features[edge_features]
+    fg_edgefs0 = fg@feat$edge[edge_features]
     fg_edgefs = llply(fg_edgefs0, function(m0) 
       meandiff(m0, fg@meta[,class]), .parallel=parl)
     names(fg_nodefs) = paste0(names(fg_edgefs),label)
-    fg@edge_features = append(fg@edge_features, fg_edgefs)
+    fg@feat$edge = append(fg@feat$edge, fg_edgefs)
   }
   
   return(fg)
@@ -1204,21 +1195,21 @@ flowgraph_p = function(
   if (parl) if (no_cores>detectCores()) no_cores = detectCores()
   
   if (!class%in%colnames(fg@meta)) {
-    cat("invalid class, choose one from @meta")
+    cat("invalid class, choose one from @meta\n")
     return(fg)
   }
   
   classes_ = fg@meta[,class]
   classes = unique(classes_)
   if (length(classes)<2) {
-    cat("invalid class, choose one from @meta")
+    cat("invalid class, choose one from @meta\n")
     return(fg)
   }
   
   # class list lists what classes to compare
   if (!is.null(control)) {
     if (!control%in%fg@meta[,class]) {
-      cat("invalid control, choose one from @meta")
+      cat("invalid control, choose one from @meta\n")
       return(fg)
     }
     class_list = llply(classes[classes!=control], function(x) c(control, x))
@@ -1227,33 +1218,33 @@ flowgraph_p = function(
       llply(1:(i-1), function(j) c(classes[i], classes[j])))
   }
   
-  if (is.null(node_features)) node_features = names(fg@node_features)
-  node_features = node_features[node_features%in%names(fg@node_features)]
+  if (is.null(node_features)) node_features = names(fg@feat$node)
+  node_features = node_features[node_features%in%names(fg@feat$node)]
   if (length(node_features)>0) {
     for (classl in class_list) {
       for (node_feature in node_features) {
         # prep index
         nfi = 1
-        if (test_name%in%names(fg@node_p_class)) {
-          if (class%in%names(fg@node_p_class[[test_name]])) {
-            if (node_feature%in%fg@node_p_class[[test_name]][[class]]) {
-              nfi = which(sapply(fg@node_p_class[[test_name]][[class]][[node_feature]], function(x)
+        if (test_name%in%names(fg@feat_summary$desc$node)) {
+          if (class%in%names(fg@feat_summary$desc$node[[test_name]])) {
+            if (node_feature%in%fg@feat_summary$desc$node[[test_name]][[class]]) {
+              nfi = which(sapply(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]], function(x)
                 setequal(names(x),classl)))
               if (length(nfi)!=0) {
                 if (!overwrite) next
               } else {
-                nfi = length(fg@node_p_class[[test_name]][[class]][[node_feature]]) + 1
+                nfi = length(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]]) + 1
               }
             }
           }
         }
-        id1 = fg@node_p_class[[test_name]][[class]][[node_feature]][[nfi]][[1]] = 
+        id1 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[1]] = 
           fg@meta$id[classes_==classl[1]]
-        id2 = fg@node_p_class[[test_name]][[class]][[node_feature]][[nfi]][[2]] = 
+        id2 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[2]] = 
           fg@meta$id[classes_==classl[2]]
-        names(fg@node_p_class[[test_name]][[class]][[node_feature]][[nfi]]) = classl
+        names(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]]) = classl
         
-        m = fg@node_features[[node_feature]]
+        m = fg@feat$node[[node_feature]]
         m1 = m[id1,]
         m2 = m[id2,]
         
@@ -1293,38 +1284,38 @@ flowgraph_p = function(
         }
         names(p) = colnames(m)
         
-        fg@node_p[[test_name]][[class]][[node_feature]][[nfi]] = p
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]] = p
       }
     }
   }
   
-  if (is.null(edge_features)) edge_features = names(fg@edge_features)
-  edge_features = edge_features[edge_features%in%names(fg@edge_features)]
+  if (is.null(edge_features)) edge_features = names(fg@feat$edge)
+  edge_features = edge_features[edge_features%in%names(fg@feat$edge)]
   if (length(edge_features)>0) {
     for (classl in class_list) {
       for (edge_feature in edge_features) {
         # prep index
         nfi = 1
-        if (test_name%in%names(fg@edge_p_class)) {
-          if (class%in%names(fg@edge_p_class[[test_name]])) {
-            if (edge_feature%in%fg@edge_p_class[[test_name]][[class]]) {
-              nfi = which(sapply(fg@edge_p_class[[test_name]][[class]][[edge_feature]], function(x)
+        if (test_name%in%names(fg@feat_summary$desc$edge)) {
+          if (class%in%names(fg@feat_summary$desc$edge[[test_name]])) {
+            if (edge_feature%in%fg@feat_summary$desc$edge[[test_name]][[class]]) {
+              nfi = which(sapply(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]], function(x)
                 setequal(names(x),classl)))
               if (length(nfi)!=0) {
                 if (!overwrite) next
               } else {
-                nfi = length(fg@edge_p_class[[test_name]][[class]][[edge_feature]]) + 1
+                nfi = length(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]]) + 1
               }
             }
           }
         }
-        id1 = fg@edge_p_class[[test_name]][[class]][[edge_feature]][[nfi]][[1]] = 
+        id1 = fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]][[1]] = 
           fg@meta$id[classes_==classl[1]]
-        id2 = fg@edge_p_class[[test_name]][[class]][[edge_feature]][[nfi]][[2]] = 
+        id2 = fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]][[2]] = 
           fg@meta$id[classes_==classl[2]]
-        names(fg@edge_p_class[[test_name]][[class]][[edge_feature]][[nfi]]) = classl
+        names(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]]) = classl
         
-        m = fg@edge_features[[edge_feature]]
+        m = fg@feat$edge[[edge_feature]]
         m1 = m[id1,]
         m2 = m[id2,]
         
@@ -1363,12 +1354,49 @@ flowgraph_p = function(
         }
         names(p) = colnames(m)
         
-        fg@edge_p[[test_name]][[class]][[edge_feature]][[nfi]] = p
+        fg@feat_summary$edge[[test_name]][[class]][[edge_feature]][[nfi]] = p
       }
     }
   }
   
   return(fg)
+}
+
+
+## flowgraph_cumsum ----------------------------
+flowgraph_cumsum = function(fg, no_cores) {
+  # check if already cumsum
+  if (fg@etc$cumsumpos) return(fg)
+  
+  # check if do-able (there exists multple ++)
+  if (!any(grepl("3",fg@graph$v$phenocode))) return(fg)
+  
+  mc = fg@feat$node$count
+  pparen = fg@edge_list$parent
+  meta_cell = fg@graph$v
+  meta_cell_grid = do.call(rbind, str_split(meta_cell$phenocode,""))
+  meta_cell_grid = apply(meta_cell_grid, 2, as.numeric)
+  meta_cell_grid = Matrix(meta_cell_grid,sparse=T)
+  
+  meta_cell_gridTF = apply(meta_cell_grid,2, function(x) {
+    xmax = max(x)
+    if (xmax==2) return(rep(F,length(x)))
+    x>1 & x<xmax
+  })
+  meta_cell_gridTF_sum = apply(meta_cell_gridTF,1,sum)
+  meta_cell_gridTF_any = meta_cell_gridTF_sum>0
+  ccol = which(apply(meta_cell_gridTF, 2, any))
+  
+  for (marker in ccol) {
+    coldo = which(meta_cell_gridTF[,marker])
+    coldo = coldo[order(meta_cell_grid[coldo,marker], decreasing=T)]
+    mc[,coldo] = do.call(cbind,llply(coldo, function(j) {
+      mcgi = mcgis = mcgip = meta_cell_grid[j,]
+      mcgis[marker] = mcgis[marker]+1
+      jsib = meta_cell$phenocode==paste0(mcgis,collapse="")
+      mc[,j] = mc[,j] + mc[,jsib]
+    }))
+  }
 }
 
 
@@ -1378,9 +1406,9 @@ flowgraph_p = function(
 setMethod(
   "show", "flowgraph",
   function(object) 
-    cat("flowgraph object with ", length(object@node_features)," cell population and ", length(object@edge_features), " edge feature(s)", 
-        "\n- markers: ", object@markers,
-        "\n- contains: ", nrow(object@graph$v), " cell populations and ", nrow(object@graph$e), " edges", sep="")
+    cat("flowgraph object with ", length(object@feat$node)," cell population and ", length(object@feat$edge), " edge feature(s)", 
+        "\n- markers: ", paste0(object@markers, collapse=", "),
+        "\n- contains: ", nrow(object@graph$v), " cell populations and ", nrow(object@graph$e), " edges\n", sep="")
 )
 
 
@@ -1388,22 +1416,25 @@ setMethod(
   "summary", "flowgraph",
   function(object) {
     show(object)
-    cat("\n\n")
+    cat("\n")
     
-    summary_table = function(m, feat_type) 
+    summary_table = function(m, feat_type) {
+      m = as.matrix(m)
       data.frame(feat=feat_type, nrow=nrow(m), ncol=ncol(m), 
-                 inf=sum(is.infinite(m)), na=sum(is.na(m)), nan= sum(is.nan(m)), 
+                 inf=sum(is.infinite(m)), neginf=sum(m==-Inf), na=sum(is.na(m)), nan= sum(is.nan(m)), 
                  neg=sum(m<0), pos=sum(m>0), zero=sum(m==0), max=max(m[is.finite(m)]), min=min(m[is.finite(m)]))
+      
+    }
     
-    result1 = ldply(names(object@node_features), function(x) 
-      summary_table(object@node_features[[x]],x))
+    result1 = ldply(names(object@feat$node), function(x) 
+      summary_table(object@feat$node[[x]],x))
     result1 = data.frame(type=rep("node",nrow(result1)),result1)
     
     result2 = NULL
-    if (length(object@edge_features)>0) {
-      result2 = ldply(names(object@edge_features), function(x)
-        summary_table(object@edge_features[[x]],x))
-      result2 = data.frame(type=rep("node",nrow(result2)),result2)
+    if (length(object@feat$edge)>0) {
+      result2 = ldply(names(object@feat$edge), function(x)
+        summary_table(object@feat$edge[[x]],x))
+      result2 = data.frame(type=rep("edge",nrow(result2)),result2)
     }
     
     tab = rbind(result1,result2)

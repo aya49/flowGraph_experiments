@@ -60,7 +60,7 @@ for (i in 1:ncol(meta_file0))
 markers = get(load(markers_dir))
 
 # ## this or
-# m00 = llply(loopInd(1:length(ft_dirs),no_cores),function(ii)
+# m00 = llply(loop_ind_f(1:length(ft_dirs),no_cores),function(ii)
 #   llply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs), .parallel=T)
 # m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
 # rownames(m00) = ft_names
@@ -68,7 +68,7 @@ markers = get(load(markers_dir))
 # fg0 = flowgraph(m00, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=F)
 
 ## that
-fg0 = flowgraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=F)
+fg0 = flowgraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=T)
 
 randomindp = randomindc = NULL
 for (tube in unique(meta_file0$tube)) {
@@ -83,7 +83,7 @@ for (tube in unique(meta_file0$tube)) {
   
   ## extract controls
   fg_c = extract_samples(fg, fg@meta$id[fg@meta$class=="control"])
-  fg_c = flowgraph_specenr(fg_c, no_cores=no_cores) # specenr
+  dir.create(paste0(result_dir0, "_", tube, "_ctrl"), showWarnings=F)
   save(fg_c, file=paste0(result_dir0, "_", tube, "_ctrl/fg.Rdata"))
   
   
@@ -115,7 +115,7 @@ for (tube in unique(meta_file0$tube)) {
   )
   fg1 = fg
   fg = merge_samples(fg1, fg2)
-  fg = flowgraph_specenr(fg, no_cores) # specenr
+  dir.create(paste0(result_dir0, "_", tube), showWarnings=F)
   save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
 }
 
@@ -138,6 +138,7 @@ start = Sys.time()
 
 ## prepare flowtype directories
 ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+names(ftl) = gsub("[%]","",names(ftl))
 markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
 
 ## prepare meta
@@ -364,7 +365,7 @@ thress0 = llply(markers, function(x) p50); names(thress0) = markers
 thress5[[markers[1]]] = c(p25,p50)
 thress5[[markers[2]]] = c(p25,p50,p60)
 
-for (ds in c(paste0("pos",c(1:32)))) {
+for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
   start2 = Sys.time()
   
   # ouput directories
@@ -386,12 +387,12 @@ for (ds in c(paste0("pos",c(1:32)))) {
   lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
   
   # flowtype
-  ftl = llply(loopInd(1:nsample,no_cores), function(ii) {
+  ftl = llply(loop_ind_f(1:nsample,no_cores), function(ii) {
     llply(ii, function(i) {
       # v1 randomized matrix
       f@exprs = fex1 = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
-      if (ds=="pos41") f@exprs = f@exprs[,-1]
-      if (ds=="pos42") f@exprs = f@exprs[,-2]
+      if (ds=="pos31") f@exprs = f@exprs[,-1]
+      if (ds=="pos32") f@exprs = f@exprs[,-2]
       
       # # v2 randomized matrix: randomly define last layer pops
       # lastlm = normean/length(lastlcp)
@@ -735,7 +736,7 @@ for (ds in c(paste0("pos",c(1:32)))) {
   save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
   time_output(start2, ds)
-  rm(list=c("ftl","ft","m0")); gc()
+  rm(list=c("ftl","ft","fg")); gc()
 }
 time_output(start)
 
