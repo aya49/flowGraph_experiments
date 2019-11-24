@@ -507,7 +507,6 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
     a
   })
   
-  
   edf = data.frame(from="",to=meta_cell$phenotype[meta_cell$phenolevel==1])
   jjl = unique(meta_cell$phenolevel)
   if (sum(jjl>0)>0) {
@@ -527,12 +526,12 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
       #child
       pchildl = do.call(rbind,llply(1:nrow(meta_cell_), function(j) {
         colj1 = which(meta_cell_grid_[j,]>0)
-        rest = meta_cell_grid_[j,colj1]
+        mcgrow = meta_cell_grid_[j,]
         chi = Reduce("&", llply(colj1, function(coli) 
-          allcol[[coli]][[as.character(rest[coli])]][jjci]) )
+          allcol[[coli]][[as.character(mcgrow[coli])]][jjci]) )
         to = meta_cell__$phenotype[chi]
-        data.frame(from=rep(meta_cell_$phenotype[j], length(to)),
-                   to=to)
+        return(data.frame(
+          from=rep(meta_cell_$phenotype[j], length(to)),to=to))
       }, .parallel=parl))
       edf = rbind(edf,pchildl)
       
