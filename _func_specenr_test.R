@@ -79,7 +79,7 @@ for (tube in unique(meta_file0$tube)) {
   marker = markers[[tube]]
   fg = gsub_markers(fg, marker)
   
-  mc = fg@node_features$count_norm
+  mc = fg@feat$node$count_norm
   
   ## extract controls
   fg_c = extract_samples(fg, fg@meta$id[fg@meta$class=="control"])
@@ -104,7 +104,7 @@ for (tube in unique(meta_file0$tube)) {
 
   # meta
   fg2 = fg
-  fg2@node_features$count_norm = fg2@node_features$count = mc2
+  fg2@feat$node$count_norm = fg2@feat$node$count = mc2
   fg2@meta = meta2 = data.frame(
     class=rep("mix", length(randomindp)), 
     id=rownames(mc2), 

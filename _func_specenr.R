@@ -454,7 +454,7 @@ cell_type_layers = function(phen) sapply(str_split(phen,"[+-]+"), function(x) su
 
 
 ## input: Phenotype
-## output: Phenotype, PhenoCode, Phenolevel (number of markers per phenotype)
+## output: Phenotype, PhenoCode, Phenolayer (number of markers per phenotype)
 getPhen = function(phen, phenocode=NULL) {
   require(stringr)
   pm = data.frame(phenotype=phen)
@@ -475,7 +475,7 @@ getPhen = function(phen, phenocode=NULL) {
   } else {
     pm$phenocode = phenocode
   }
-  pm$phenolevel = cell_type_layers(phen)
+  pm$phenolayer = cell_type_layers(phen)
   pm$phenotype = as.character(pm$phenotype)
   
   return(pm)
@@ -494,11 +494,8 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   } else if (is.null(meta_cell)) {
     meta_cell = getPhen(cp)
   }
-  mcorder = order(meta_cell$phenolevel)
-  meta_cell = meta_cell[mcorder,]
   meta_cell_grid = do.call(rbind, str_split(meta_cell$phenocode,""))
-  meta_cell_grid = apply(meta_cell_grid, 2, as.numeric)
-  meta_cell_grid = Matrix(meta_cell_grid,sparse=T)[mcorder,]
+  meta_cell_grid = Matrix(apply(meta_cell_grid,2,as.numeric),sparse=T)
   allcolu = llply(1:ncol(meta_cell_grid), function(j) unique(meta_cell_grid[,j]))
   allcol = llply(1:length(allcolu), function(ci) {
     a = llply(allcolu[[ci]], function(ui) 
@@ -507,46 +504,66 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
     a
   })
   
-  edf = data.frame(from="",to=meta_cell$phenotype[meta_cell$phenolevel==1])
-  jjl = unique(meta_cell$phenolevel)
-  if (sum(jjl>0)>0) {
+  pchild = list(meta_cell$phenotype[meta_cell$phenolayer==1])
+  names(pchild) = ""
+  pparen = llply(1:length(pchild[[1]]), function(x) "")
+  names(pparen) = pchild[[1]]
+  
+  jjl = sort(unique(meta_cell$phenolayer))
+  if (length(jjl)>2) {
     jjl = jjl[jjl>0]
-    jj_inds = llply(jjl, function(l) which(meta_cell$phenolevel==as.numeric(l)))
-    meta_cell_ = meta_cell[jj_inds[[1]],,drop=F]
-    meta_cell_grid_ = meta_cell_grid[jj_inds[[1]],,drop=F]
+    jj_inds = llply(jjl, function(l) which(meta_cell$phenolayer==as.numeric(l)))
     cat("\n")
-    for (jjli in 1:(length(jj_inds)-1)) {
-      jjci = jj_inds[[jjli+1]]
-      meta_cell__ = meta_cell[jjci,,drop=F]
-      meta_cell_grid__ = meta_cell_grid[jjci,,drop=F]
-      
+    for (jjli in 2:length(jj_inds)) {
       start1 = Sys.time()
-      cat("- ", nrow(meta_cell_), " pops @ layer ", jjli)
+      
+      meta_cell_ = meta_cell[jj_inds[[jjli-1]],,drop=F]
+      meta_cell__ = meta_cell[jj_inds[[jjli]],,drop=F]
+      meta_cell_grid_ = meta_cell_grid[jj_inds[[jjli-1]],,drop=F]
+      meta_cell_grid__ = meta_cell_grid[jj_inds[[jjli]],,drop=F]
+      
+      cat("- ", nrow(meta_cell_), " pops @ layer ", jjli-1)
+      allcol__ = llply(allcol, function(x) 
+        llply(x, function(y) y[jj_inds[[jjli]]]))
+      allcol_ = llply(allcol, function(x) 
+        llply(x, function(y) y[jj_inds[[jjli-1]]]))
       
       #child
-      pchildl = do.call(rbind,llply(1:nrow(meta_cell_), function(j) {
-        colj1 = which(meta_cell_grid_[j,]>0)
-        mcgrow = meta_cell_grid_[j,]
-        chi = Reduce("&", llply(colj1, function(coli) 
-          allcol[[coli]][[as.character(mcgrow[coli])]][jjci]) )
-        to = meta_cell__$phenotype[chi]
-        return(data.frame(
-          from=rep(meta_cell_$phenotype[j], length(to)),to=to))
-      }, .parallel=parl))
-      edf = rbind(edf,pchildl)
+      loop_ind = loop_ind_f(1:nrow(meta_cell_), no_cores)
+      pchildl = llply(loop_ind, function(jj) 
+        llply(jj, function(j) {
+          colj1 = which(meta_cell_grid_[j,]>0)
+          mcgrow = meta_cell_grid_[j,]
+          chi = Reduce("&", llply(colj1, function(coli) 
+            allcol__[[coli]][[as.character(mcgrow[coli])]]) )
+          meta_cell__$phenotype[chi]
+        }), .parallel=parl)
+      pchildl = unlist(pchildl,recursive=F)
+      names(pchildl) = meta_cell_$phenotype
+      pchildl = plyr::compact(pchildl)
+      pchild = append(pchild, pchildl)
       
-      meta_cell_ = meta_cell__
-      meta_cell_grid_ = meta_cell_grid__
+      #paren
+      loop_ind = loop_ind_f(1:nrow(meta_cell__), no_cores)
+      pparenl = llply(loop_ind, function(jj) 
+        llply(jj, function(j) {
+          colj1 = which(meta_cell_grid__[j,]>0)
+          mcgrow = meta_cell_grid_[j,]
+          chidf = do.call(cbind, llply(colj1, function(coli) 
+            allcol_[[coli]][[as.character(mcgrow[coli])]]) )
+          chi = apply(chidf,1,function(x) sum(!x)==1)
+          meta_cell_$phenotype[chi]
+        }), .parallel=parl)
+      pparenl = unlist(pparenl,recursive=F)
+      names(pparenl) = meta_cell__$phenotype
+      pchildl = plyr::compact(pparenl)
+      pparen = append(pparen, pparenl)
+      
       time_output(start1)
     }
   }
-  pareni = unique(edf$to)
-  pparen = llply(pareni, function(x) edf$from[edf$to==x])
-  names(pparen) = pareni
-
-  childi = unique(edf$from)
-  pchild = llply(childi, function(x) edf$to[edf$from==x])
-  names(pchild) = childi
+  edf = do.call(rbind, llply(names(pparen), function(x)
+    data.frame(from=pparen[[x]], to=x)))
   
   return(list(pchild=pchild, pparen=pparen, edf=edf))
 }
@@ -756,14 +773,14 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
   pparen = pccell$pparen
   
   # extract cell populations that have parents to calculate expected proportions for; just to be safe
-  cells1 = meta_cell$phenotype[meta_cell$phenolevel==1]
+  cells1 = meta_cell$phenotype[meta_cell$phenolayer==1]
   cells1 = append("",cells1[cells1%in%names(pparen)])
-  cells = meta_cell$phenotype[meta_cell$phenolevel>1]
+  cells = meta_cell$phenotype[meta_cell$phenolayer>1]
   cells = cells[cells%in%names(pparen)]
   cells_ = append(cells1,cells)
   
   meta_cell = meta_cell[match(cells_,meta_cell$phenotype),]
-  root = which(meta_cell$phenolevel==0)
+  root = which(meta_cell$phenolayer==0)
   
   mc = mc[,match(cells_, colnames(mc))] # finalize cell populations
   
@@ -885,24 +902,21 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   parl = parallel_backend(no_cores)
   if (parl) if (no_cores>detectCores()) no_cores = detectCores()
   
-  mc = fg@feat$node$count
   meta_cell = fg@graph$v
   pparen = fg@edge_list$parent
-  root = which(colnames(mc)=="")
   if (!"prop"%in%names(fg@feat$node))
     fg = flowgraph_prop(fg)
   mp = fg@feat$node$prop
   if (!"prop"%in%names(fg@feat$edge))
     fg = flowgraph_prop_edge(fg)
   ep = fg@feat$edge$prop
+  root = which(colnames(mp)=="")
   
   ## feature: expected proportion
   
-  cells1 = meta_cell$phenotype[meta_cell$phenolevel==1]
-  cells1 = append("",cells1[cells1%in%names(pparen)])
-  cells = meta_cell$phenotype[meta_cell$phenolevel>1]
-  cells = cells[cells%in%names(pparen)]
-  cellsn = meta_cell$phenolevel
+  cells1 = append("",meta_cell$phenotype[meta_cell$phenolayer==1])
+  cells = meta_cell$phenotype[meta_cell$phenolayer>1]
+  cellsn = meta_cell$phenolayer
   pparen = fg@edge_list$parent
   pchild = fg@edge_list$child
   ## calculate the expected proportions for cell populatins with positive marker conditions only
@@ -1062,7 +1076,7 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
     
     sample_id = fg@meta$id
     meta_cell = fg@graph$v
-    maxlayer = max(meta_cell$phenolevel)
+    maxlayer = max(meta_cell$phenolayer)
     
     # prepare feat_file_cell_counts
     x = x0 = as.matrix(mc)[,-root,drop=F] # take out total cell count
@@ -1080,7 +1094,7 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
     # extract cell populations that would define TMM (layer/count)
     if (!is.null(norm_layer)) {
       norm_layer[norm_layer>maxlayer] = maxlayer
-      x = x[,colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolevel%in%norm_layer], drop=F]
+      x = x[,colnames(x0)%in%meta_cell$phenotype[meta_cell$phenolayer%in%norm_layer], drop=F]
     }
     
     # prepare paths to plot to
@@ -1182,7 +1196,7 @@ flowgraph_p = function(
   test_name="t_BY", # name your statistical test / adjustment method; if same name, overwrite=T will overwrite, overwrite=F will return nothing
   diminish=F, # don't test if all parents are insignificant, stricter the lower the layer
   p_thres=.05, # only used if diminish=T
-  diminish_level=3, # only used if diminish=T; >3 levels won't be tested if parent not significant
+  diminish_layer=3, # only used if diminish=T; >3 layers won't be tested if parent not significant
   test=function(x,y) tryCatch(t.test(x,y)$p.value, error=function(e) 1), 
   adjust=function(x) p.adjust(x, method="BY")
 ) {
@@ -1251,20 +1265,20 @@ flowgraph_p = function(
             llply(ii, function(i) test(m1[,i], m2[,i])), .parallel=parl ))
           p = adjust(p)
         } else {
-          root = which(levels==0) # should be 1
+          root = which(layers==0) # should be 1
           pparen = fg@edge_list$parent
           
-          levels_ = fg@graph$v$phenolevel
-          levels = order(unique(levels_))
-          loop_ind_ = llply(levels[-root], function(l) which(levels_==l))
+          layers_ = fg@graph$v$phenolayer
+          layers = order(unique(layers_))
+          loop_ind_ = llply(layers[-root], function(l) which(layers_==l))
           
           root_ = which(colnames(m)=="")
           p = rep(NA,ncol(m))
           p[root_] = test(m1[,root_], m2[,root_])
           names(p)[root_] = ""
           
-          for (lvl in levels[-root]) {
-            lvlover = lvl>diminish_level
+          for (lvl in layers[-root]) {
+            lvlover = lvl>diminish_layer
             loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
             p[loop_ind_[[lvl]]] = unlist(llply(loop_ind, function(ii) 
               llply(ii, function(i) {
@@ -1326,14 +1340,14 @@ flowgraph_p = function(
           
           phen_to = fg@graph$e$to
           phen_from = fg@graph$e$from
-          levels_ = fg@graph$v$phenolevel[match(phen_to, fg@graph$v$phenotype)]
-          levels = order(unique(levels_))
-          loop_ind_ = llply(levels, function(l) which(levels_==l))
+          layers_ = fg@graph$v$phenolayer[match(phen_to, fg@graph$v$phenotype)]
+          layers = order(unique(layers_))
+          loop_ind_ = llply(layers, function(l) which(layers_==l))
           
           p = rep(NA,ncol(m))
           
-          for (lvl in levels) {
-            lvlover = lvl>diminish_level
+          for (lvl in layers) {
+            lvlover = lvl>diminish_layer
             loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
             p[loop_ind_[[lvl]]] = unlist(llply(loop_ind, function(ii) 
               llply(ii, function(i) {
