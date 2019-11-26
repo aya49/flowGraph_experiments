@@ -461,12 +461,12 @@ getPhen = function(phen, phenocode=NULL) {
   markers = unique(unlist(str_split(phen,"[-+]")))
   markers = markers[markers!=""]
   if (is.null(phenocode)) {
-    pm$phenocode = sapply(phen, function(x){
+    pm$phenocode = laply(phen, function(x){
       if (x=="") return(paste0(rep(0,length(markers)), collapse=""))
       b = str_split(x,"[+-]+")[[1]]
       b = b[-length(b)]
       bo = match(markers,b)
-      phec = as.vector(sapply(str_extract_all(x,"[+-]+"), 
+      phec = as.vector(laply(str_extract_all(x,"[+-]+"), 
                               function(y) str_count(y,"[+]"))+1)
       c = phec[bo]
       c[is.na(c)] = 0
@@ -484,7 +484,7 @@ getPhen = function(phen, phenocode=NULL) {
 
 ## input: cell pop names or getPhen output meta_cell
 ## output: child (pos/neg) and parent list
-getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
+getPhenCP = function(meta_cell=NULL, cp=NULL, no_cores=1) {
   require(plyr)
   parl = parallel_backend(no_cores)
   if (parl) if (no_cores>detectCores()) no_cores = detectCores()
@@ -548,7 +548,7 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
       pparenl = llply(loop_ind, function(jj) 
         llply(jj, function(j) {
           colj1 = which(meta_cell_grid__[j,]>0)
-          mcgrow = meta_cell_grid_[j,]
+          mcgrow = meta_cell_grid__[j,]
           chidf = do.call(cbind, llply(colj1, function(coli) 
             allcol_[[coli]][[as.character(mcgrow[coli])]]) )
           chi = apply(chidf,1,function(x) sum(!x)==1)
@@ -562,8 +562,8 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
       time_output(start1)
     }
   }
-  edf = do.call(rbind, llply(names(pparen), function(x)
-    data.frame(from=pparen[[x]], to=x)))
+  edf = do.call(rbind, llply(1:length(pchild), function(x)
+    data.frame(from=names(pchild)[x], to=pchild[[x]])))
   
   return(list(pchild=pchild, pparen=pparen, edf=edf))
 }
@@ -630,6 +630,7 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
            markers=NULL,
            cumsumpos=F, # whether to make positives + = +/++ (cumsum)
            # prop=T,
+           prop=T,
            specenr=T, 
            normalize=T, 
            norm_ind=0, norm_layer=3, norm_path=NULL, ...) { # layout.circle
@@ -822,12 +823,17 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
            feat=list(node=list(count=mc), edge=list()), 
            markers=markers,
            graph=gr, edge_list=list(child=pchild_,parent=pparen_), 
-           meta=meta, plot_layout=as.character(substitute(layout_fun)), etc=list(cumsumpos=cumsumpos))
+           meta=meta, plot_layout=as.character(substitute(layout_fun)), etc=list(cumsumpos=F))
   
-  # if (prop) { # included in specenr
+  if (!any(grepl("3",meta_cell$phenocode))) 
+    cumsumpos = cumsumpos & T
+  if (cumsumpos)
+    fg = flowgraph_cumsum(fg, no_cores=no_cores)
+  
+  if (prop) { # included in specenr
     fg = flowgraph_prop(fg)
     fg = flowgraph_prop_edge(fg, no_cores=no_cores)
-  # }
+  }
   
   if (normalize)
     fg = flowgraph_normalize(fg, norm_ind=norm_ind, norm_layer=norm_layer, norm_path=norm_path, no_cores=no_cores, ...)
@@ -910,7 +916,7 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   if (!"prop"%in%names(fg@feat$edge))
     fg = flowgraph_prop_edge(fg)
   ep = fg@feat$edge$prop
-  root = which(colnames(mp)=="")
+  rooti = which(colnames(mp)=="")
   
   ## feature: expected proportion
   
@@ -975,6 +981,7 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
   p = proto(i=1, j=1, fun=function(this, x) if (count>=i && count<=j) "*" else x) 
   
+  csp = fg@etc$cumsumpos
   expecn = do.call(cbind,llply(sort(unique(cpopnegl)), function(lev) {
     cpopl = cpopneg[cpopnegl==lev]
     cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
@@ -1013,7 +1020,12 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
         chilnamesg = gsub("[+-]","",chilnames)
         chilgreat = chilnamesg==cpig & chilnames%in%colnames(expec)
         if (any(chilgreat)) {
-          a = matrix(mp[,parname]-rowSums(expec[,chilnames[chilgreat],drop=F]),ncol=1)
+          children = chilnames[chilgreat]
+          if (csp) 
+            a = matrix(mp[,parname]-expec[,children[which.min(nchar(children))],drop=F],ncol=1)
+          else 
+            a = matrix(mp[,parname]-rowSums(expec[,children,drop=F]),ncol=1)
+          
           break
         }
       }
@@ -1068,7 +1080,7 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
   mca = mc = fg@feat$node$count
   fdiff0 = rep(0,nrow(mc))
   f0 = rep(1,nrow(mc))
-  root = which(colnames(mc)=="")
+  rooti = which(colnames(mc)=="")
   
   if (nrow(mca)>1 & !is.null(norm_ind)) {
     start1 = Sys.time()
@@ -1079,9 +1091,9 @@ flowgraph_normalize = function(fg, norm_ind=0, norm_layer=3, norm_path=NULL, no_
     maxlayer = max(meta_cell$phenolayer)
     
     # prepare feat_file_cell_counts
-    x = x0 = as.matrix(mc)[,-root,drop=F] # take out total cell count
+    x = x0 = as.matrix(mc)[,-rooti,drop=F] # take out total cell count
     maxx = max(x0[is.finite(x0)])
-    rootc = mc[,root]
+    rootc = mc[,rooti]
     if (norm_ind==0) {
       norm_ind = which.min(abs( rootc-median(rootc) )) # reference column: median total count out of all control files
       if ("class"%in%colnames(fg@meta))
@@ -1189,14 +1201,12 @@ flowgraph_mean_class = function(fg, class, no_cores=1, node_features=NULL, edge_
 
 ## get p values 
 flowgraph_p = function(
-  fg, class, no_cores=1, 
+  fg, no_cores=1, class, control=NULL,
   node_features=NULL, edge_features=NULL, 
-  control=NULL,
   overwrite=F, 
   test_name="t_BY", # name your statistical test / adjustment method; if same name, overwrite=T will overwrite, overwrite=F will return nothing
   diminish=F, # don't test if all parents are insignificant, stricter the lower the layer
-  p_thres=.05, # only used if diminish=T
-  diminish_layer=3, # only used if diminish=T; >3 layers won't be tested if parent not significant
+  p_thres=.05, p_rate=2, # only used if diminish=T
   test=function(x,y) tryCatch(t.test(x,y)$p.value, error=function(e) 1), 
   adjust=function(x) p.adjust(x, method="BY")
 ) {
@@ -1231,6 +1241,7 @@ flowgraph_p = function(
   
   if (is.null(node_features)) node_features = names(fg@feat$node)
   node_features = node_features[node_features%in%names(fg@feat$node)]
+  cat("\n")
   if (length(node_features)>0) {
     for (classl in class_list) {
       for (node_feature in node_features) {
@@ -1249,6 +1260,9 @@ flowgraph_p = function(
             }
           }
         }
+        start1 = Sys.time()
+        cat("- claculating ( class:",paste0(classl), ") summary", test_name,"for node feature", node_feature)
+        
         id1 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[1]] = 
           fg@meta$id[classes_==classl[1]]
         id2 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[2]] = 
@@ -1256,46 +1270,62 @@ flowgraph_p = function(
         names(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]]) = classl
         
         m = fg@feat$node[[node_feature]]
-        m1 = m[id1,]
-        m2 = m[id2,]
+        m1 = m[id1,,drop=F]
+        m2 = m[id2,,drop=F]
         
         if (!diminish) {
           loop_ind = loop_ind_f(1:ncol(m), no_cores)
           p = unlist(llply(loop_ind, function(ii) 
             llply(ii, function(i) test(m1[,i], m2[,i])), .parallel=parl ))
-          p = adjust(p)
+          if (!is.null(adjust)) p = adjust(p)
+          names(p) = colnames(m)
         } else {
-          root = which(layers==0) # should be 1
           pparen = fg@edge_list$parent
-          
           layers_ = fg@graph$v$phenolayer
-          layers = order(unique(layers_))
-          loop_ind_ = llply(layers[-root], function(l) which(layers_==l))
+          layers = sort(unique(layers_))
+          root = which(layers==0) # should be 1
+          loop_ind_ = llply(layers[-root], function(l) 
+            return(which(layers_==l)))
           
           root_ = which(colnames(m)=="")
           p = rep(NA,ncol(m))
           p[root_] = test(m1[,root_], m2[,root_])
-          names(p)[root_] = ""
+          if (is.nan(p[root_])) p[root_] = 1
+          names(p) = colnames(m)
+          
+          p_thress = rep(p_rate, length(layers)-1)
+          p_thress[1] = p_thres
+          p_thress = cumprod(p_thress)
+          p_thress = sort(p_thress, decreasing=T)
           
           for (lvl in layers[-root]) {
-            lvlover = lvl>diminish_layer
             loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
-            p[loop_ind_[[lvl]]] = unlist(llply(loop_ind, function(ii) 
+            pl = unlist(llply(loop_ind, function(ii) 
               llply(ii, function(i) {
                 pheni = fg@graph$v$phenotype[i]
                 parnis = pparen[[pheni]]
-                if (all(p[parnis]>p_thres) & lvlover) return(NA)
-                test(m1[,i], m2[,i])
+                ppar = p[parnis]
+                if (lvl==1) ppar = p[root_]
+                if (all(ppar>p_thress[lvl])) return(NA)
+                pt = test(m1[,i], m2[,i])
+                if (is.nan(pt)) return(1)
+                return(pt)
               }), .parallel=parl
             ))
+            pai = !is.na(pl)
+            pail = sum(pai)
+            if (pail>1)
+              if (!is.null(adjust)) 
+                pl[pai] = adjust(rep(pl[pai],sum(pai)))[1:pail]
+            pl[!pai] = 1
+            p[loop_ind_[[lvl]]] = pl
           }
-          pai = !is.na(p)
-          if (sum(pai)>1) p[pai] = adjust(p[pai])
-          p[pai] = 1
         }
-        names(p) = colnames(m)
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["p"]] = p
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m1"]] = colMeans(as.matrix(m1))
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m2"]] = colMeans(as.matrix(m2))
         
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]] = p
+        time_output(start1)
       }
     }
   }
@@ -1307,6 +1337,7 @@ flowgraph_p = function(
       for (edge_feature in edge_features) {
         # prep index
         nfi = 1
+        cat("- claculating ( class:",paste0(classl), ") summary", test_name,"for edge feature", node_feature)
         if (test_name%in%names(fg@feat_summary$desc$edge)) {
           if (class%in%names(fg@feat_summary$desc$edge[[test_name]])) {
             if (edge_feature%in%fg@feat_summary$desc$edge[[test_name]][[class]]) {
@@ -1327,49 +1358,61 @@ flowgraph_p = function(
         names(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]]) = classl
         
         m = fg@feat$edge[[edge_feature]]
-        m1 = m[id1,]
-        m2 = m[id2,]
+        m1 = m[id1,,drop=F]
+        m2 = m[id2,,drop=F]
         
         if (!diminish) {
           loop_ind = loop_ind_f(1:ncol(m), no_cores)
           p = unlist(llply(loop_ind, function(ii) 
             llply(ii, function(i) test(m1[,i], m2[,i])), .parallel=parl ))
           p = adjust(p)
+          names(p) = colnames(m)
         } else {
           pparen = fg@edge_list$parent
           
           phen_to = fg@graph$e$to
           phen_from = fg@graph$e$from
           layers_ = fg@graph$v$phenolayer[match(phen_to, fg@graph$v$phenotype)]
-          layers = order(unique(layers_))
+          layers = sort(unique(layers_))
           loop_ind_ = llply(layers, function(l) which(layers_==l))
           
           p = rep(NA,ncol(m))
+          names(p) = colnames(m)
+          
+          p_thress = rep(p_rate, length(layers))
+          p_thress[1] = p_thres
+          p_thress = cumprod(p_thress)
+          p_thress = sort(p_thress, decreasing=T)
           
           for (lvl in layers) {
-            lvlover = lvl>diminish_layer
             loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
-            p[loop_ind_[[lvl]]] = unlist(llply(loop_ind, function(ii) 
+            pl = unlist(llply(loop_ind, function(ii) 
               llply(ii, function(i) {
                 pheni = fg@graph$v$phenotype[i]
                 parnis = phen_to==phen_from[i]
                 if (sum(parnis)>0)
-                  if (all(p[parnis]>p_thres) & lvlover) return(NA)
-                return(test(m1[,i], m2[,i]))
+                  if (all(p[parnis]>p_thress[lvl])) return(NA)
+                pt = test(m1[,i], m2[,i])
+                if (is.nan(pt)) return(1)
+                return(pt)
               }), .parallel=parl
             ))
+            pai = !is.na(pl)
+            pail = sum(pai)
+            if (pail>1)
+              if (!is.null(adjust)) 
+                pl[pai] = adjust(rep(pl[pai],sum(pai)))[1:pail]
+            pl[!pai] = 1
+            p[loop_ind_[[lvl]]] = pl
           }
-          pai = !is.na(p)
-          if (sum(pai)>1) p[pai] = adjust(p[pai])
-          p[pai] = 1
         }
-        names(p) = colnames(m)
+        fg@feat_summary$edge[[test_name]][[class]][[edge_feature]][[nfi]][["p"]] = p
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m1"]] = colMeans(as.matrix(m1))
+        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m2"]] = colMeans(as.matrix(m2))
         
-        fg@feat_summary$edge[[test_name]][[class]][[edge_feature]][[nfi]] = p
       }
     }
   }
-  
   return(fg)
 }
 
@@ -1381,6 +1424,12 @@ flowgraph_cumsum = function(fg, no_cores) {
   
   # check if do-able (there exists multple ++)
   if (!any(grepl("3",fg@graph$v$phenocode))) return(fg)
+  
+  # phenotype=c("","A+","A++","A-","B-","B+","B++","A-B-","A-B+","A-B++","A+B-","A+B+","A+B++","A++B-","A++B+","A++B++")
+  # mc=matrix(c(90,30,30,30,30,30,30,10,10,10,10,10,10,10,10,10),nrow=1)
+  # colnames(mc)=phenotype
+  # meta_cell = getPhen(phenotype)
+  # pparen = getPhenCP(meta_cell=meta_cell)$pparen
   
   mc = fg@feat$node$count
   pparen = fg@edge_list$parent
@@ -1401,13 +1450,19 @@ flowgraph_cumsum = function(fg, no_cores) {
   for (marker in ccol) {
     coldo = which(meta_cell_gridTF[,marker])
     coldo = coldo[order(meta_cell_grid[coldo,marker], decreasing=T)]
-    mc[,coldo] = do.call(cbind,llply(coldo, function(j) {
+    loop_ind = loop_ind_f(coldo, no_cores)
+    mc[,coldo] = do.call(cbind,llply(loop_ind, function(jj) 
+      do.call(cbind,llply(jj, function(j) {
       mcgi = mcgis = mcgip = meta_cell_grid[j,]
       mcgis[marker] = mcgis[marker]+1
       jsib = meta_cell$phenocode==paste0(mcgis,collapse="")
-      mc[,j] = mc[,j] + mc[,jsib]
-    }))
+      mc[,j] + mc[,jsib]
+    })), .parallel=T))
   }
+  fg@feat$node$count_original = fg@feat$node$count
+  fg@feat$node$count = mc
+  fg@etc$cumsumpos = T
+  return(fg)
 }
 
 

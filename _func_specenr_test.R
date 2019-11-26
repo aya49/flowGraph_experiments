@@ -98,13 +98,17 @@ for (tube in unique(meta_file0$tube)) {
     }
   weight = 1/(2*matchsamples)
   
-  mc2 = as.matrix(Reduce(rbind,llply(randomindp,function(ri)
-    weight*colSums(mc[append(ri$normal,ri$aml),,drop=F]) )))
-  rownames(mc2) = c((1+nrow(mc)):(nrow(mc2)+nrow(mc)))
+  fg2 = fg
+  for (nfeat in names(fg2@feat)) 
+    for (nne in names(fg2@feat[[nfeat]])) {
+        m = as.matrix(fg2@feat[[nfeat]][[nne]])
+        mc2 = as.matrix(do.call(rbind,llply(randomindp,function(ri)
+          weight*colSums(m[append(ri$normal,ri$aml),,drop=F]) )))
+        rownames(mc2) = c((1+nrow(m)):(nrow(mc2)+nrow(m)))
+        fg2@feat[[nfeat]][[nne]] = mc2
+      }
 
   # meta
-  fg2 = fg
-  fg2@feat$node$count_norm = fg2@feat$node$count = mc2
   fg2@meta = meta2 = data.frame(
     class=rep("mix", length(randomindp)), 
     id=rownames(mc2), 
@@ -142,7 +146,7 @@ names(ftl) = gsub("[%]","",names(ftl))
 markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
 
 ## prepare meta
-temp_ = Reduce("rbind", str_split(gsub("%|.fcs","",names(ftl)),"_"))
+temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
 meta_file = data.frame(id=names(ftl), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
 meta_file$class[meta_file$class=="100WB"] = "control"
 for (uc in unique(meta_file$class)) {
@@ -154,50 +158,6 @@ fg = flowgraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_pat
 save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
 time_output(start, "data_genetech")
-
-
-## pregnancy ----------------------------------
-
-## input: gates + fcm files,  meta data paths
-## output: feat_file_cell_count, meta_file
-## process: 
-## - takes gates + fcm files, outputs flowtype vectors 
-## - compiles flowtype vectors together to create cell count matrix
-## - reformats meta file (meta info for fcm files)
-## - creates cell meta file (meta info for fcm cell populations)
-
-## input directories
-input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy"
-meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
-flowtype_dir = paste0(input_dir, "/flowtype")
-
-## ouput directories
-result_dir0 = paste0(root, "/result/pregnancy"); dir.create(result_dir0, showWarnings=F, recursive=T)
-
-
-start = Sys.time()
-
-## prepare flowtype directories
-ft_dirs = list.files(flowtype_dir, full.names=T)
-ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rdata","",a[length(a)]) )
-ft_names = gsub(".Rdata|.fcs|Gates_|_Unstim|_Repeat","",ft_names)
-ft_names = gsub("BL","4",ft_names)
-
-## prepare meta
-meta_file0 = get(load(meta_file_dir))
-colnames(meta_file0)[1] = "subject"
-meta_file0 = meta_file0[match(ft_names, meta_file0$id),,drop=F]
-meta_file0$class[meta_file0$class==4] = "control"
-meta_file0$train = ifelse(meta_file0$type=="train",T,F)
-meta_file0 = meta_file0[,-4]
-
-## feat/file-cell-count: load and compile flowtype count files
-fg = flowgraph(ft_dirs, meta=meta_file0, no_cores=no_cores, norm_path=paste0(result_dir0,"/count_norm"))
-fg = flowgraph_mean_class(fg, class="subject", no_cores=no_cores)
-
-save(fg, file=paste0(result_dir0,"/fg.Rdata"))
-
-time_output(start, "data_pregnancy")
 
 
 ## bodenmiller ------------------------------------
@@ -309,6 +269,51 @@ time_output(start, "data_bodenmiller")
 
 
 
+## pregnancy ----------------------------------
+
+## input: gates + fcm files,  meta data paths
+## output: feat_file_cell_count, meta_file
+## process: 
+## - takes gates + fcm files, outputs flowtype vectors 
+## - compiles flowtype vectors together to create cell count matrix
+## - reformats meta file (meta info for fcm files)
+## - creates cell meta file (meta info for fcm cell populations)
+
+## input directories
+input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy"
+meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
+flowtype_dir = paste0(input_dir, "/flowtype")
+
+## ouput directories
+result_dir0 = paste0(root, "/result/pregnancy"); dir.create(result_dir0, showWarnings=F, recursive=T)
+
+
+start = Sys.time()
+
+## prepare flowtype directories
+ft_dirs = list.files(flowtype_dir, full.names=T)
+ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rdata","",a[length(a)]) )
+ft_names = gsub(".Rdata|.fcs|Gates_|_Unstim|_Repeat","",ft_names)
+ft_names = gsub("BL","4",ft_names)
+
+## prepare meta
+meta_file0 = get(load(meta_file_dir))
+colnames(meta_file0)[1] = "subject"
+meta_file0 = meta_file0[match(ft_names, meta_file0$id),,drop=F]
+meta_file0$class[meta_file0$class==4] = "control"
+meta_file0$train = ifelse(meta_file0$type=="train",T,F)
+meta_file0 = meta_file0[,-4]
+
+## feat/file-cell-count: load and compile flowtype count files
+fg = flowgraph(ft_dirs, meta=meta_file0, no_cores=no_cores, norm_path=paste0(result_dir0,"/count_norm"))
+fg = flowgraph_mean_class(fg, class="subject", no_cores=no_cores)
+
+save(fg, file=paste0(result_dir0,"/fg.Rdata"))
+
+time_output(start, "data_pregnancy")
+
+
+
 ## positive/negative control -----------------------
 
 ## input: gates + fcm files,  meta data paths
@@ -347,6 +352,7 @@ meta_file$train[(nctrl*nsample+1):(nctrl*nsample+(1-nctrl)*nsample/2)] = meta_fi
 ## prepare flowtype files
 # load sample fcs file
 f = read.FCS("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/samplefcs.fcs")
+f = new("flowFrame")
 
 markers = LETTERS[1:markern] # markers
 ci = c(1:markern); names(ci) = markers # marker indices in f@exprs
@@ -374,17 +380,17 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
 
   # make cell names
   f@exprs = matrix(rnorm(ncells[1]*length(markers),2,1),nrow=ncells[1])
-  a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
-               MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
-               Thresholds=thress0, 
-               Methods='Thresholds', verbose=F, MemLimit=60)
-  ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
-  ftcell_ = str_count(ftcell,"[+|-]")
-  lastlcp = ftcell[ftcell_==length(markers)]
-  lastlcpm = llply(str_extract_all(lastlcp,"[A-Z][+|-]"), function(x) 
-    grepl("[+]",x) )
-  lastlallposi = which(sapply(lastlcpm, function(x) all(x)))
-  lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
+  # a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+  #              MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
+  #              Thresholds=thress0, 
+  #              Methods='Thresholds', verbose=F, MemLimit=60)
+  # ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
+  # ftcell_ = str_count(ftcell,"[+|-]")
+  # lastlcp = ftcell[ftcell_==length(markers)]
+  # lastlcpm = llply(str_extract_all(lastlcp,"[A-Z][+|-]"), function(x) 
+  #   grepl("[+]",x) )
+  # lastlallposi = which(sapply(lastlcpm, function(x) all(x)))
+  # lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
   
   # flowtype
   ftl = llply(loop_ind_f(1:nsample,no_cores), function(ii) {
@@ -393,17 +399,6 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
       f@exprs = fex1 = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
       if (ds=="pos31") f@exprs = f@exprs[,-1]
       if (ds=="pos32") f@exprs = f@exprs[,-2]
-      
-      # # v2 randomized matrix: randomly define last layer pops
-      # lastlm = normean/length(lastlcp)
-      # lastlsd = .1*lastlm
-      # lastln = round(rnorm(length(lastlcp),lastlm,lastlsd))
-      # lastlncs = cumsum(lastln)
-      # 
-      # fex2 = matrix(p25, nrow=sum(lastln), ncol=length(markers))
-      # fex2[1:lastlncs[1], lastlcpm[[1]]] = p75
-      # for (j in 2:length(lastlcp)) 
-      #   fex2[(lastlncs[j-1]+1):lastlncs[j], lastlcpm[[j]]] = p75
 
       thress = thress0
       if (i>(nsample*nctrl) & grepl("pos",ds)) {
@@ -461,22 +456,6 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
           f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
           f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
           f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
-          
-          # tm = sum(triple)/2/3
-          # f@exprs[which(bp & cp & !ap)[1:tm],1] = p75 # bc
-          # f@exprs[which(ap & cp & !bp)[1:tm],1] = p25 # ac
-          # f@exprs[which(ap & bp & !cp)[1:tm],1] = p25 # ab
-          # f@exprs[which(!ap & !bp & !cp)[1:tm],1] = p75 # a
-          # 
-          # f@exprs[which(bp & cp & !ap)[(tm+1):(tm*2)],2] = p25 
-          # f@exprs[which(ap & cp & !bp)[(tm+1):(tm*2)],2] = p75 
-          # f@exprs[which(ap & bp & !cp)[(tm+1):(tm*2)],2] = p25 
-          # f@exprs[which(!ap & !bp & !cp)[(tm+1):(tm*2)],2] = p75 
-          # 
-          # f@exprs[which(bp & cp & !ap)[(tm*2+1):(tm*3)],3] = p25 
-          # f@exprs[which(ap & cp & !bp)[(tm*2+1):(tm*3)],3] = p25 
-          # f@exprs[which(ap & bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
-          # f@exprs[which(!ap & !bp & !cp)[(tm*2+1):(tm*3)],3] = p75 
         }
         else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; b+D+c- > b+D+c+ x1.5
           tm = sum(triple)/2
@@ -489,48 +468,12 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
           f@exprs[sample(which(bp & dp & !cp),tm),3] = p25 # ac
           f@exprs[sample(which(dp & cp & !bp),tm),3] = p25 # ab
           f@exprs[sample(which(!bp & !cp & !dp),tm),3] = p75 # a
-          
-          # tn = sum(quad)/2
-          # f@exprs[sample(which(!ap & bp & cp & dp),tn),1] = p75 # bcd
-          # f@exprs[sample(which(ap & !bp & cp & dp),tn),1] = p25 # acd
-          # f@exprs[sample(which(ap & bp & !cp & dp),tn),1] = p25 # abd
-          # f@exprs[sample(which(ap & bp & cp & !dp),tn),1] = p25 # abc
-          # f@exprs[sample(which(!ap & bp & !cp & !dp),tn),1] = p75 # ab
-          # f@exprs[sample(which(!ap & !bp & cp & !dp),tn),1] = p75 # ac
-          # f@exprs[sample(which(!ap & !bp & !cp & dp),tn),1] = p75 # ad
-          # f@exprs[sample(which(ap & !bp & !cp & !dp),tn),1] = p25 # a
         }
         else if (ds=="pos7") { # A+B+C+D+ > x2
           f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
-          
-          # tm = sum(triple)/2/3
-          # f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-          # f@exprs[sample(which(!bp & cp & ap),tm),2] = p75 # bc
-          # f@exprs[sample(which(bp & !cp & ap),tm),3] = p75 # bc
         } 
         else if (ds=="pos8") { # A-B-C-D-E- > x2
           f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
-          
-          # tn = sum(quint)/2
-          # f@exprs[sample(which(!ap & bp & cp & dp & ep),tn),1] = p75
-          # f@exprs[sample(which(ap & !bp & cp & dp & ep),tn),1] = p25
-          # f@exprs[sample(which(ap & bp & !cp & dp & ep),tn),1] = p25
-          # f@exprs[sample(which(ap & bp & cp & !dp & ep),tn),1] = p25
-          # f@exprs[sample(which(ap & bp & cp & dp & !ep),tn),1] = p25
-          # 
-          # f@exprs[sample(which(!ap & bp & cp & !dp & !ep),tn),1] = p75
-          # f@exprs[sample(which(!ap & bp & !cp & dp & !ep),tn),1] = p75
-          # f@exprs[sample(which(!ap & bp & !cp & !dp & ep),tn),1] = p75
-          # f@exprs[sample(which(!ap & !bp & cp & dp & !ep),tn),1] = p75
-          # f@exprs[sample(which(!ap & !bp & cp & !dp & ep),tn),1] = p75
-          # f@exprs[sample(which(!ap & !bp & !cp & dp & ep),tn),1] = p75
-          # 
-          # f@exprs[sample(which(ap & bp & !cp & !dp & !ep),tn),1] = p25
-          # f@exprs[sample(which(ap & !bp & cp & !dp & !ep),tn),1] = p25
-          # f@exprs[sample(which(ap & !bp & !cp & dp & !ep),tn),1] = p25
-          # f@exprs[sample(which(ap & !bp & !cp & !dp & ep),tn),1] = p25
-          # 
-          # f@exprs[sample(which(!ap & !bp & !cp & !dp & !ep),tn),1] = p75
         } 
         else if (ds=="pos9") { # same as above but both
           f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
@@ -666,37 +609,6 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
           ftv = round(ftv/ftv[1],3)
           names(ftv) = ftcell
           a = getPhenCP(cp=ftcell,no_cores=no_cores)
-          al = layout_gr(a$gr$e,a$gr$v)
-          # alp = layout_gr(a$grp$e,a$grp$v)
-          al = gpdf(al)
-          al$v$color = ifelse(ftv_>ftv0_,"increase","decrease")
-          vind_ = !grepl("-",al$v$name)
-          # alp = gpdf(alp)
-          # alp$v$color = ifelse(ftv_[vind_]>ftv0_[vind_],"increase","decrease") #ftv[vind_]
-          al$v$size=1
-          al$v$sizeb=1
-          
-          al$v$label = paste0(al$v$name,":",ftv)
-          al$v$v_ind = abs(ftv_-ftv0_)/ftv0_ >.05 #& !grepl("[-]",al$v$name)
-          al$v$label_ind = al$v$v_ind & !grepl("[-]",al$v$name)
-          al$e$e_ind = al$e[,1]%in%al$v$name[al$v$v_ind] & al$e[,2]%in%al$v$name[al$v$v_ind]
-          
-          gp = gggraph(al)
-          
-          ggsave(paste0(meta_dir,"/all_sig.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
-          
-          # alp$v$label = paste0(alp$v$name,":",ftv[vind_])
-          # vind = abs(ftv[vind_]-ftv0[vind_])/ftv0[vind_] >.05
-          # gp = gggraph(alp, v_ind=vind, 
-          #              e_ind=alp$e[,1]%in%alp$v$name[vind] & alp$e[,2]%in%alp$v$name[vind])
-          # gp = gp +
-          #   geom_label_repel(
-          #     # data=alp$v[str_count(alp$v$name,"[-+]")==la & vind,],
-          #     data=alp$v[vind & !grepl("[-]",al$v$name)[vind_],],
-          #     aes(x=x,y=y,label=label, color=color),
-          #     nudge_x = -.1, direction = "y", hjust = 1, segment.size = 0.2)
-          # 
-          # ggsave(paste0(meta_dir,"/all_sigpos.png"), plot=gp, scale = 1, width =9, height =11, units = "in", dpi = 300, limitsize = TRUE)
         }
       }
       fe = f@exprs
@@ -713,30 +625,62 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
                       Methods='Thresholds', verbose=F, MemLimit=60)
         ftcell = unlist(lapply(ft@PhenoCodes, function(x)
           decodePhenotype(x, ft@MarkerNames, ppm) ))
-        ft = ft@CellFreqs
-        names(ft) = ftcell
+        # ft = ft@CellFreqs
+        names(ft@CellFreqs) = ftcell
       } else {
         ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
                       MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                       Thresholds=thress, 
-                      Methods='Thresholds', verbose=F, MemLimit=60)@CellFreqs
+                      Methods='Thresholds', verbose=F, MemLimit=60)#@CellFreqs
       }
       return(ft)
     })
   }, .parallel=T)
-  ft = Reduce(rbind,unlist(ftl,recursive=F))
-  if (ncol(ft)==length(ftcell)) {
-    colnames(ft) = ftcell
-  }
-  rownames(ft) = meta_file$id
-  m0 = as.matrix(ft)
-  
-  fg = flowgraph(m0, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
-  
-  save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
+  if (ds=="pos30") {
+    fg0 = flowgraph(unlist(ftl,recursive=F), no_cores=no_cores, meta=meta_file, prop=F, specenr=F, normalize=F)
+    fg1 = flowgraph_cumsum(fg0, no_cores=no_cores)
+    
+    fg0 = flowgraph_prop(fg0)
+    fg0 = flowgraph_prop_edge(fg0, no_cores=no_cores)
+    fg0 = flowgraph_normalize(fg0, norm_path=paste0(result_dir,"/count_norm"), no_cores=no_cores)
+    fg0 = flowgraph_specenr(fg0, no_cores=no_cores)
+    
+    fg1 = flowgraph_prop(fg1)
+    fg1 = flowgraph_prop_edge(fg1, no_cores=no_cores)
+    fg1 = flowgraph_normalize(fg1, norm_path=paste0(result_dir,"_cumsum/count_norm"), no_cores=no_cores)
+    fg1 = flowgraph_specenr(fg1, no_cores=no_cores)
+    
+    save(fg0, file=paste0(result_dir,"/fg.Rdata"))
+    save(fg1, file=paste0(result_dir,"_cumsum/fg.Rdata"))
+    
+  } else {
+    fg = flowgraph(unlist(ftl,recursive=F), no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+  }
+  
   time_output(start2, ds)
   rm(list=c("ftl","ft","fg")); gc()
 }
 time_output(start)
+
+
+
+
+## p value ------------------------
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
+for (result_dir in result_dirs) {
+  start1 = Sys.time()
+  fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  fg = flowgraph_p(
+    fg, no_cores=1, class="class", control="control",
+    overwrite=F, 
+    test_name="t_BY",
+    diminish=T,
+    p_thres=.05, p_rate=2, # only used if diminish=T
+    test=function(x,y) tryCatch(t.test(x,y)$p.value, error=function(e) 1))
+  time_output(start1,result_dir)
+}
+
 
