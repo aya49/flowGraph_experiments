@@ -810,12 +810,8 @@ flowgraph = function(input_, meta=NULL, no_cores=1,
   
   ## list of outputs
 
-  gr = list(e=data.frame(edf,width=1,color="", e_ind=F),
-            v=data.frame(
-              meta_cell, 
-              size=1, color="", sizeb=1, colorb="", fill="", 
-              label=meta_cell$phenotype, 
-              label_ind=F, v_ind=F, vb_ind=F))
+  gr = list(e=edf,
+            v=meta_cell)
   gr = set_layout_graph(gr, layout_fun) # layout cell hierarchy
   
   if (is.null(meta)) meta = data.frame(id=sample_id)
@@ -1239,78 +1235,95 @@ flowgraph_p = function(
       llply(1:(i-1), function(j) c(classes[i], classes[j])))
   }
   
-  if (is.null(node_features)) node_features = names(fg@feat$node)
-  node_features = node_features[node_features%in%names(fg@feat$node)]
   cat("\n")
-  if (length(node_features)>0) {
-    for (classl in class_list) {
-      for (node_feature in node_features) {
-        # prep index
-        nfi = 1
-        if (test_name%in%names(fg@feat_summary$desc$node)) {
-          if (class%in%names(fg@feat_summary$desc$node[[test_name]])) {
-            if (node_feature%in%fg@feat_summary$desc$node[[test_name]][[class]]) {
-              nfi = which(sapply(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]], function(x)
-                setequal(names(x),classl)))
-              if (length(nfi)!=0) {
-                if (!overwrite) next
-              } else {
-                nfi = length(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]]) + 1
-              }
-            }
-          }
-        }
+  for (ftype in c("node","edge")) {
+    if (ftype=="node") features = node_features
+    if (ftype=="edge") features = edge_features
+    
+    if (is.null(features)) features = names(fg@feat[[ftype]])
+    features = features[features%in%names(fg@feat[[ftype]])]
+    if (length(features)==0) next
+    
+    for (feature in features) {
+      if (!feature%in%names(fg@feat[[ftype]])) next
+      for (classl in class_list) {
+        desc = fg@feat_summary$desc[[ftype]]
+        
+        idsname = paste0(classl,collapse="_")
+          if (!overwrite & !is.null(desc[[ftype]][[feature]][[test_name]][[class]][[idsname]])) next
+
         start1 = Sys.time()
-        cat("- claculating ( class:",paste0(classl), ") summary", test_name,"for node feature", node_feature)
+        cat("- claculating (", class, ":", paste0(classl), ")",
+            test_name,"for", ftype, "feat", feature)
         
-        id1 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[1]] = 
-          fg@meta$id[classes_==classl[1]]
-        id2 = fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]][[2]] = 
-          fg@meta$id[classes_==classl[2]]
-        names(fg@feat_summary$desc$node[[test_name]][[class]][[node_feature]][[nfi]]) = classl
-        
-        m = fg@feat$node[[node_feature]]
+        id1 = fg@meta$id[classes_==classl[1]]
+        id2 = fg@meta$id[classes_==classl[2]]
+        ids = list(id1,id2); names(ids) = classl
+        fg@feat_summary$desc[[ftype]][[feature]][[test_name]][[class]][[idsname]] = ids
+
+        m = fg@feat[[ftype]][[feature]]
         m1 = m[id1,,drop=F]
         m2 = m[id2,,drop=F]
         
         if (!diminish) {
           loop_ind = loop_ind_f(1:ncol(m), no_cores)
           p = unlist(llply(loop_ind, function(ii) 
-            llply(ii, function(i) test(m1[,i], m2[,i])), .parallel=parl ))
+            llply(ii,function(i) test(m1[,i], m2[,i])), .parallel=parl ))
           if (!is.null(adjust)) p = adjust(p)
           names(p) = colnames(m)
         } else {
           pparen = fg@edge_list$parent
-          layers_ = fg@graph$v$phenolayer
+          if (ftype=="node") layers_ = fg@graph$v$phenolayer
+          if (ftype=="edge") {
+            phen_to = fg@graph$e$to
+            phen_from = fg@graph$e$from
+            layers_ = fg@graph$v$phenolayer[match(phen_to, fg@graph$v$phenotype)]
+          } 
           layers = sort(unique(layers_))
           root = which(layers==0) # should be 1
-          loop_ind_ = llply(layers[-root], function(l) 
+          if (ftype=="node") loop_ind_ = llply(layers[-root], function(l)
             return(which(layers_==l)))
+          if (ftype=="edge") loop_ind_ = llply(layers, function(l) which(layers_==l))
           
-          root_ = which(colnames(m)=="")
           p = rep(NA,ncol(m))
-          p[root_] = test(m1[,root_], m2[,root_])
-          if (is.nan(p[root_])) p[root_] = 1
+          if (ftype=="node") {
+            root_ = which(colnames(m)=="")
+            p[root_] = test(m1[,root_], m2[,root_])
+            if (is.nan(p[root_])) p[root_] = 1
+          }
           names(p) = colnames(m)
           
-          p_thress = rep(p_rate, length(layers)-1)
+          if (ftype=="node") p_thress = rep(p_rate, length(layers)-1)
+          if (ftype=="edge") p_thress = rep(p_rate, length(layers))
           p_thress[1] = p_thres
           p_thress = cumprod(p_thress)
           p_thress = sort(p_thress, decreasing=T)
           
           for (lvl in layers[-root]) {
             loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
-            pl = unlist(llply(loop_ind, function(ii) 
-              llply(ii, function(i) {
-                pheni = fg@graph$v$phenotype[i]
-                parnis = pparen[[pheni]]
-                ppar = p[parnis]
-                if (lvl==1) ppar = p[root_]
-                if (all(ppar>p_thress[lvl])) return(NA)
-                pt = test(m1[,i], m2[,i])
-                if (is.nan(pt)) return(1)
-                return(pt)
-              }), .parallel=parl
+            pl = unlist(llply(loop_ind, function(ii) {
+              if (ftype=="node")
+                return(llply(ii, function(i) {
+                  pheni = fg@graph$v$phenotype[i]
+                  parnis = pparen[[pheni]]
+                  ppar = p[parnis]
+                  if (lvl==1) ppar = p[root_]
+                  if (all(ppar>p_thress[lvl])) return(NA)
+                  pt = test(m1[,i], m2[,i])
+                  if (is.nan(pt)) return(1)
+                  return(pt)
+                }))
+              if (ftype=="edge")
+                return(llply(ii, function(i) {
+                  pheni = fg@graph$v$phenotype[i]
+                  parnis = phen_to==phen_from[i]
+                  if (sum(parnis)>0)
+                    if (all(p[parnis]>p_thress[lvl])) return(NA)
+                  pt = test(m1[,i], m2[,i])
+                  if (is.nan(pt)) return(1)
+                  return(pt)
+                }))
+            }, .parallel=parl
             ))
             pai = !is.na(pl)
             pail = sum(pai)
@@ -1321,98 +1334,20 @@ flowgraph_p = function(
             p[loop_ind_[[lvl]]] = pl
           }
         }
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["p"]] = p
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m1"]] = colMeans(as.matrix(m1))
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m2"]] = colMeans(as.matrix(m2))
+        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["p"]] = p
+        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m1"]] = colMeans(as.matrix(m1))
+        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m2"]] = colMeans(as.matrix(m2))
         
         time_output(start1)
       }
     }
   }
   
-  if (is.null(edge_features)) edge_features = names(fg@feat$edge)
-  edge_features = edge_features[edge_features%in%names(fg@feat$edge)]
-  if (length(edge_features)>0) {
-    for (classl in class_list) {
-      for (edge_feature in edge_features) {
-        # prep index
-        nfi = 1
-        cat("- claculating ( class:",paste0(classl), ") summary", test_name,"for edge feature", node_feature)
-        if (test_name%in%names(fg@feat_summary$desc$edge)) {
-          if (class%in%names(fg@feat_summary$desc$edge[[test_name]])) {
-            if (edge_feature%in%fg@feat_summary$desc$edge[[test_name]][[class]]) {
-              nfi = which(sapply(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]], function(x)
-                setequal(names(x),classl)))
-              if (length(nfi)!=0) {
-                if (!overwrite) next
-              } else {
-                nfi = length(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]]) + 1
-              }
-            }
-          }
-        }
-        id1 = fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]][[1]] = 
-          fg@meta$id[classes_==classl[1]]
-        id2 = fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]][[2]] = 
-          fg@meta$id[classes_==classl[2]]
-        names(fg@feat_summary$desc$edge[[test_name]][[class]][[edge_feature]][[nfi]]) = classl
-        
-        m = fg@feat$edge[[edge_feature]]
-        m1 = m[id1,,drop=F]
-        m2 = m[id2,,drop=F]
-        
-        if (!diminish) {
-          loop_ind = loop_ind_f(1:ncol(m), no_cores)
-          p = unlist(llply(loop_ind, function(ii) 
-            llply(ii, function(i) test(m1[,i], m2[,i])), .parallel=parl ))
-          p = adjust(p)
-          names(p) = colnames(m)
-        } else {
-          pparen = fg@edge_list$parent
-          
-          phen_to = fg@graph$e$to
-          phen_from = fg@graph$e$from
-          layers_ = fg@graph$v$phenolayer[match(phen_to, fg@graph$v$phenotype)]
-          layers = sort(unique(layers_))
-          loop_ind_ = llply(layers, function(l) which(layers_==l))
-          
-          p = rep(NA,ncol(m))
-          names(p) = colnames(m)
-          
-          p_thress = rep(p_rate, length(layers))
-          p_thress[1] = p_thres
-          p_thress = cumprod(p_thress)
-          p_thress = sort(p_thress, decreasing=T)
-          
-          for (lvl in layers) {
-            loop_ind = loop_ind_f(loop_ind_[[lvl]], no_cores)
-            pl = unlist(llply(loop_ind, function(ii) 
-              llply(ii, function(i) {
-                pheni = fg@graph$v$phenotype[i]
-                parnis = phen_to==phen_from[i]
-                if (sum(parnis)>0)
-                  if (all(p[parnis]>p_thress[lvl])) return(NA)
-                pt = test(m1[,i], m2[,i])
-                if (is.nan(pt)) return(1)
-                return(pt)
-              }), .parallel=parl
-            ))
-            pai = !is.na(pl)
-            pail = sum(pai)
-            if (pail>1)
-              if (!is.null(adjust)) 
-                pl[pai] = adjust(rep(pl[pai],sum(pai)))[1:pail]
-            pl[!pai] = 1
-            p[loop_ind_[[lvl]]] = pl
-          }
-        }
-        fg@feat_summary$edge[[test_name]][[class]][[edge_feature]][[nfi]][["p"]] = p
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m1"]] = colMeans(as.matrix(m1))
-        fg@feat_summary$node[[test_name]][[class]][[node_feature]][[nfi]][["m2"]] = colMeans(as.matrix(m2))
-        
-      }
-    }
-  }
+  return(fg)
+}
+
+flowgraph_clear_p = function(fg) {
+  fg@feat_summary = list()
   return(fg)
 }
 
@@ -1468,7 +1403,6 @@ flowgraph_cumsum = function(fg, no_cores) {
 
 ## flowgraph interpretation functions ------------------------------
 
-
 setMethod(
   "show", "flowgraph",
   function(object) 
@@ -1508,5 +1442,147 @@ setMethod(
   }
 )
 
+ggdf = function(gr0) {
+  list(e=data.frame(gr0$e, width=1,color="", e_ind=F),
+       v=data.frame(gr0$v, 
+                          size=1, color="", sizeb=1, colorb="", fill="", 
+                          label=gr0$v$phenotype, 
+                          label_ind=F, v_ind=F, vb_ind=F, show_bgedges=T))
+}
+
+flowgraph_plot_summary_ch = 
+  function(fg,
+           method=NULL, class=NULL, 
+           nodeft="specenr", edgeft="prop", 
+           nodeftlabel="prop", # node only
+           p_thres=.05, show_bgedges=T,
+           path, width=9, height=9) { # width in inches feat must be list with names node and edge
+    type = match.arg(type)
+    # cellhierarchy plots p values
+    # hist plots 
+    
+    sum = fg@feat_summary
+    desc = sum$desc
+    gr0 = ggdf(fg@graph)
+    if (!is.null(nodeftlabel)) 
+      if (nodeftlabel!=nodeft) 
+        lft = T
+    
+    for (idsname in names(desc$node[[nodeft]][[method]][[class]])) {
+      if (is.null(idsname)) next
+      dsc = desc$node[[nodeft]][[method]][[class]][[idsname]]
+      pms = sum$node[[nodeft]][[method]][[class]][[idsname]]
+      
+      p = pms$p
+      p_ = p<p_thres
+      
+      m1 = pms$m1; #names(dsc)[1]
+      m2 = pms$m2; #names(dsc)[2]
+      
+      main = paste0("feat: ",nodeft,"; class: ",class,"; pthres: ",pt,
+                    "\nsize = -ln(p value); p threshold = ",p_thres,
+                    "\nlabel(",names(dsc)[1],"/",names(dsc)[2],") = ",nodeft)
+      
+      gr = gr0
+      gr$v$label_ind[p_] = gr$v$v_ind = p_
+      gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_]
+      gr$v$color = ifelse(m2>m1,"increased","reduced")
+      gr$v$label = paste0(gr$v$name,":",round(m1,3),"/",round(m2,3))
+      if (lft) {
+        pms_ = sum$node[[nodeftlabel]][[method]][[class]][[idsname]]
+        m1_ = pms_$m1
+        m2_ = pms_$m2
+        gr$v$label = paste0(gr$v$label,"(",round(m1_,3),"/",round(m2_,3),")")
+        main = paste0(main,"(",nodeftlabel,")")
+      }
+      gr$v$size = -log(p)
+      gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
+      if (!is.null(edgeft)) {
+        pe = sum$edge[[nodeft]][[method]][[class]][[idsname]]$p
+        pe_ = pe<p_thres
+        gr$e$size[pe_] = 2
+        main = paste0(main,"\nedge size = non(1)/sig(2) p values of ", edgeft)
+      }
+      
+      gp = gggraph(gr, main=main, bgedges=show_bgedges)
+      path_ = paste0(path,"/",ifelse(is.null(nodeftlabel),nodeft,paste0(nodeft,"_",nodeftlabel)),"/",class)
+      dir.create(path_, recursive=T)
+      ggsave(paste0(path_,"/",idsname,".png"), plot=gp, scale=1, width=width, height=height, units="in", dpi=500, limitsize=T)
+      
+    }
+}
 
 
+
+
+## graph plot functions
+ggblank = function(gr_v=NULL) {
+  require(ggplot2)
+  if (is.null(gr_v)) {
+    gp = ggplot()
+  } else {
+    gp = ggplot(gr_v,aes(x=x, y=y, colour=color))
+  }
+  
+  gp +
+    scale_x_continuous(expand=c(0,1)) +  # expand x limits
+    scale_y_continuous(expand=c(0,1)) + # expand y limits
+    # theme_bw()+  # use the ggplot black and white theme
+    theme(
+      axis.text.x = element_blank(),  # rm x-axis text
+      axis.text.y = element_blank(), # rm y-axis text
+      axis.ticks = element_blank(),  # rm axis ticks
+      axis.title.x = element_blank(), # rm x-axis labels
+      axis.title.y = element_blank(), # rm y-axis labels
+      panel.background = element_blank(), 
+      panel.border = element_blank(), 
+      panel.grid.major = element_blank(),  #rm grid labels
+      panel.grid.minor = element_blank(),  #rm grid labels
+      plot.background = element_blank())
+}
+
+gggraph = function(gr, main="", bgedges=T) { # indices of whether to apply color size etc
+  # gr_v: name x y label size color sizeb colorb
+  # gr_e: from to from.x from.y to.x to.y color
+  require(ggrepel)
+  require(ggplot2)
+  
+  gr_v = gr$v
+  gr_e = gr$e
+  label_ind = gr_v$label_ind
+  v_ind = gr_v$v_ind
+  vb_ind = gr_v$vb_ind
+  e_ind = gr_e$e_ind
+  
+  # base graph
+  if (bgedges) { # keep greyed out edges on
+    gp = ggblank() + ggtitle(main) +
+      scale_fill_brewer(palette="Pastel2") +
+      geom_segment(data=gr_e[!e_ind,], color="grey",
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+      geom_segment(data=gr_e[e_ind,], 
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+      # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+      # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+      geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
+      geom_label_repel(data=gr_v[label_ind,],
+                       aes(x=x,y=y,label=label, color=color),
+                       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  } else {
+    gp = ggblank() + ggtitle(main) +
+      scale_fill_brewer(palette="Pastel2") +
+      # geom_segment(data=gr_e[!e_ind,], color="grey",
+      #              aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+      geom_segment(data=gr_e[e_ind,], 
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+      # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
+      # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
+      geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
+      geom_label_repel(data=gr_v[label_ind,],
+                       aes(x=x,y=y,label=label, color=color),
+                       nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
+  }
+  
+  
+  return(gp)
+}

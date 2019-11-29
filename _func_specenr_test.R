@@ -214,11 +214,6 @@ gate_dir = paste0(input_dir,"/gates")
 
 ## ouput
 result_dir = paste0(root, "/result/bodenmiller"); dir.create(result_dir, showWarnings=F, recursive=T)
-feat_dir = paste0(result_dir,"/feat"); dir.create(feat_dir, showWarnings=F, recursive=T)
-feat_file_cell_count_dir = paste(feat_dir, "/file-cell-count", sep="")
-meta_dir = paste(result_dir, "/meta", sep=""); dir.create(meta_dir, showWarnings=F, recursive=T)
-meta_cell_dir = paste(meta_dir, "/cell", sep="")
-meta_file_dir = paste(meta_dir, "/file", sep="")
 
 
 start = Sys.time()
@@ -264,6 +259,7 @@ for (uc in unique(meta_file$class)) {
 
 fg = flowgraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
 fg = flowgraph_mean_class(fg, class="subject", no_cores=no_cores)
+save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
 time_output(start, "data_bodenmiller")
 
@@ -335,6 +331,10 @@ normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countA
 
 lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
 
+## cores
+no_cores = 8
+registerDoMC(no_cores)
+
 
 start = Sys.time()
 
@@ -351,11 +351,10 @@ meta_file$train[(nctrl*nsample+1):(nctrl*nsample+(1-nctrl)*nsample/2)] = meta_fi
 
 ## prepare flowtype files
 # load sample fcs file
-f = read.FCS("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/samplefcs.fcs")
+# f = read.FCS("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/samplefcs.fcs")
 f = new("flowFrame")
 
 markers = LETTERS[1:markern] # markers
-ci = c(1:markern); names(ci) = markers # marker indices in f@exprs
 
 # marker thresholds
 cvd = rnorm(ncells[1],2,1)
@@ -371,7 +370,8 @@ thress0 = llply(markers, function(x) p50); names(thress0) = markers
 thress5[[markers[1]]] = c(p25,p50)
 thress5[[markers[2]]] = c(p25,p50,p60)
 
-for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
+#paste0("ctrl",c(0:9)), 
+for (ds in c(paste0("pos",c(31:32)))) {
   start2 = Sys.time()
   
   # ouput directories
@@ -396,10 +396,12 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
   ftl = llply(loop_ind_f(1:nsample,no_cores), function(ii) {
     llply(ii, function(i) {
       # v1 randomized matrix
-      f@exprs = fex1 = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+      f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
+      colnames(f@exprs) = markers
       if (ds=="pos31") f@exprs = f@exprs[,-1]
       if (ds=="pos32") f@exprs = f@exprs[,-2]
-
+      ci = c(1:ncol(f@exprs)); names(ci) = colnames(f@exprs) # marker indices in f@exprs
+      
       thress = thress0
       if (i>(nsample*nctrl) & grepl("pos",ds)) {
         # make base graph for plot
@@ -592,7 +594,9 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
           tripleind = which(ap & bp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds%in%c("pos32","pos31")) {
+        else if (ds%in%c("pos32","pos31")) { # boost C+
+          thress = thress0
+          names(thress) = colnames(f@exprs)
           tm = sum(double)
           f@exprs = rbind(f@exprs,f@exprs[sample(which(cp),tm),])
         }
@@ -628,7 +632,8 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
         # ft = ft@CellFreqs
         names(ft@CellFreqs) = ftcell
       } else {
-        ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers, 
+        thress = thress[colnames(f@exprs)]
+        ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=colnames(f@exprs), 
                       MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2, 
                       Thresholds=thress, 
                       Methods='Thresholds', verbose=F, MemLimit=60)#@CellFreqs
@@ -660,14 +665,16 @@ for (ds in c(paste0("ctrl",c(0:9)), paste0("pos",c(1:32)))) {
   }
   
   time_output(start2, ds)
-  rm(list=c("ftl","ft","fg")); gc()
+  rm(list=c("ftl","fg")); gc()
 }
 time_output(start)
 
 
-
-
 ## p value ------------------------
+
+## cores
+no_cores = detectCores()-1
+registerDoMC(no_cores)
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
@@ -680,7 +687,19 @@ for (result_dir in result_dirs) {
     diminish=T,
     p_thres=.05, p_rate=2, # only used if diminish=T
     test=function(x,y) tryCatch(t.test(x,y)$p.value, error=function(e) 1))
+  save(fg, file=paste0(result_dir,"/fg.Rdata"))
   time_output(start1,result_dir)
 }
+
+
+## plots --------------------------
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
+for (result_dir in result_dirs) {
+  start1 = Sys.time()
+  fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  time_output(start1,result_dir)
+}
+
 
 
