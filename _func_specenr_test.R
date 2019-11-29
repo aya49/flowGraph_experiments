@@ -393,7 +393,8 @@ for (ds in c(paste0("pos",c(31:32)))) {
   # lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
   
   # flowtype
-  ftl = llply(loop_ind_f(1:nsample,no_cores), function(ii) {
+  loop_ind = loop_ind_f(1:nsample,no_cores)
+  ftl = llply(loop_ind, function(ii) {
     llply(ii, function(i) {
       # v1 randomized matrix
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
@@ -405,25 +406,26 @@ for (ds in c(paste0("pos",c(31:32)))) {
       thress = thress0
       if (i>(nsample*nctrl) & grepl("pos",ds)) {
         # make base graph for plot
-        if (i == nsample*nctrl+1 & grepl("pos",ds)) {
-          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
-                        Thresholds=thress,
-                        Methods='Thresholds', verbose=F, MemLimit=60)
-          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
-            decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          ftv0 = ftv0_ = ft@CellFreqs
-          ftv0 = round(ftv0/ftv0[1],3)
-        }
-        
+        # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+        #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+        #                 MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+        #                 Thresholds=thress,
+        #                 Methods='Thresholds', verbose=F, MemLimit=60)
+        #   ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+        #     decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+        #   ftv0 = ftv0_ = ft@CellFreqs
+        #   ftv0 = round(ftv0/ftv0[1],3)
+        # }
+        if (ds!="pos31" & ds!="pos32")
+          dp = f@exprs[,4]>thress[[4]]
         ap = f@exprs[,1]>thress[[1]]
         bp = f@exprs[,2]>thress[[2]]
         cp = f@exprs[,3]>thress[[3]]
-        dp = f@exprs[,4]>thress[[4]]
         # ep = f@exprs[,5]>thress[[5]]
         double = ap & bp
         triple = ap & bp & cp
-        quad   = ap & bp & cp & dp
+        if (ds!="pos31" & ds!="pos32")
+          quad   = ap & bp & cp & dp
         # quint = ap & bp & cp & dp & ep
         
         # change f values
@@ -601,19 +603,19 @@ for (ds in c(paste0("pos",c(31:32)))) {
           f@exprs = rbind(f@exprs,f@exprs[sample(which(cp),tm),])
         }
         
-        if (i == nsample*nctrl+1 & grepl("pos",ds)) {
-
-          ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
-                        MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
-                        Thresholds=thress,
-                        Methods='Thresholds', verbose=F, MemLimit=60)
-          ftcell = unlist(lapply(ft@PhenoCodes, function(x)
-            decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
-          ftv = ftv_ = ft@CellFreqs
-          ftv = round(ftv/ftv[1],3)
-          names(ftv) = ftcell
-          a = getPhenCP(cp=ftcell,no_cores=no_cores)
-        }
+        # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+        # 
+        #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+        #                 MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+        #                 Thresholds=thress,
+        #                 Methods='Thresholds', verbose=F, MemLimit=60)
+        #   ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+        #     decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+        #   ftv = ftv_ = ft@CellFreqs
+        #   ftv = round(ftv/ftv[1],3)
+        #   names(ftv) = ftcell
+        #   a = getPhenCP(cp=ftcell,no_cores=no_cores)
+        # }
       }
       fe = f@exprs
       colnames(fe) = LETTERS[1:ncol(fe)]
@@ -641,9 +643,10 @@ for (ds in c(paste0("pos",c(31:32)))) {
       return(ft)
     })
   }, .parallel=T)
+  ftl = unlist(ftl,recursive=F)
 
   if (ds=="pos30") {
-    fg0 = flowgraph(unlist(ftl,recursive=F), no_cores=no_cores, meta=meta_file, prop=F, specenr=F, normalize=F)
+    fg0 = flowgraph(ftl, no_cores=no_cores, meta=meta_file, prop=F, specenr=F, normalize=F)
     fg1 = flowgraph_cumsum(fg0, no_cores=no_cores)
     
     fg0 = flowgraph_prop(fg0)
@@ -660,7 +663,7 @@ for (ds in c(paste0("pos",c(31:32)))) {
     save(fg1, file=paste0(result_dir,"_cumsum/fg.Rdata"))
     
   } else {
-    fg = flowgraph(unlist(ftl,recursive=F), no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+    fg = flowgraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
   }
   
