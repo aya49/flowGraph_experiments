@@ -316,14 +316,6 @@ merge_flowgraph = function(obj1, obj2,
 }
 
 
-# change layout
-set_layout = function(object, layout_fun) {
-  object@plot_layout = as.character(substitute(layout_fun))
-  object@gr = set_layout_graph(object@gr, layout_fun)
-  return(object)
-}
-
-
 ## flowgraph initialization helper functions -----------------------------
 
 ## input: x matrix (phenotypes on columns, will convert in function) -- x0 is optional, plots according to x0 so if you want to plot more cell populations than those in x
@@ -584,35 +576,29 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
   gr_vxy_ = FUN(gr0)
   gr_vxy = as.data.frame(gr_vxy_)
   if (as.character(substitute(FUN))=="layout.reingold.tilford") {
-    # edit layout manually
+    ## edit layout manually
     gys = sort(unique(gr_vxy[,2]))
-    gxns = sapply(gys,function(y) length(gr_vxy[gr_vxy[,2]==y,1]))
-    names(gxns) = gys
-    gxnmax = max(gxns)
-    gxnmaxl = which(gxns==gxnmax)
-    minwidthmid = 2
-    maxwidthmid = 4
-    gxnmaxwidth = gxnmax*minwidthmid-1
-    gxos = unlist(llply(gys, function(gy) {
-      gxtf = which(gr_vxy[,2]==gy)
-      gx = gr_vxy[gxtf,1]
-      gxtf[order(gx)]
-    }))
-    gr_vxy[gxos,1] = unlist(llply(1:length(gys), function(gyi) {
-      if (gyi%in%gxnmaxl) return( seq(0,gxnmaxwidth,by=minwidthmid) )
-      if (gxns[gyi]==1) return( gxnmaxwidth/2 )
-      by = min(maxwidthmid,(gxnmaxwidth+1)/(gxns[gyi]+1))
-      a = seq(0,gxns[gyi]-1)*by
-      a + (gxnmaxwidth-(a[length(a)]-1))/2
-    }))
-    # switch sideways
+    gxns = sapply(gys, function(y) sum(gr_vxy[,2]==y))
+    maxlayern = max(gxns)
+    maxlayer = gys[which.max(gxns)]
+    maxlayertf = gr_vxy[,2]==maxlayer
+    gr_vxy[maxlayertf,1] = rank(gr_vxy[maxlayertf,1])-1
+    for (gy in gys) {
+      if (gy==maxlayer) next()
+      layertf = gr_vxy[,2]==gy
+      gr_vxy[layertf,1] = 
+        rank(gr_vxy[layertf,1]) - 1 + floor((maxlayern-sum(layertf))/2)
+    }
+    # turn plot sideways
     gr_vxy = gr_vxy[,2:1]
     gr_vxy[,1] = max(gr_vxy[,1])-gr_vxy[,1]
   }
   
   # get node
   colnames(gr_vxy) = c("x","y")
-  gr_v = cbind(gr_v,gr_vxy[match(gr_v$phenotype,names(V(gr0)[[]])),])
+  gr_v_xy = gr_vxy[match(gr_v$phenotype,names(V(gr0)[[]])),]
+  gr_v$x = gr_v_xy$x
+  gr_v$y = gr_v_xy$y
   
   # get edge
   gr_e$from.x = gr_v$x[match(gr_e$from, gr_v$phenotype)]
@@ -621,6 +607,14 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
   gr_e$to.y = gr_v$y[match(gr_e$to, gr_v$phenotype)]
   
   return(list(e=gr_e,v=gr_v))
+}
+
+
+# change layout
+set_layout = function(object, layout_fun=layout.reingold.tilford) {
+  object@plot_layout = as.character(substitute(layout_fun))
+  object@graph = set_layout_graph(object@graph, layout_fun)
+  return(object)
 }
 
 
@@ -1256,12 +1250,13 @@ flowgraph_p = function(
         cat("- claculating (", class, ":", paste0(classl), ")",
             test_name,"for", ftype, "feat", feature)
         
-        id1 = fg@meta$id[classes_==classl[1]]
-        id2 = fg@meta$id[classes_==classl[2]]
-        ids = list(id1,id2); names(ids) = classl
+        id1 = classes_==classl[1]
+        id2 = classes_==classl[2]
+        ids = list(fg@meta$id[id1],fg@meta$id[id2]); 
+        names(ids) = classl
         fg@feat_summary$desc[[ftype]][[feature]][[test_name]][[class]][[idsname]] = ids
 
-        m = fg@feat[[ftype]][[feature]]
+        m = as.matrix(fg@feat[[ftype]][[feature]])
         m1 = m[id1,,drop=F]
         m2 = m[id2,,drop=F]
         
@@ -1269,6 +1264,7 @@ flowgraph_p = function(
           loop_ind = loop_ind_f(1:ncol(m), no_cores)
           p = unlist(llply(loop_ind, function(ii) 
             llply(ii,function(i) test(m1[,i], m2[,i])), .parallel=parl ))
+          p[is.nan(p)] = 1
           if (!is.null(adjust)) p = adjust(p)
           names(p) = colnames(m)
         } else {
@@ -1330,7 +1326,7 @@ flowgraph_p = function(
             if (pail>1)
               if (!is.null(adjust)) 
                 pl[pai] = adjust(rep(pl[pai],sum(pai)))[1:pail]
-            pl[!pai] = 1
+            pl[!pai | is.nan(pl)] = 1
             p[loop_ind_[[lvl]]] = pl
           }
         }
@@ -1443,73 +1439,82 @@ setMethod(
 )
 
 ggdf = function(gr0) {
-  list(e=data.frame(gr0$e, width=1,color="", e_ind=F),
+  list(e=data.frame(gr0$e, width=1,color="unchanged", e_ind=F),
        v=data.frame(gr0$v, 
-                          size=1, color="", sizeb=1, colorb="", fill="", 
-                          label=gr0$v$phenotype, 
-                          label_ind=F, v_ind=F, vb_ind=F, show_bgedges=T))
+                    size=1, color="", sizeb=1, colorb="", fill="", 
+                    label=gr0$v$phenotype, 
+                    label_ind=F, v_ind=F, vb_ind=F))
 }
 
-flowgraph_plot_summary_ch = 
-  function(fg,
-           method=NULL, class=NULL, 
-           nodeft="specenr", edgeft="prop", 
-           nodeftlabel="prop", # node only
-           p_thres=.05, show_bgedges=T,
-           path, width=9, height=9) { # width in inches feat must be list with names node and edge
-    type = match.arg(type)
-    # cellhierarchy plots p values
-    # hist plots 
+flowgraph_summary_plot = function(
+  fg,
+  method, class, 
+  nodeft="specenr", edgeft="prop", 
+  nodeftlabel="prop", label_max=30,
+  p_thres=.01, show_bgedges=T,
+  path, width=9, height=9) { # width in inches feat must be list with names node and edge
+  # cellhierarchy plots p values
+  
+  require(ggplot2)
+  require(ggrepel)
+  
+  sum = fg@feat_summary
+  desc = sum$desc
+  gr0 = ggdf(fg@graph)
+  if (!is.null(nodeftlabel)) 
+    if (nodeftlabel!=nodeft) 
+      lft = T
+  
+  for (idsname in names(desc$node[[nodeft]][[method]][[class]])) {
+    if (is.null(idsname)) next
+    dsc = desc$node[[nodeft]][[method]][[class]][[idsname]]
+    pms = sum$node[[nodeft]][[method]][[class]][[idsname]]
     
-    sum = fg@feat_summary
-    desc = sum$desc
-    gr0 = ggdf(fg@graph)
-    if (!is.null(nodeftlabel)) 
-      if (nodeftlabel!=nodeft) 
-        lft = T
+    p = pms$p
+    p_ = p<p_thres
     
-    for (idsname in names(desc$node[[nodeft]][[method]][[class]])) {
-      if (is.null(idsname)) next
-      dsc = desc$node[[nodeft]][[method]][[class]][[idsname]]
-      pms = sum$node[[nodeft]][[method]][[class]][[idsname]]
-      
-      p = pms$p
-      p_ = p<p_thres
-      
-      m1 = pms$m1; #names(dsc)[1]
-      m2 = pms$m2; #names(dsc)[2]
-      
-      main = paste0("feat: ",nodeft,"; class: ",class,"; pthres: ",pt,
-                    "\nsize = -ln(p value); p threshold = ",p_thres,
-                    "\nlabel(",names(dsc)[1],"/",names(dsc)[2],") = ",nodeft)
-      
-      gr = gr0
-      gr$v$label_ind[p_] = gr$v$v_ind = p_
-      gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_]
-      gr$v$color = ifelse(m2>m1,"increased","reduced")
-      gr$v$label = paste0(gr$v$name,":",round(m1,3),"/",round(m2,3))
-      if (lft) {
-        pms_ = sum$node[[nodeftlabel]][[method]][[class]][[idsname]]
-        m1_ = pms_$m1
-        m2_ = pms_$m2
-        gr$v$label = paste0(gr$v$label,"(",round(m1_,3),"/",round(m2_,3),")")
-        main = paste0(main,"(",nodeftlabel,")")
-      }
-      gr$v$size = -log(p)
-      gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
-      if (!is.null(edgeft)) {
-        pe = sum$edge[[nodeft]][[method]][[class]][[idsname]]$p
-        pe_ = pe<p_thres
-        gr$e$size[pe_] = 2
-        main = paste0(main,"\nedge size = non(1)/sig(2) p values of ", edgeft)
-      }
-      
-      gp = gggraph(gr, main=main, bgedges=show_bgedges)
-      path_ = paste0(path,"/",ifelse(is.null(nodeftlabel),nodeft,paste0(nodeft,"_",nodeftlabel)),"/",class)
-      dir.create(path_, recursive=T)
-      ggsave(paste0(path_,"/",idsname,".png"), plot=gp, scale=1, width=width, height=height, units="in", dpi=500, limitsize=T)
-      
+    m1 = pms$m1; #names(dsc)[1]
+    m2 = pms$m2; #names(dsc)[2]
+    
+    main = paste0("feat: ",nodeft,"; class: ",class,
+                  "; pthres: ",p_thres,
+                  "\nsize = -ln(p value)",
+                  "\nlabel(",names(dsc)[1],"/",names(dsc)[2],") = ",nodeft)
+    
+    gr = gr0
+    gr$v$label_ind = gr$v$v_ind = p_
+    if (!is.null(label_max)) {
+      if (sum(p_)>label_max) {
+        gr$v$label_ind = rep(F, nrow(gr$v))
+        gr$v$label_ind[order(p,decreasing=T)[1:30]] = T
+      } 
     }
+    gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_]
+    gr$v$color = ifelse(m2>m1,"increased","reduced")
+    gr$v$label = paste0(gr$v$name,":",round(m1,3),"/",round(m2,3))
+    if (lft) {
+      pms_ = sum$node[[nodeftlabel]][[method]][[class]][[idsname]]
+      m1_ = pms_$m1
+      m2_ = pms_$m2
+      gr$v$label = paste0(gr$v$label," (",round(m1_,3),"/",round(m2_,3),")")
+      main = paste0(main,"(",nodeftlabel,")")
+    }
+    gr$v$size = -log(p)
+    gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
+    if (!is.null(edgeft)) {
+      e1 = sum$edge[[nodeft]][[method]][[class]][[idsname]]$m1
+      e2 = sum$edge[[nodeft]][[method]][[class]][[idsname]]$m2
+      pe = sum$edge[[nodeft]][[method]][[class]][[idsname]]$p
+      pe_ = pe<p_thres
+      gr$e$color[pe_] = ifelse(e2>e1,"increased","reduced")
+      main = paste0(main,"\nedge size = non(1)/sig(2) p values of ", edgeft)
+    }
+    
+    gp = gggraph(gr, main=main, bgedges=show_bgedges)
+    path_ = paste0(path,"/",ifelse(is.null(nodeftlabel),nodeft,paste0(nodeft,"_label-",nodeftlabel)),"/",class)
+    dir.create(path_, recursive=T, showWarnings=F)
+    ggsave(paste0(path_,"/",idsname,".png"), plot=gp, scale=1, width=width, height=height, units="in", dpi=500, limitsize=T)
+  }
 }
 
 
@@ -1561,7 +1566,7 @@ gggraph = function(gr, main="", bgedges=T) { # indices of whether to apply color
       geom_segment(data=gr_e[!e_ind,], color="grey",
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
       geom_segment(data=gr_e[e_ind,], 
-                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y, color=color)) +
       # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
       # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
       geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +
@@ -1582,7 +1587,6 @@ gggraph = function(gr, main="", bgedges=T) { # indices of whether to apply color
                        aes(x=x,y=y,label=label, color=color),
                        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
   }
-  
-  
+
   return(gp)
 }

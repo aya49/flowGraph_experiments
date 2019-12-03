@@ -28,138 +28,6 @@ registerDoMC(no_cores)
 options(stringsAsFactors=F)
 
 
-
-## flowcap ---------------------------------------------------------
-
-## input directories
-fc_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II"
-ft_dir = paste0(fc_dir,"/data/FT") # flowtype file directory
-csv_dir = paste0(fc_dir,"/meta_file.csv") # meta file directory
-markers_dir = paste0(fc_dir,"/markers.Rdata") # fcs file directory
-
-## output directories (NOT last section, output split by tube/panel)
-result_dir0 = paste0(root, "/result/flowcap")
-
-## options
-matchsamples = 5 #pos: number of samples from each normal and aml to mix
-amlprop = 1/2 #ctrl: proportion of control sample to make as "aml"
-
-
-start = Sys.time()
-
-## prepare flowtype directories
-ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
-ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rda","",a[length(a)]) )
-
-## prepare meta
-meta_file0 = read.csv(csv_dir)[,-1]
-for (i in 1:ncol(meta_file0)) 
-  if (is.factor(meta_file0[,i])) 
-    meta_file0[,i] = as.character(meta_file0[,i])
-
-markers = get(load(markers_dir))
-
-# ## this or
-# m00 = llply(loop_ind_f(1:length(ft_dirs),no_cores),function(ii)
-#   llply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs), .parallel=T)
-# m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
-# rownames(m00) = ft_names
-# colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
-# fg0 = flowgraph(m00, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=F)
-
-## that
-fg0 = flowgraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=T)
-
-randomindp = randomindc = NULL
-for (tube in unique(meta_file0$tube)) {
-  ## split data by tube/panel
-  fg = extract_samples(fg0, fg0@meta$id[fg0@meta$tube==tube])
-  fg = gsub_ids(fg, as.numeric(gsub("T[0-9]S|FT","",fg@meta$id)) )
-  fg = flowgraph_normalize(fg, no_cores=no_cores, norm_path=paste0(result_dir0, "_", tube, "/count_norm")) # normalize count
-  marker = markers[[tube]]
-  fg = gsub_markers(fg, marker)
-  
-  mc = fg@feat$node$count_norm
-  
-  ## extract controls
-  fg_c = extract_samples(fg, fg@meta$id[fg@meta$class=="control"])
-  dir.create(paste0(result_dir0, "_", tube, "_ctrl"), showWarnings=F)
-  save(fg_c, file=paste0(result_dir0, "_", tube, "_ctrl/fg.Rdata"))
-  
-  
-  ## make a new class: mixed
-  normali = which(fg@meta$class=="control")
-  amli = which(fg@meta$class=="aml")
-  if (is.null(randomindp))
-    for (i in 1:min(length(normali),length(amli))) {
-      randomindp[[i]] = list()
-      randomindp[[i]]$normal = sample(normali, matchsamples)
-      randomindp[[i]]$aml = sample(amli, matchsamples)
-    }
-  weight = 1/(2*matchsamples)
-  
-  fg2 = fg
-  for (nfeat in names(fg2@feat)) 
-    for (nne in names(fg2@feat[[nfeat]])) {
-        m = as.matrix(fg2@feat[[nfeat]][[nne]])
-        mc2 = as.matrix(do.call(rbind,llply(randomindp,function(ri)
-          weight*colSums(m[append(ri$normal,ri$aml),,drop=F]) )))
-        rownames(mc2) = c((1+nrow(m)):(nrow(mc2)+nrow(m)))
-        fg2@feat[[nfeat]][[nne]] = mc2
-      }
-
-  # meta
-  fg2@meta = meta2 = data.frame(
-    class=rep("mix", length(randomindp)), 
-    id=rownames(mc2), 
-    train=append(rep(F,floor(length(randomindp)/2)), 
-                 rep(T,ceiling(length(randomindp)/2))),
-    subject=0,
-    tube=tube
-  )
-  fg1 = fg
-  fg = merge_samples(fg1, fg2)
-  dir.create(paste0(result_dir0, "_", tube), showWarnings=F)
-  save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
-}
-
-time_output(start, "data_flowcap")
-
-
-## genentech -------------------------------------
-
-## input: genetech by daniel yokosawa on the genetech data (bone marrow + blood for 3 patients x 5 samples; computationally mixed)
-## output: feat_file_cell_count, meta_file
-
-## input directories
-input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003"
-
-## ouput directories
-result_dir = paste0(root, "/result/genentech"); dir.create(result_dir, showWarnings=F, recursive=T)
-
-
-start = Sys.time()
-
-## prepare flowtype directories
-ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
-names(ftl) = gsub("[%]","",names(ftl))
-markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
-
-## prepare meta
-temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
-meta_file = data.frame(id=names(ftl), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
-meta_file$class[meta_file$class=="100WB"] = "control"
-for (uc in unique(meta_file$class)) {
-  uci = meta_file$class==uc
-  meta_file$train[uci] = ifelse(which(uci)%in%sample(which(uci),sum(uci)/2),T,F)
-}
-
-fg = flowgraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
-save(fg, file=paste0(result_dir,"/fg.Rdata"))
-
-time_output(start, "data_genetech")
-
-
 ## bodenmiller ------------------------------------
 
 ## input: gates + fcm files,  meta data paths
@@ -263,6 +131,140 @@ save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
 time_output(start, "data_bodenmiller")
 
+
+
+
+## flowcap ---------------------------------------------------------
+
+## input directories
+fc_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II"
+ft_dir = paste0(fc_dir,"/data/FT") # flowtype file directory
+csv_dir = paste0(fc_dir,"/meta_file.csv") # meta file directory
+markers_dir = paste0(fc_dir,"/markers.Rdata") # fcs file directory
+
+## output directories (NOT last section, output split by tube/panel)
+result_dir0 = paste0(root, "/result/flowcap")
+
+## options
+matchsamples = 5 #pos: number of samples from each normal and aml to mix
+amlprop = 1/2 #ctrl: proportion of control sample to make as "aml"
+
+
+start = Sys.time()
+
+## prepare flowtype directories
+ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=T, full.names=T, recursive=T) )
+ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rda","",a[length(a)]) )
+
+## prepare meta
+meta_file0 = read.csv(csv_dir)[,-1]
+for (i in 1:ncol(meta_file0)) 
+  if (is.factor(meta_file0[,i])) 
+    meta_file0[,i] = as.character(meta_file0[,i])
+
+markers = get(load(markers_dir))
+
+# ## this or
+# m00 = llply(loop_ind_f(1:length(ft_dirs),no_cores),function(ii)
+#   llply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs), .parallel=T)
+# m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
+# rownames(m00) = ft_names
+# colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
+# fg0 = flowgraph(m00, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=F)
+
+## that
+fg0 = flowgraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=F, specenr=T)
+
+randomindp = randomindc = NULL
+for (tube in unique(meta_file0$tube)) {
+  ## split data by tube/panel
+  fg = extract_samples(fg0, fg0@meta$id[fg0@meta$tube==tube])
+  fg = gsub_ids(fg, as.numeric(gsub("T[0-9]S|FT","",fg@meta$id)) )
+  fg = flowgraph_normalize(fg, no_cores=no_cores, norm_path=paste0(result_dir0, "_", tube, "/count_norm")) # normalize count
+  marker = markers[[tube]]
+  fg = gsub_markers(fg, marker)
+  
+  mc = fg@feat$node$count_norm
+  
+  ## extract controls
+  fg_c = extract_samples(fg, fg@meta$id[fg@meta$class=="control"])
+  fg_c@meta$class[1:(nrow(fg_c@meta)/2)] = "experiment"
+  dir.create(paste0(result_dir0, "_", tube, "_ctrl"), showWarnings=F)
+  save(fg_c, file=paste0(result_dir0, "_", tube, "_ctrl/fg.Rdata"))
+  
+  
+  ## make a new class: mixed
+  normali = which(fg@meta$class=="control")
+  amli = which(fg@meta$class=="aml")
+  if (is.null(randomindp))
+    for (i in 1:min(length(normali),length(amli))) {
+      randomindp[[i]] = list()
+      randomindp[[i]]$normal = sample(normali, matchsamples)
+      randomindp[[i]]$aml = sample(amli, matchsamples)
+    }
+  weight = 1/(2*matchsamples)
+  
+  fg2 = fg
+  for (nfeat in names(fg2@feat)) {
+    for (nne in names(fg2@feat[[nfeat]])) {
+      m = as.matrix(fg2@feat[[nfeat]][[nne]])
+      mc2 = as.matrix(do.call(rbind,llply(randomindp,function(ri)
+        weight*colSums(m[append(ri$normal,ri$aml),,drop=F]) )))
+      rownames(mc2) = c((1+nrow(m)):(nrow(mc2)+nrow(m)))
+      fg2@feat[[nfeat]][[nne]] = mc2
+    }
+  }
+  
+  # meta
+  fg2@meta = meta2 = data.frame(
+    class=rep("mix", length(randomindp)), 
+    id=rownames(mc2), 
+    train=append(rep(F,floor(length(randomindp)/2)), 
+                 rep(T,ceiling(length(randomindp)/2))),
+    subject=0,
+    tube=tube
+  )
+  fg1 = fg
+  fg = merge_samples(fg1, fg2)
+  dir.create(paste0(result_dir0, "_", tube), showWarnings=F)
+  save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
+}
+
+time_output(start, "data_flowcap")
+
+
+## genentech -------------------------------------
+
+## input: genetech by daniel yokosawa on the genetech data (bone marrow + blood for 3 patients x 5 samples; computationally mixed)
+## output: feat_file_cell_count, meta_file
+
+## input directories
+input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003"
+
+## ouput directories
+result_dir = paste0(root, "/result/genentech"); dir.create(result_dir, showWarnings=F, recursive=T)
+
+
+start = Sys.time()
+
+## prepare flowtype directories
+ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+names(ftl) = gsub("[%]","",names(ftl))
+markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
+
+## prepare meta
+temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
+meta_file = data.frame(id=names(ftl), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
+meta_file$class[meta_file$class=="100WB"] = "control"
+for (uc in unique(meta_file$class)) {
+  uci = meta_file$class==uc
+  meta_file$train[uci] = ifelse(which(uci)%in%sample(which(uci),sum(uci)/2),T,F)
+}
+
+fg = flowgraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+save(fg, file=paste0(result_dir,"/fg.Rdata"))
+
+time_output(start, "data_genetech")
 
 
 ## pregnancy ----------------------------------
@@ -371,7 +373,8 @@ thress5[[markers[1]]] = c(p25,p50)
 thress5[[markers[2]]] = c(p25,p50,p60)
 
 #paste0("ctrl",c(0:9)), 
-for (ds in c(paste0("pos",c(31:32)))) {
+#paste0("pos",c(1:30))
+for (ds in c(paste0("pos",c(7)),paste0("ctrl",c(4)))) {
   start2 = Sys.time()
   
   # ouput directories
@@ -399,8 +402,6 @@ for (ds in c(paste0("pos",c(31:32)))) {
       # v1 randomized matrix
       f@exprs = matrix(rnorm(ncells[i]*length(markers),2,1), nrow=ncells[i])
       colnames(f@exprs) = markers
-      if (ds=="pos31") f@exprs = f@exprs[,-1]
-      if (ds=="pos32") f@exprs = f@exprs[,-2]
       ci = c(1:ncol(f@exprs)); names(ci) = colnames(f@exprs) # marker indices in f@exprs
       
       thress = thress0
@@ -416,7 +417,6 @@ for (ds in c(paste0("pos",c(31:32)))) {
         #   ftv0 = ftv0_ = ft@CellFreqs
         #   ftv0 = round(ftv0/ftv0[1],3)
         # }
-        if (ds!="pos31" & ds!="pos32")
           dp = f@exprs[,4]>thress[[4]]
         ap = f@exprs[,1]>thress[[1]]
         bp = f@exprs[,2]>thress[[2]]
@@ -424,7 +424,6 @@ for (ds in c(paste0("pos",c(31:32)))) {
         # ep = f@exprs[,5]>thress[[5]]
         double = ap & bp
         triple = ap & bp & cp
-        if (ds!="pos31" & ds!="pos32")
           quad   = ap & bp & cp & dp
         # quint = ap & bp & cp & dp & ep
         
@@ -596,13 +595,7 @@ for (ds in c(paste0("pos",c(31:32)))) {
           tripleind = which(ap & bp & cp)
           f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
         }
-        else if (ds%in%c("pos32","pos31")) { # boost C+
-          thress = thress0
-          names(thress) = colnames(f@exprs)
-          tm = sum(double)
-          f@exprs = rbind(f@exprs,f@exprs[sample(which(cp),tm),])
-        }
-        
+
         # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
         # 
         #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
@@ -681,17 +674,31 @@ registerDoMC(no_cores)
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
+  try ({
   start1 = Sys.time()
+  cat(result_dir)
   fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  fg = flowgraph_clear_p(fg)
   fg = flowgraph_p(
-    fg, no_cores=1, class="class", control="control",
+    fg, no_cores=no_cores, class="class", control="control",
     overwrite=F, 
     test_name="t_BY",
+    diminish=F,
+    p_thres=.05, p_rate=2 # only used if diminish=T
+    )
+  fg = flowgraph_p(
+    fg, no_cores=no_cores, class="class", control="control",
+    overwrite=F, 
+    test_name="t_BY_diminish",
     diminish=T,
-    p_thres=.05, p_rate=2, # only used if diminish=T
-    test=function(x,y) tryCatch(t.test(x,y)$p.value, error=function(e) 1))
+    p_thres=.05, p_rate=2 # only used if diminish=T
+    )
+  
   save(fg, file=paste0(result_dir,"/fg.Rdata"))
-  time_output(start1,result_dir)
+  time_output(start1)
+  
+  })
+  
 }
 
 
@@ -701,7 +708,16 @@ result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
   start1 = Sys.time()
   fg = get(load(paste0(result_dir,"/fg.Rdata")))
-  time_output(start1,result_dir)
+  fg = set_layout(fg)
+  save(fg, file=paste0(result_dir,"/fg.Rdata"))
+  flowgraph_summary_plot(
+    fg,
+    method="t_BY", class="class", 
+    nodeft="specenr", edgeft="prop", 
+    nodeftlabel="prop", # node only
+    p_thres=.05, show_bgedges=T,
+    path=paste0(result_dir,"/plots"))
+  time_output(start1)
 }
 
 
