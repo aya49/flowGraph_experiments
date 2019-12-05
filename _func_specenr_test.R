@@ -707,7 +707,9 @@ for (result_dir in result_dirs) {
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
   start1 = Sys.time()
+  cat(result_dir)
   fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  fg@graph$v = fg@graph$v[,!colnames(fg@graph$v)%in%c("x","y")]
   fg = set_layout(fg)
   save(fg, file=paste0(result_dir,"/fg.Rdata"))
   flowgraph_summary_plot(

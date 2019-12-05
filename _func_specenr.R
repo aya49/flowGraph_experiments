@@ -563,7 +563,9 @@ getPhenCP = function(meta_cell=NULL, cp=NULL, no_cores=1) {
 
 ## input: gr$v $e from flowgraph object, and a layout function from igraph
 ## output: gr$v $e with x and y coordinates
-set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
+set_layout_graph = function(gr,FUN=NULL) {
+  # layout.circle
+  # NULL = layout.reingold.tilford
   # FUN is a layout function from the igraph package
   # assume graph is connected, used internally
   require(igraph)
@@ -573,9 +575,13 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
   
   # edit layout
   gr0 = graph_from_data_frame(gr_e)
-  gr_vxy_ = FUN(gr0)
+  if (is.null(FUN)) {
+    gr_vxy_ = layout.reingold.tilford(gr0)
+  } else {
+    gr_vxy_ = FUN(gr0)
+  }
   gr_vxy = as.data.frame(gr_vxy_)
-  if (as.character(substitute(FUN))=="layout.reingold.tilford") {
+  if (is.null(FUN)) {
     ## edit layout manually
     gys = sort(unique(gr_vxy[,2]))
     gxns = sapply(gys, function(y) sum(gr_vxy[,2]==y))
@@ -591,7 +597,8 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
     }
     # turn plot sideways
     gr_vxy = gr_vxy[,2:1]
-    gr_vxy[,1] = max(gr_vxy[,1])-gr_vxy[,1]
+    xmax = max(gr_vxy[,1])
+    if (gr_vxy[1,1]==xmax) gr_vxy[,1] = xmax-gr_vxy[,1]
   }
   
   # get node
@@ -601,17 +608,19 @@ set_layout_graph = function(gr,FUN=layout.reingold.tilford) { # layout.circle
   gr_v$y = gr_v_xy$y
   
   # get edge
-  gr_e$from.x = gr_v$x[match(gr_e$from, gr_v$phenotype)]
-  gr_e$from.y = gr_v$y[match(gr_e$from, gr_v$phenotype)]
-  gr_e$to.x = gr_v$x[match(gr_e$to, gr_v$phenotype)]
-  gr_e$to.y = gr_v$y[match(gr_e$to, gr_v$phenotype)]
+  e_match = match(gr_e$from, gr_v$phenotype)
+  gr_e$from.x = gr_v$x[e_match]
+  gr_e$from.y = gr_v$y[e_match]
+  e_match2 = match(gr_e$to, gr_v$phenotype)
+  gr_e$to.x = gr_v$x[e_match2]
+  gr_e$to.y = gr_v$y[e_match2]
   
   return(list(e=gr_e,v=gr_v))
 }
 
 
 # change layout
-set_layout = function(object, layout_fun=layout.reingold.tilford) {
+set_layout = function(object, layout_fun=NULL) {
   object@plot_layout = as.character(substitute(layout_fun))
   object@graph = set_layout_graph(object@graph, layout_fun)
   return(object)
@@ -620,7 +629,7 @@ set_layout = function(object, layout_fun=layout.reingold.tilford) {
 
 ## flowgraph initialization -----------------------------------
 flowgraph = function(input_, meta=NULL, no_cores=1, 
-           layout_fun=layout.reingold.tilford, 
+           layout_fun=NULL, 
            markers=NULL,
            cumsumpos=F, # whether to make positives + = +/++ (cumsum)
            # prop=T,
@@ -912,7 +921,8 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   
   cells1 = append("",meta_cell$phenotype[meta_cell$phenolayer==1])
   cells = meta_cell$phenotype[meta_cell$phenolayer>1]
-  cellsn = meta_cell$phenolayer
+  cellsn = meta_cell$phenolayer[meta_cell$phenolayer>1]
+  multiplus = any(nchar(unlist(str_extract_all(cells,"[+]+")))>1)
   pparen = fg@edge_list$parent
   pchild = fg@edge_list$child
   ## calculate the expected proportions for cell populatins with positive marker conditions only
@@ -929,10 +939,9 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   loop_ind = loop_ind_f(cpind,no_cores)
   expecp = do.call(cbind, llply(loop_ind, function(ii) {
     do.call(cbind, llply(ii, function(ic) {
-      cpop = i = cells[ic]
-      il = cellsn[ic]
-      
-      pnames = pparen[[i]]
+      cpop = cells[ic]
+
+      pnames = pparen[[cpop]]
       parent = mp[,pnames,drop=F]
       parento = laply(1:nrow(parent), function(xi) order(parent[xi,]))
       if (is.null(dim(parento))) parento = matrix(parento,nrow=nrow(parent))
@@ -967,71 +976,37 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   expec0 = expec = as.matrix(cbind(expe1,expecp))
   cpopneg = setdiff(cells,colnames(expec))
   cpopnegl = cell_type_layers(cpopneg)
-  
-  # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
-  p = proto(i=1, j=1, fun=function(this, x) if (count>=i && count<=j) "*" else x) 
-  
-  csp = fg@etc$cumsumpos
-  expecn = do.call(cbind,llply(sort(unique(cpopnegl)), function(lev) {
+  for (lev in sort(unique(cpopnegl))) {
+    sibsl = cells[cellsn==lev]
     cpopl = cpopneg[cpopnegl==lev]
     cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
-    
-    # ## version 1; DELETE ONE VERSION
-    # expec_temp = NULL
-    # for (negno in sort(unique(cpopnegno))) {
-    #   cpopi = cpopl[cpopnegno==negno]
-    #   sibs = gsubfn("-", p, cpopi)
-    #   for (sib in unique(sibs)) {
-    #     sib_ = sapply(1:maxp, function(pn) 
-    #       gsub("[*]", paste0(rep("+",pn),collapse=""), sib) )
-    #     sib_ = sib_[sib_%in%cells]
-    #     sib_sum = rowSums(mp[,sib_,drop=F])
-    #     sibpars = pparen[[sib_[1]]]
-    #     sibis = which(sibs==sib) # shouldn't be length(sibis)>1, but safe
-    #     for (sibi in sibis) {
-    #       parsin = intersect(sibpars, pparen[[cpopi[sibi]]])
-    #       # if (length(sibpars)>1) #there must be only 1 common parent
-    #       #   for (sibpar in sibpars)
-    #       #     parsin = intersect(sibpar, parsin)
-    #       expec_temp = cbind(expec_temp, mp[,parsin] - sib_sum)
-    #       colnames(expec_temp)[ncol(expec_temp)] = cpopi[sibi]
-    #     }
-    #   }
-    # }
-    
-    ## version 2
-    expec_temp = do.call(cbind,llply(cpopl, function(cpi) {
-      cpig = gsub("[+-]","",cpi)
-      parnames = intersect(pparen[[cpi]],colnames(mp))
-      a = NULL
-      for (parname in parnames) {
-        chilnames = unlist(pchild[[parname]])
-        chilnames = chilnames[chilnames!=cpi]
-        chilnamesg = gsub("[+-]","",chilnames)
-        chilgreat = chilnamesg==cpig & chilnames%in%colnames(expec)
-        if (any(chilgreat)) {
-          children = chilnames[chilgreat]
-          if (csp) 
-            a = matrix(mp[,parname]-expec[,children[which.min(nchar(children))],drop=F],ncol=1)
-          else 
-            a = matrix(mp[,parname]-rowSums(expec[,children,drop=F]),ncol=1)
-          
-          break
+    cpopnegnos = llply(sort(unique(cpopnegno)), function(x) 
+      cpopl[cpopnegno==x])
+    for (cpops in cpopnegnos) {
+      expecn = do.call(cbind, llply(cpops, function(cpop) {
+        if (fg@etc$cumsumpos | !multiplus) {
+          # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
+          p = proto(i=1, j=1, fun=function(this, x) 
+            if (count>=i && count<=j) "+" else x) 
+          sib = gsubfn("[-]", p, cpop)
+          pname = intersect(pparen[[cpop]],pparen[[sib]])
+          return(mp[,pname] - expec[,sib])
+        } else {
+          p = proto(i=1, j=1, fun=function(this, x) 
+            if (count>=i && count<=j) "[+]+" else x) 
+          cpopgsub = gsub("[+]","[+]", cpop)
+          cpopgsub = gsubfn("[-]", p, cpopgsub)
+          cpopgsub = gsub("[-]","[-]", cpopgsub)
+          sibs = sibsl[grepl(cpopgsub,sibsl)]
+          pname = intersect(pparen[[cpop]],pparen[[sibs[1]]])
+          return(mp[,pname] - rowSums(expec[,sibs]))
         }
-      }
-      if (is.null(a)) {
-        a = b = mp[,parnames,drop=F]
-        if (ncol(b)>1) a = matrix(apply(b,1,min), ncol=1)
-      }
-      colnames(a) = cpi
-      return(a)
-    }))
-    if (is.null(dim(expec_temp))) expec_temp = matrix(expec_temp,ncol=1)
-    
-    return(expec_temp)
-  }))
-  expec = cbind(expec,expecn)
-  
+      }, .parallel=T))
+      colnames(expecn) = cpops
+      expec = cbind(expec, expecn)
+    }
+  }
+
   exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
   a = mp/exp1
   aa = as.matrix(a)
@@ -1476,7 +1451,8 @@ flowgraph_summary_plot = function(
     m1 = pms$m1; #names(dsc)[1]
     m2 = pms$m2; #names(dsc)[2]
     
-    main = paste0("feat: ",nodeft,"; class: ",class,
+    main = paste0(
+      "feat: ",nodeft,"; class: ",class,
                   "; pthres: ",p_thres,
                   "\nsize = -ln(p value)",
                   "\nlabel(",names(dsc)[1],"/",names(dsc)[2],") = ",nodeft)
@@ -1489,9 +1465,9 @@ flowgraph_summary_plot = function(
         gr$v$label_ind[order(p,decreasing=T)[1:30]] = T
       } 
     }
-    gr$e$e_ind = gr$e[,1]%in%gr$v$name[p_] & gr$e[,2]%in%gr$v$name[p_]
+    gr$e$e_ind = gr$e[,1]%in%gr$v$phenotype[p_] & gr$e[,2]%in%gr$v$phenotype[p_]
     gr$v$color = ifelse(m2>m1,"increased","reduced")
-    gr$v$label = paste0(gr$v$name,":",round(m1,3),"/",round(m2,3))
+    gr$v$label = paste0(gr$v$phenotype,":",round(m1,3),"/",round(m2,3))
     if (lft) {
       pms_ = sum$node[[nodeftlabel]][[method]][[class]][[idsname]]
       m1_ = pms_$m1
@@ -1565,8 +1541,12 @@ gggraph = function(gr, main="", bgedges=T) { # indices of whether to apply color
       scale_fill_brewer(palette="Pastel2") +
       geom_segment(data=gr_e[!e_ind,], color="grey",
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
-      geom_segment(data=gr_e[e_ind,], 
+      geom_segment(data=gr_e[e_ind & gr_e$color=="unchanged",], 
+                   color="grey50", 
+                   aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
+      geom_segment(data=gr_e[e_ind & gr_e$color!="unchanged",], 
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y, color=color)) +
+      
       # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
       # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
       geom_point(data=gr_v[v_ind,],aes(x=x,y=y, color=color, size=size)) +

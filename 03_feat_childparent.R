@@ -413,7 +413,7 @@ for (result_dir in result_dirs) {
     # }
     expect2 = foreach(ic=ii, .combine="cbind") %do% {
       i = cellis[ic]
-      il = cellisn[ic]
+      il = cellisn[ic] # layer
       pnames = meta_cell_parent_names_[[i]]
       parent = mpe[,pnames,drop=F]
       numrtr = apply(parent, 1, function(x) prod(x^(il-1)))
