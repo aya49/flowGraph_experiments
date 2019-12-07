@@ -935,8 +935,9 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   start1 = Sys.time()
   cat("preparing feature(s): expected proportion; ")
   
-  cpind = which(!grepl("[-]",cells))
-  loop_ind = loop_ind_f(cpind,no_cores)
+  # cpind = which(!grepl("[-]",cells))
+  # loop_ind = loop_ind_f(cpind,no_cores)
+  loop_ind = loop_ind_f(1:length(cells),no_cores)
   expecp = do.call(cbind, llply(loop_ind, function(ii) {
     do.call(cbind, llply(ii, function(ic) {
       cpop = cells[ic]
@@ -969,45 +970,47 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
     }))
   }, .parallel=parl))
   expecp[is.nan(expecp)] = 0
-  colnames(expecp) = cells[cpind]
+  colnames(expecp) = cells#[cpind]
   
   
-  ## infer the expected proportion of cell populations with negative marker condition(s)
-  expec0 = expec = as.matrix(cbind(expe1,expecp))
-  cpopneg = setdiff(cells,colnames(expec))
-  cpopnegl = cell_type_layers(cpopneg)
-  for (lev in sort(unique(cpopnegl))) {
-    sibsl = cells[cellsn==lev]
-    cpopl = cpopneg[cpopnegl==lev]
-    cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
-    cpopnegnos = llply(sort(unique(cpopnegno)), function(x) 
-      cpopl[cpopnegno==x])
-    for (cpops in cpopnegnos) {
-      expecn = do.call(cbind, llply(cpops, function(cpop) {
-        if (fg@etc$cumsumpos | !multiplus) {
-          # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
-          p = proto(i=1, j=1, fun=function(this, x) 
-            if (count>=i && count<=j) "+" else x) 
-          sib = gsubfn("[-]", p, cpop)
-          pname = intersect(pparen[[cpop]],pparen[[sib]])
-          return(mp[,pname] - expec[,sib])
-        } else {
-          p = proto(i=1, j=1, fun=function(this, x) 
-            if (count>=i && count<=j) "[+]+" else x) 
-          cpopgsub = gsub("[+]","[+]", cpop)
-          cpopgsub = gsubfn("[-]", p, cpopgsub)
-          cpopgsub = gsub("[-]","[-]", cpopgsub)
-          sibs = sibsl[grepl(cpopgsub,sibsl)]
-          pname = intersect(pparen[[cpop]],pparen[[sibs[1]]])
-          return(mp[,pname] - rowSums(expec[,sibs]))
-        }
-      }, .parallel=T))
-      colnames(expecn) = cpops
-      expec = cbind(expec, expecn)
-    }
-  }
+  # ## infer the expected proportion of cell populations with negative marker condition(s)
+  # expec0 = expec = as.matrix(cbind(expe1,expecp))
+  # cpopneg = setdiff(cells,colnames(expec))
+  # cpopnegl = cell_type_layers(cpopneg)
+  # 
+  # for (lev in sort(unique(cpopnegl))) {
+  #   sibsl = cells[cellsn==lev]
+  #   cpopl = cpopneg[cpopnegl==lev]
+  #   cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
+  #   cpopnegnos = llply(sort(unique(cpopnegno)), function(x) 
+  #     cpopl[cpopnegno==x])
+  #   for (cpops in cpopnegnos) {
+  #     expecn = do.call(cbind, llply(cpops, function(cpop) {
+  #       if (fg@etc$cumsumpos | !multiplus) {
+  #         # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
+  #         p = proto(i=1, j=1, fun=function(this, x) 
+  #           if (count>=i && count<=j) "+" else x) 
+  #         sib = gsubfn("[-]", p, cpop)
+  #         pname = intersect(pparen[[cpop]],pparen[[sib]])
+  #         return(mp[,pname] - expec[,sib])
+  #       } else {
+  #         p = proto(i=1, j=1, fun=function(this, x) 
+  #           if (count>=i && count<=j) "[+]+" else x) 
+  #         cpopgsub = gsub("[+]","[+]", cpop)
+  #         cpopgsub = gsubfn("[-]", p, cpopgsub)
+  #         cpopgsub = gsub("[-]","[-]", cpopgsub)
+  #         sibs = sibsl[grepl(cpopgsub,sibsl)]
+  #         pname = intersect(pparen[[cpop]],pparen[[sibs[1]]])
+  #         return(mp[,pname] - rowSums(expec[,sibs]))
+  #       }
+  #     }, .parallel=T))
+  #     colnames(expecn) = cpops
+  #     expec = cbind(expec, expecn)
+  #   }
+  # }
 
-  exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
+  # exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
+  exp1 = cbind(expe1,expecp[,match(cells,colnames(expecp)),drop=F])
   a = mp/exp1
   aa = as.matrix(a)
   a[is.infinite(aa)] = max(a[is.finite(aa)])
@@ -1422,10 +1425,11 @@ ggdf = function(gr0) {
 }
 
 flowgraph_summary_plot = function(
-  fg,
-  method, class, 
+  fg, sumplot=T,
+  show_nodes=NULL, show_label=NULL, method, class, 
+  idname=NULL, idname1=NULL, idname2=NULL, # show_nodes can be a vector of true false, length equals to number of nodes
   nodeft="specenr", edgeft="prop", 
-  nodeftlabel="prop", label_max=30,
+  label1=NULL, label2=NULL, label_max=30,
   p_thres=.01, show_bgedges=T,
   path, width=9, height=9) { # width in inches feat must be list with names node and edge
   # cellhierarchy plots p values
@@ -1433,64 +1437,113 @@ flowgraph_summary_plot = function(
   require(ggplot2)
   require(ggrepel)
   
+  # prepare data
+  if (is.null(idname)) 
+    idname = paste0(idname1, "_", idname2)
+  
   sum = fg@feat_summary
   desc = sum$desc
-  gr0 = ggdf(fg@graph)
-  if (!is.null(nodeftlabel)) 
-    if (nodeftlabel!=nodeft) 
+  gr = ggdf(fg@graph)
+  if (!is.null(label2)) 
+    if (label2!=nodeft) 
       lft = T
-  
-  for (idsname in names(desc$node[[nodeft]][[method]][[class]])) {
-    if (is.null(idsname)) next
-    dsc = desc$node[[nodeft]][[method]][[class]][[idsname]]
-    pms = sum$node[[nodeft]][[method]][[class]][[idsname]]
-    
+  if (is.null(show_nodes)) 
+    show_nodes = rep(T, nrow(fg@graph$v))
+
+  if (sumplot) {
+    dsc = desc$node[[nodeft]][[method]][[class]][[idname]]
+    pms = sum$node[[nodeft]][[method]][[class]][[idname]]
+    m1_ = m1 = pms$m1
+    m2_ = m2 = pms$m2
     p = pms$p
     p_ = p<p_thres
-    
-    m1 = pms$m1; #names(dsc)[1]
-    m2 = pms$m2; #names(dsc)[2]
-    
-    main = paste0(
-      "feat: ",nodeft,"; class: ",class,
-                  "; pthres: ",p_thres,
-                  "\nsize = -ln(p value)",
-                  "\nlabel(",names(dsc)[1],"/",names(dsc)[2],") = ",nodeft)
-    
-    gr = gr0
-    gr$v$label_ind = gr$v$v_ind = p_
-    if (!is.null(label_max)) {
-      if (sum(p_)>label_max) {
+  } else {
+    id1 = fg@meta[,class]==idname1
+    id2 = fg@meta[,class]==idname2
+    m1_ = m1 =colMeans(as.matrix(fg@feat$node[[nodeft]][id1,,drop=F]))
+    m2_ = m2 =colMeans(as.matrix(fg@feat$node[[nodeft]][id2,,drop=F]))
+    p_ = show_nodes
+  }
+  
+  # plot title
+  main = paste0(
+    "feat: ",nodeft, "; class: ",class, " - ", 
+    ifelse(is.null(idname), paste0(idname1," vs ",idname2), idname))
+  if (sumplot)
+    main = paste0(main,"\npthres: ",p_thres,"\nsize = -ln(p value)")
+  main = paste0(
+    main, "\nlabel: ", ifelse(is.null(label1), nodeft, label1), ifelse (is.null(label2), "", paste0("(",label2,")")))
+  
+  # node plot options
+  gr$v$label_ind = gr$v$v_ind = p_
+  if (!is.null(label_max)) {
+    if (sum(p_)>label_max) {
+      if (sumplot) {
         gr$v$label_ind = rep(F, nrow(gr$v))
         gr$v$label_ind[order(p,decreasing=T)[1:30]] = T
-      } 
+      } else {
+        gr$v$label_ind = rep(F,nrow(gr$v))
+      }
     }
-    gr$e$e_ind = gr$e[,1]%in%gr$v$phenotype[p_] & gr$e[,2]%in%gr$v$phenotype[p_]
-    gr$v$color = ifelse(m2>m1,"increased","reduced")
-    gr$v$label = paste0(gr$v$phenotype,":",round(m1,3),"/",round(m2,3))
-    if (lft) {
-      pms_ = sum$node[[nodeftlabel]][[method]][[class]][[idsname]]
-      m1_ = pms_$m1
-      m2_ = pms_$m2
-      gr$v$label = paste0(gr$v$label," (",round(m1_,3),"/",round(m2_,3),")")
-      main = paste0(main,"(",nodeftlabel,")")
-    }
+  }
+  if (!is.null(show_label)) 
+    gr$v$label_ind = show_label
+  
+  gr$v$color = ifelse(m2>m1,"increased","reduced")
+  if (sumplot) {
     gr$v$size = -log(p)
     gr$v$size[is.infinite(gr$v$size)] = max(gr$v$size[!is.infinite(gr$v$size)])
-    if (!is.null(edgeft)) {
-      e1 = sum$edge[[nodeft]][[method]][[class]][[idsname]]$m1
-      e2 = sum$edge[[nodeft]][[method]][[class]][[idsname]]$m2
-      pe = sum$edge[[nodeft]][[method]][[class]][[idsname]]$p
-      pe_ = pe<p_thres
-      gr$e$color[pe_] = ifelse(e2>e1,"increased","reduced")
-      main = paste0(main,"\nedge size = non(1)/sig(2) p values of ", edgeft)
-    }
-    
-    gp = gggraph(gr, main=main, bgedges=show_bgedges)
-    path_ = paste0(path,"/",ifelse(is.null(nodeftlabel),nodeft,paste0(nodeft,"_label-",nodeftlabel)),"/",class)
-    dir.create(path_, recursive=T, showWarnings=F)
-    ggsave(paste0(path_,"/",idsname,".png"), plot=gp, scale=1, width=width, height=height, units="in", dpi=500, limitsize=T)
+  } else {
+    gr$v$size = (m2-m1)/m1
   }
+  
+  # node label plot options
+  if (!is.null(label1)) {
+    if (sumplot) {
+      pms_ = sum$node[[label1]][[method]][[class]][[idname]]
+      m1_ = pms_$m1
+      m2_ = pms_$m2
+    } else {
+      m1_ = colMeans(as.matrix(fg@feat$node[[label1]][id1,,drop=F]))
+      m2_ = colMeans(as.matrix(fg@feat$node[[label1]][id2,,drop=F]))
+    }
+  }
+  gr$v$label = paste0(gr$v$phenotype,":",round(m1_,3),"/",round(m2_,3))
+  if (lft) {
+    if (sumplot) {
+      pms__ = sum$node[[label2]][[method]][[class]][[idname]]
+      m1__ = pms__$m1
+      m2__ = pms__$m2
+    } else {
+      m1__ = colMeans(as.matrix(fg@feat$node[[label2]][id1,,drop=F]))
+      m2__ = colMeans(as.matrix(fg@feat$node[[label2]][id2,,drop=F]))
+    }
+    gr$v$label = paste0(gr$v$label," (",round(m1__,3),"/",round(m2__,3),")")
+    main = paste0(main,"(",label2,")")
+  }
+  
+  # edge plot options
+  gr$e$e_ind = gr$e[,1]%in%gr$v$phenotype[p_] & gr$e[,2]%in%gr$v$phenotype[p_]
+  if (!is.null(edgeft)) {
+    if (sumplot) {
+      e1 = sum$edge[[nodeft]][[method]][[class]][[idname]]$m1
+      e2 = sum$edge[[nodeft]][[method]][[class]][[idname]]$m2
+      pe = sum$edge[[nodeft]][[method]][[class]][[idname]]$p
+      pe_ = pe<p_thres
+      gr$e$color[pe_] = ifelse(e2[pe_]>e1[pe_],"increased","reduced")
+    } else {
+      e1 = colMeans(as.matrix(fg@feat$edge[[edgeft]][id1,,drop=F]))
+      e2 = colMeans(as.matrix(fg@feat$edge[[edgeft]][id2,,drop=F]))
+      gr$e$color = ifelse(e2>e1,"increased","reduced")
+    }
+    # main = paste0(main,"\nedge size = non(1)/sig(2) p values of ", edgeft)
+  }
+  
+  # plot and save
+  gp = gggraph(gr, main=main, bgedges=show_bgedges)
+  path_ = paste0(path,"/",ifelse(sumplot,"summary","feat"),"/",ifelse(is.null(label2),nodeft,paste0(nodeft,"_label-",label2)),"/",class)
+  dir.create(path_, recursive=T, showWarnings=F)
+  ggsave(paste0(path_,"/",idname,".png"), plot=gp, scale=1, width=width, height=height, units="in", dpi=500, limitsize=T)
 }
 
 

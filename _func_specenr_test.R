@@ -14,11 +14,14 @@ ft_paths = list.files(paste0(sample_dir,"/sample"))[-1]
 
 ## root directory
 root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric"
+# root = "/home/ayue/projects/flowtype_metric"
 setwd(root)
 
 ## libraries
 source("source/_func_specenr.R")
-libr(c("flowCore", "flowType", "doMC", "foreach", "plyr","stringr"))
+libr(c("flowCore", "flowType", 
+       "doMC", "foreach", 
+       "plyr","stringr", "gsubfn"))
 
 ## cores
 no_cores = detectCores()-1
@@ -334,7 +337,7 @@ normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countA
 lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
 
 ## cores
-no_cores = 8
+no_cores = 6
 registerDoMC(no_cores)
 
 
@@ -374,7 +377,7 @@ thress5[[markers[2]]] = c(p25,p50,p60)
 
 #paste0("ctrl",c(0:9)), 
 #paste0("pos",c(1:30))
-for (ds in c(paste0("pos",c(7)),paste0("ctrl",c(4)))) {
+for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
   start2 = Sys.time()
   
   # ouput directories
@@ -430,12 +433,12 @@ for (ds in c(paste0("pos",c(7)),paste0("ctrl",c(4)))) {
         # change f values
         if (ds=="pos1") { # A+ > .75; A- > .25
           tm = sum(ap)/2
-          f@exprs[sample(which(ap),tm),1] = p75 # 
+          f@exprs[sample(which(!ap),tm),1] = p75 # 
         } 
         else if (ds=="pos2") { # A+, B+ > .75; A-, B- > .25
           tm = sum(ap)/2
-          f@exprs[sample(which(ap),tm),1] = p75 # 
-          f@exprs[sample(which(bp),tm),2] = p75 # 
+          f@exprs[sample(which(!ap),tm),1] = p75 # 
+          f@exprs[sample(which(!bp),tm),2] = p75 # 
         } 
         else if (ds=="pos3") { # A-B+ > A+B+ x1.5
           tm = sum(double)/2
@@ -706,21 +709,40 @@ for (result_dir in result_dirs) {
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
-  start1 = Sys.time()
-  cat(result_dir)
-  fg = get(load(paste0(result_dir,"/fg.Rdata")))
-  fg@graph$v = fg@graph$v[,!colnames(fg@graph$v)%in%c("x","y")]
-  fg = set_layout(fg)
-  save(fg, file=paste0(result_dir,"/fg.Rdata"))
-  flowgraph_summary_plot(
-    fg,
-    method="t_BY", class="class", 
-    nodeft="specenr", edgeft="prop", 
-    nodeftlabel="prop", # node only
-    p_thres=.05, show_bgedges=T,
-    path=paste0(result_dir,"/plots"))
-  time_output(start1)
+  try ({
+    start1 = Sys.time()
+    cat(result_dir)
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    fg@graph$v = fg@graph$v[,!colnames(fg@graph$v)%in%c("x","y")]
+    fg = set_layout(fg)
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+    flowgraph_summary_plot(
+      fg, sumplot=F,
+      idname1="control", idname2="exp", class="class", 
+      nodeft="specenr", show_label=rep(T,nrow(fg@graph$v)),
+      label1="expect_prop", label2="prop", # node only
+      show_bgedges=T, width=20, height=9,
+      path=paste0(result_dir,"/plots"))
+    time_output(start1)
+    
+  })
 }
 
+for (result_dir in result_dirs) {
+  try ({
+    start1 = Sys.time()
+    cat(result_dir)
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    flowgraph_summary_plot(
+      fg,
+      method="t_BY", class="class", idname="control_exp",
+      nodeft="specenr", edgeft="prop", 
+      label1="expect_prop", label2="prop", # node only
+      p_thres=.05, show_bgedges=T,
+      path=paste0(result_dir,"/plots"))
+    time_output(start1)
+    
+  })
+}
 
 
