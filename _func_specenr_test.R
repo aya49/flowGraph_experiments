@@ -180,6 +180,8 @@ fg0 = flowgraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=F, specen
 
 randomindp = randomindc = NULL
 for (tube in unique(meta_file0$tube)) {
+  if (!tube==6) next
+  
   ## split data by tube/panel
   fg = extract_samples(fg0, fg0@meta$id[fg0@meta$tube==tube])
   fg = gsub_ids(fg, as.numeric(gsub("T[0-9]S|FT","",fg@meta$id)) )
@@ -709,40 +711,46 @@ for (result_dir in result_dirs) {
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
-  try ({
-    start1 = Sys.time()
-    cat(result_dir)
-    fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    fg@graph$v = fg@graph$v[,!colnames(fg@graph$v)%in%c("x","y")]
-    fg = set_layout(fg)
-    save(fg, file=paste0(result_dir,"/fg.Rdata"))
-    flowgraph_summary_plot(
-      fg, sumplot=F,
-      idname1="control", idname2="exp", class="class", 
-      nodeft="specenr", show_label=rep(T,nrow(fg@graph$v)),
-      label1="expect_prop", label2="prop", # node only
-      show_bgedges=T, width=20, height=9,
-      path=paste0(result_dir,"/plots"))
-    time_output(start1)
-    
-  })
+  start1 = Sys.time()
+  cat(result_dir)
+  
+  fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  for (cls in unique(fg@meta$class)) {
+    try ({
+      if (cls=="control") next
+      flowgraph_summary_plot(
+        fg, sumplot=F,
+        idname1="control", idname2=cls, class="class", 
+        nodeft="specenr", show_label=rep(T,nrow(fg@graph$v)),
+        label1="expect_prop", label2="prop", # node only
+        show_bgedges=T, width=20, height=9,
+        path=paste0(result_dir,"/plots"))
+    })
+  }
+  time_output(start1)
+  
 }
 
 for (result_dir in result_dirs) {
-  try ({
-    start1 = Sys.time()
-    cat(result_dir)
-    fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    flowgraph_summary_plot(
-      fg,
-      method="t_BY", class="class", idname="control_exp",
-      nodeft="specenr", edgeft="prop", 
-      label1="expect_prop", label2="prop", # node only
-      p_thres=.05, show_bgedges=T,
-      path=paste0(result_dir,"/plots"))
-    time_output(start1)
-    
-  })
+  start1 = Sys.time()
+  cat(result_dir)
+  
+  fg = get(load(paste0(result_dir,"/fg.Rdata")))
+  
+  for (cls in unique(fg@meta$class)) {
+    try ({
+      if (cls=="control") next
+      flowgraph_summary_plot(
+        fg,
+        method="t_BY", class="class", idname1="control", idname2=cls,
+        nodeft="specenr", edgeft="prop", 
+        label1="expect_prop", label2="prop", # node only
+        p_thres=.05, show_bgedges=T,
+        path=paste0(result_dir,"/plots"))
+    })
+  }
+  time_output(start1)
+  
 }
 
 
