@@ -935,9 +935,9 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
   start1 = Sys.time()
   cat("preparing feature(s): expected proportion; ")
   
-  # cpind = which(!grepl("[-]",cells))
-  # loop_ind = loop_ind_f(cpind,no_cores)
-  loop_ind = loop_ind_f(1:length(cells),no_cores)
+  cpind = which(!grepl("[-]",cells))
+  loop_ind = loop_ind_f(cpind,no_cores)
+  # loop_ind = loop_ind_f(1:length(cells),no_cores)
   expecp = do.call(cbind, llply(loop_ind, function(ii) {
     do.call(cbind, llply(ii, function(ic) {
       cpop = cells[ic]
@@ -970,47 +970,47 @@ flowgraph_specenr = function(fg, no_cores=1, overwrite=F) {
     }))
   }, .parallel=parl))
   expecp[is.nan(expecp)] = 0
-  colnames(expecp) = cells#[cpind]
+  colnames(expecp) = cells[cpind]
   
   
-  # ## infer the expected proportion of cell populations with negative marker condition(s)
-  # expec0 = expec = as.matrix(cbind(expe1,expecp))
-  # cpopneg = setdiff(cells,colnames(expec))
-  # cpopnegl = cell_type_layers(cpopneg)
-  # 
-  # for (lev in sort(unique(cpopnegl))) {
-  #   sibsl = cells[cellsn==lev]
-  #   cpopl = cpopneg[cpopnegl==lev]
-  #   cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
-  #   cpopnegnos = llply(sort(unique(cpopnegno)), function(x) 
-  #     cpopl[cpopnegno==x])
-  #   for (cpops in cpopnegnos) {
-  #     expecn = do.call(cbind, llply(cpops, function(cpop) {
-  #       if (fg@etc$cumsumpos | !multiplus) {
-  #         # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
-  #         p = proto(i=1, j=1, fun=function(this, x) 
-  #           if (count>=i && count<=j) "+" else x) 
-  #         sib = gsubfn("[-]", p, cpop)
-  #         pname = intersect(pparen[[cpop]],pparen[[sib]])
-  #         return(mp[,pname] - expec[,sib])
-  #       } else {
-  #         p = proto(i=1, j=1, fun=function(this, x) 
-  #           if (count>=i && count<=j) "[+]+" else x) 
-  #         cpopgsub = gsub("[+]","[+]", cpop)
-  #         cpopgsub = gsubfn("[-]", p, cpopgsub)
-  #         cpopgsub = gsub("[-]","[-]", cpopgsub)
-  #         sibs = sibsl[grepl(cpopgsub,sibsl)]
-  #         pname = intersect(pparen[[cpop]],pparen[[sibs[1]]])
-  #         return(mp[,pname] - rowSums(expec[,sibs]))
-  #       }
-  #     }, .parallel=T))
-  #     colnames(expecn) = cpops
-  #     expec = cbind(expec, expecn)
-  #   }
-  # }
+  ## infer the expected proportion of cell populations with negative marker condition(s)
+  expec0 = expec = as.matrix(cbind(expe1,expecp))
+  cpopneg = setdiff(cells,colnames(expec))
+  cpopnegl = cell_type_layers(cpopneg)
 
-  # exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
-  exp1 = cbind(expe1,expecp[,match(cells,colnames(expecp)),drop=F])
+  for (lev in sort(unique(cpopnegl))) {
+    sibsl = cells[cellsn==lev]
+    cpopl = cpopneg[cpopnegl==lev]
+    cpopnegno = str_count(cpopl,"[-]") # number of negative marker conditions
+    cpopnegnos = llply(sort(unique(cpopnegno)), function(x)
+      cpopl[cpopnegno==x])
+    for (cpops in cpopnegnos) {
+      expecn = do.call(cbind, llply(cpops, function(cpop) {
+        if (fg@etc$cumsumpos | !multiplus) {
+          # replaces whatever pattern only once; e.g. gsubfn("_", p, "A_B_C_")
+          p = proto(i=1, j=1, fun=function(this, x)
+            if (count>=i && count<=j) "+" else x)
+          sib = gsubfn("[-]", p, cpop)
+          pname = intersect(pparen[[cpop]],pparen[[sib]])
+          return(mp[,pname] - expec[,sib])
+        } else {
+          p = proto(i=1, j=1, fun=function(this, x)
+            if (count>=i && count<=j) "[+]+" else x)
+          cpopgsub = gsub("[+]","[+]", cpop)
+          cpopgsub = gsubfn("[-]", p, cpopgsub)
+          cpopgsub = gsub("[-]","[-]", cpopgsub)
+          sibs = sibsl[grepl(cpopgsub,sibsl)]
+          pname = intersect(pparen[[cpop]],pparen[[sibs[1]]])
+          return(mp[,pname] - rowSums(expec[,sibs]))
+        }
+      }, .parallel=T))
+      colnames(expecn) = cpops
+      expec = cbind(expec, expecn)
+    }
+  }
+
+  exp1 = cbind(expe1,expec[,match(cells,colnames(expec)),drop=F])
+  # exp1 = cbind(expe1,expecp[,match(cells,colnames(expecp)),drop=F])
   a = mp/exp1
   aa = as.matrix(a)
   a[is.infinite(aa)] = max(a[is.finite(aa)])
@@ -1309,8 +1309,8 @@ flowgraph_p = function(
           }
         }
         fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["p"]] = p
-        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m1"]] = colMeans(as.matrix(m1))
-        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m2"]] = colMeans(as.matrix(m2))
+        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m1"]] = m1 = colMeans(as.matrix(m1))
+        fg@feat_summary[[ftype]][[feature]][[test_name]][[class]][[idsname]][["m2"]] = m2 = colMeans(as.matrix(m2))
         
         time_output(start1)
       }
@@ -1519,7 +1519,6 @@ flowgraph_summary_plot = function(
       m2__ = colMeans(as.matrix(fg@feat$node[[label2]][id2,,drop=F]))
     }
     gr$v$label = paste0(gr$v$label," (",round(m1__,3),"/",round(m2__,3),")")
-    main = paste0(main,"(",label2,")")
   }
   
   # edge plot options
