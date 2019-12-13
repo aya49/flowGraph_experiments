@@ -704,6 +704,38 @@ for (result_dir in result_dirs) {
   
   })
   
+  
+  
+  ## test for pos15 data set
+  for (cpop in fg@graph$v$phenotype[-1]) {
+    a1 = fg@feat$node$expect_prop[1:500,cpop]
+    a2 = fg@feat$node$prop[1:500,cpop]
+    a = a1/a2
+    b1 = fg@feat$node$expect_prop[501:1000,cpop]
+    b2 = fg@feat$node$prop[501:1000,cpop]
+    b = b1/b2
+    
+    dir.create(paste0(result_dir,"/plots/ratios"), recursive=T, showWarnings=F)
+    try ({
+    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(a,b)$p.value,"\nmeans: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) + 
+      geom_density(aes(x=x), colour="red",data=data.frame(x=a)) + 
+      geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
+    
+    ggsave(paste0(result_dir,"/plots/ratios/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
+    
+    })
+    
+    try({
+      
+    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(log(a),log(b))$p.value,"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) + 
+      geom_density(aes(x=x), colour="red",data=data.frame(x=log(a))) + 
+      geom_density(aes(x=x), colour="blue",data=data.frame(x=log(b)))
+    
+    ggsave(paste0(result_dir,"/plots/ratios/",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
+    })
+    
+  }
+  
 }
 
 
