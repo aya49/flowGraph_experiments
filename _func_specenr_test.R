@@ -1,14 +1,3 @@
-## this script tests _func_specenr_test.R
-## testable with just sournce
-
-sample_dir = "A:/school/grad/projects/flowtype_metrics"
-
-source(paste0(sample_dir,"/_func_specenr.R"))
-
-single_vec = paste0(sample_dir,"/sample/example_ft.Rdata")
-ft_paths = list.files(paste0(sample_dir,"/sample"))[-1]
-
-
 
 ## start -------------------------
 
@@ -19,6 +8,15 @@ setwd(root)
 
 ## libraries
 source("source/_func_specenr.R")
+libr = function(pkgs) {
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) 
+    install.packages(setdiff(pkgs, rownames(installed.packages())), verbose=F)
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) {
+    if (!requireNamespace("BiocManager", quietly=T)) install.packages("BiocManager")
+    BiocManager::install(setdiff(pkgs, rownames(installed.packages())), ask=F)
+  }
+  sapply(pkgs, require, character.only=T)
+}
 libr(c("flowCore", "flowType", 
        "doMC", "foreach", 
        "plyr","stringr", "gsubfn"))
@@ -244,18 +242,23 @@ time_output(start, "data_flowcap")
 ## output: feat_file_cell_count, meta_file
 
 ## input directories
-input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003"
+input_dir0 = "/mnt/f/Brinkman group/current/Alice/gating_projects/genentech"
+
+for (tube in 2:4) {
+  input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/comp_mix")
+
 
 ## ouput directories
-result_dir = paste0(root, "/result/genentech"); dir.create(result_dir, showWarnings=F, recursive=T)
+result_dir = paste0(root, "/result/genentech_",tube); dir.create(result_dir, showWarnings=F, recursive=T)
 
 
 start = Sys.time()
 
 ## prepare flowtype directories
-ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+# ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+ftl = get(load(paste0(input_dir,"/flowType_sing.Rdata")))
 names(ftl) = gsub("[%]","",names(ftl))
-markers = get(load(paste0(input_dir,"/MarkerNames_myeloid.Rdata")))
+markers = get(load(paste0(input_dir,"/MarkerNames_sing.Rdata")))
 
 ## prepare meta
 temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
@@ -268,7 +271,7 @@ for (uc in unique(meta_file$class)) {
 
 fg = flowgraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
 save(fg, file=paste0(result_dir,"/fg.Rdata"))
-
+}
 time_output(start, "data_genetech")
 
 
@@ -679,6 +682,7 @@ registerDoMC(no_cores)
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
+  # if (!grepl("genentech",result_dir)) next
   try ({
   start1 = Sys.time()
   cat(result_dir)
@@ -706,35 +710,35 @@ for (result_dir in result_dirs) {
   
   
   
-  ## test for pos15 data set
-  for (cpop in fg@graph$v$phenotype[-1]) {
-    a1 = fg@feat$node$expect_prop[1:500,cpop]
-    a2 = fg@feat$node$prop[1:500,cpop]
-    a = a1/a2
-    b1 = fg@feat$node$expect_prop[501:1000,cpop]
-    b2 = fg@feat$node$prop[501:1000,cpop]
-    b = b1/b2
-    
-    dir.create(paste0(result_dir,"/plots/ratios"), recursive=T, showWarnings=F)
-    try ({
-    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(a,b)$p.value,"\nmeans: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) + 
-      geom_density(aes(x=x), colour="red",data=data.frame(x=a)) + 
-      geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
-    
-    ggsave(paste0(result_dir,"/plots/ratios/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
-    
-    })
-    
-    try({
-      
-    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(log(a),log(b))$p.value,"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) + 
-      geom_density(aes(x=x), colour="red",data=data.frame(x=log(a))) + 
-      geom_density(aes(x=x), colour="blue",data=data.frame(x=log(b)))
-    
-    ggsave(paste0(result_dir,"/plots/ratios/",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
-    })
-    
-  }
+  # ## test for pos15 data set
+  # for (cpop in fg@graph$v$phenotype[-1]) {
+  #   a1 = fg@feat$node$expect_prop[1:500,cpop]
+  #   a2 = fg@feat$node$prop[1:500,cpop]
+  #   a = a1/a2
+  #   b1 = fg@feat$node$expect_prop[501:1000,cpop]
+  #   b2 = fg@feat$node$prop[501:1000,cpop]
+  #   b = b1/b2
+  #   
+  #   dir.create(paste0(result_dir,"/plots/ratios"), recursive=T, showWarnings=F)
+  #   try ({
+  #   gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(a,b)$p.value,"\nmeans: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) + 
+  #     geom_density(aes(x=x), colour="red",data=data.frame(x=a)) + 
+  #     geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
+  #   
+  #   ggsave(paste0(result_dir,"/plots/ratios/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
+  #   
+  #   })
+  #   
+  #   try({
+  #     
+  #   gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(log(a),log(b))$p.value,"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) + 
+  #     geom_density(aes(x=x), colour="red",data=data.frame(x=log(a))) + 
+  #     geom_density(aes(x=x), colour="blue",data=data.frame(x=log(b)))
+  #   
+  #   ggsave(paste0(result_dir,"/plots/ratios/",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=T)
+  #   })
+  #   
+  # }
   
 }
 
@@ -743,6 +747,7 @@ for (result_dir in result_dirs) {
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=F)
 for (result_dir in result_dirs) {
+  if (!grepl("genentech",result_dir)) next
   start1 = Sys.time()
   cat(result_dir)
   
@@ -764,6 +769,7 @@ for (result_dir in result_dirs) {
 }
 
 for (result_dir in result_dirs) {
+  if (!grepl("genentech",result_dir)) next
   start1 = Sys.time()
   cat(result_dir)
   
