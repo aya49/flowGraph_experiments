@@ -1,0 +1,991 @@
+---
+title: "00_main"
+output: html_document
+  html_document:
+    theme: paper
+    highlight: zenburn
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+    # keep_md: true
+  # md_document:
+  #   variant: markdown_github
+bibliography: bibliography.bib
+---
+
+```{r start_setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Start
+
+This document uses the `flowGraph` package to run main experiments;
+results are saved in the `flowtype_metric` folder.
+
+```{r start_flowGraph, message=FALSE, include=FALSE, echo=FALSE}
+## load flowGraph
+rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
+library(flowGraph)
+
+## root directory; to put results in
+root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric" # CHANGE THIS
+# root = "/home/ayue/projects/flowtype_metric"
+# setwd(root)
+
+source(paste0(root,"/src/functions_generic.R"))
+```
+
+
+```{r start_primer, message=FALSE}
+## libraries
+libr(c("flowCore", "flowType",
+       "doParallel", "foreach",
+       "plyr","stringr",
+       "plotly", "html"))
+
+## cores
+no_cores = detectCores()-1
+doParallel::registerDoParallel(no_cores)
+
+options
+options(stringsAsFactors=FALSE)
+
+```
+
+
+# Generate flowGraph objects for each data set
+
+The code in this section takes a while to run; 
+therefore they will not be evaluated, unless done so manually,
+when running this document. Input data in this section can be found in the
+`gating_projects` repository.
+
+Briefly, the data sets are
+
+- impc (ON-HOLD)
+  - class: gene (wildtype wt control gene & various knockout ko genes), gender; 
+samples should be normalized based on ko genes
+
+- flowcap-II aml [@aghaeepour2013critical]
+  - class: 43 aml (acute myeloid leukemia), 316 healthy subjects bone marrow or blood x 7 panels 
+(1st panel is a control).
+  - we use the 6th panel with markers $SS$, $FS$, $HLA-DR$, $CD117$, $CD45$, $CD34$, and $CD38$.
+  - each sample has ~ 60,000 cells.
+  - $CD34+$ increases in aml subjects.
+
+- genentech
+  - class: bone marrow and whole blood mixed and pure
+  - 2019-11-19 results based on a single random donor D
+    - singlets tube4: CD13+CD11c-
+    - singlets tube4 (suggested experimentally by GNE): CD13+CD16-
+  - earlier results based on 3 donors (1 is an outlier) greatest mean separation:
+    - my tube3: CD34+CD117+CD56-
+    - blasts tube4: CD13+CD16-cd11c-
+
+- pregnancy [@aghaeepour2017immune]
+  - class: 4 time points of pregnancy, early, mid, late, 6 weeks postpartum x 18 and 10 women of the training and validation cohort
+  - analyzed on 13 markers ($CD123$, $CD14$, $CD16$, $CD3$, $CD4$, $CD45$, $CD45RA$, $CD56$, $CD66$, $CD7$, $CD8$, $Tbet$, $TCRgd$)
+  - each sample has ~ 300,000 cells
+  - Since discrepancies between subjects is a major batch effect, we further normalize for subject. For each subject, we take the calculated feature values of all of her samples and extract the difference between them and their mean.
+
+- bodenmiller CyTOF [@bodenmiller2012multiplexed]
+  - human peripheral blood from 8 x 2 BCR-XL 
+(b cell receptor / Fc receptor cross linker) un/stimulated healthy subjects
+  - 10 markers
+
+
+## bodenmiller
+
+Data obtained from the HDCytoDate package: 
+e.g. Levine_32dim_SE(metadata = FALSE) Levine_32dim_flowSet(metadata = FALSE)
+
+Remember to transform values; for cytof, usually use asinh with cofactor=5 
+(cofactor=150 for flow cytometry).
+
+- Data sets to test clustering:
+  - Levine_32dim:
+    * cytof "Data-driven phenotypic dissection of AMLreveals progenitor-like 
+      cells that correlate with prognosis" 2015;
+    * human bone marrow cells from 2 healthy subjects H1, H2;
+    * (265627 (104184 manually gated, 161443 ungated) x cytof 32 surface markers)
+    * manually gated 14 cell populations
+  - Levine_13dim:
+    * cytof
+    * human bone marrow cells from 1 healthy subject
+    * (167044 (81747 manually gated, 85297 ungated) x 13 surface markers)
+    * manually gated 24 cell populations
+  - Samusik_01:
+    * (86864 (53173 manually gated, 33691 ungated) x 39 + ungated surface markers)
+  - Samusik_all:
+    * cytof "Automated mapping of phenotype space with single-cell data" 2016;
+    * mouse bone marrow from 10 C57BL/6J mice clones
+    * (841644 (514386 manually gated, 327258 ungated) x 39 surface markers)
+    * manually gated 24 + ungated cell populations
+  - Nilsson_rare:
+    * flow "Frequency determination of rare populations by flow cytometry: 
+A hematopoietic stem cell perspective" 2013;
+    * human bone marrow cells from 1 healthy subject
+    * (44140 (358 manually gated hematopoietic stem cells) x 13 surface markers)
+  - Mosmann_rare:
+    * flow "SWIFT - Scalable clustering for automated identification of rare 
+      cell populations in large, high-dimensional flow cytometry datasets, 
+      Part 2: Biological evaluation" 2014
+    * human peripheral blood cells exposed to influenza agents from 1 healthy subject
+    * (296460 (109 manually gated rare activated cytokine producing 
+      memory CD4 T cells) x 14 (7 surface + 7 signalling) markers)
+
+- Data sets to test differential analysis:
+  - Krieg_Anti_PD_1: strong batch effect, 2 different days ('batch23' and 'batch29')
+    * cytof "High-dimensional single-cell analysispredicts response to 
+      anti-PD-1 immunotherapy" 2018
+    * human peripheral blood from 20 melanoma skin cancer patients treated 
+      with anti-PD-1 immunotherapy x 2 days pre/post treatment (9/11 non/responders)
+    * CD14+CD16-HLA-DRhi monocytes (a small subpopulation of
+      CD14+CD33+HLA-DRhiICAM-1+CD64+CD141+CD86+CD11c+CD38+PD-L1+CD11b+ monocytes) 
+      prior to treatment is strong predictor of survival status following 
+      immunotherapy treatment.
+    * (85715 cells x 24 cell type markers (exclude CD45 b/c all cells show high so CD45=none)) 
+  - Bodenmiller_BCR_XL
+    * cytof "Multiplexed masscytometry profiling of cellular states perturbed 
+      by small-molecule regulators" 2012
+    * human peripheral blood from 8 x 2 BCR-XL 
+      (b cell receptor / Fc receptor cross linker) un/stimulated healthy subjects;
+    * differentially expressed signalling markers in many cell populations 
+      e.g. phosphorylated S6 (pS6) in B cells
+    * (172791 x 10 surface markers (cell type) + 14 
+      intracellular signalling functional markers (cell state))
+
+```{r bodenmiller, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input: gates + fcm files,  meta data paths
+## output: feat/file-cell-count, meta_file
+
+## input
+input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller"
+data_dir = paste0(input_dir,"/data")
+gate_dir = paste0(input_dir,"/gates")
+fcs_dir = paste0(input_dir,"/fcs")
+gate_dir = paste0(input_dir,"/gates")
+
+## ouput
+result_dir = paste0(root, "/result/bodenmiller"); 
+dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
+
+
+start = Sys.time()
+
+## load data
+load(paste0(fcs_dir,".Rdata")) # fslist; fcs files
+meta_file0 = get(load(paste0(input_dir,"/meta_file.Rdata")))
+load(paste0(input_dir,"/meta_mark.Rdata")) # meta_mark; markers in fcs
+# load(paste0(data_dir,"/se.Rdata")) # se; data
+
+## feat/file-count-count: flowtype
+markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
+gthresm = c("cd3.gate","cd4.gate","cd20.gate","cd33.gate",
+            "cd14.gate","igm.gate","cd7.gate")
+gatesfd = gates = get(load(paste0(gate_dir,"/gates.Rdata"))) #gates
+
+# check data
+for (i in 1:length(fslist)) {
+    f = fslist[[i]]
+    print(f@exprs[1:10,1])
+}
+
+## flowType
+ftl = llply(1:length(fslist), function(i) {
+    flowType(Frame=fslist[[i]],
+             PropMarkers=match(markers, meta_mark$marker_name),
+             MarkerNames=markers,
+             MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds',
+             Thresholds=as.list(gates[i,gthresm]),
+             verbose=FALSE, MemLimit=60)
+}, .parallel=TRUE)
+
+## prepare meta
+meta_file = meta_file0[!duplicated(meta_file0$sample_id),-4]
+for (ci in 1:ncol(meta_file))
+    meta_file[,ci] = as.character(meta_file[,ci])
+meta_file = as.data.frame(meta_file)
+colnames(meta_file) = c("class","subject","id")
+meta_file$class = gsub("reference","control",meta_file$class,ignore.case=TRUE)
+meta_file$class[meta_file$class!="control"] = "exp"
+meta_file = meta_file[match(names(fslist),meta_file$id),]
+for (uc in unique(meta_file$class)) {
+    uci = meta_file$class==uc
+    meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
+}
+
+## save files
+fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, 
+               norm_path=paste0(result_dir,"/count_norm"))
+fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
+save(fg, file=paste0(result_dir,"/fg.Rdata"))
+
+time_output(start, "data_bodenmiller")
+```
+
+
+## flowCap-II AML
+
+```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input directories
+fc_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II"
+ft_dir = paste0(fc_dir,"/data/FT") # flowtype file directory
+csv_dir = paste0(fc_dir,"/meta_file.csv") # meta file directory
+markers_dir = paste0(fc_dir,"/markers.Rdata") # fcs file directory
+
+## output directories (NOT last section, output split by tube/panel)
+result_dir0 = paste0(root, "/result/flowcap")
+
+## options
+matchsamples = 5 #pos: number of samples from each normal and aml to mix
+amlprop = 1/2 #ctrl: proportion of control sample to make as "aml"
+
+
+start = Sys.time()
+
+## prepare flowtype directories
+ft_dirs = sort( dir(ft_dir, pattern=".Rda", all.files=TRUE, full.names=TRUE, recursive=TRUE) )
+ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rda","",a[length(a)]) )
+
+## prepare meta
+meta_file0 = read.csv(csv_dir)[,-1]
+for (i in 1:ncol(meta_file0))
+    if (is.factor(meta_file0[,i]))
+        meta_file0[,i] = as.character(meta_file0[,i])
+
+markers = get(load(markers_dir))
+
+# ## this or
+# m00 = llply(loop_ind_f(1:length(ft_dirs),no_cores),function(ii)
+#   llply(ii, function(i) get(load(ft_dirs[i]))@CellFreqs), .parallel=TRUE)
+# m00 = as.matrix(Reduce('rbind',llply(m00,function(x)Reduce(rbind,x))))
+# rownames(m00) = ft_names
+# colnames(m00) = rownames(get(load(ft_dirs[1]))@MFIs)
+# fg0 = flowGraph(m00, no_cores=no_cores, meta=meta_file0, normalize=FALSE, specenr=FALSE)
+
+## that
+fg0 = flowGraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=FALSE, specenr=TRUE)
+
+## split by tube, add a mix class, and make a control only data set
+randomindp = randomindc = NULL
+for (tube in unique(meta_file0$tube)) {
+    if (!tube==6) next
+    
+    ## split data by tube/panel
+    fg = fg_extract_samples(fg0, fg0@meta$id[fg0@meta$tube==tube])
+    fg = fg_gsub_ids(fg, as.numeric(gsub("T[0-9]S|FT","",fg@meta$id)) )
+    fg = fg_feat_node_norm(fg, no_cores=no_cores, norm_path=paste0(result_dir0, "_", tube, "/count_norm")) # normalize count
+    marker = markers[[tube]]
+    fg = fg_gsub_markers(fg, marker)
+    
+    mc = fg@feat$node$count_norm
+    
+    ## extract controls
+    fg_c = fg_extract_samples(fg, fg@meta$id[fg@meta$class=="control"])
+    fg_c@meta$class[1:(nrow(fg_c@meta)/2)] = "experiment"
+    dir.create(paste0(result_dir0, "_", tube, "_ctrl"), showWarnings=FALSE)
+    save(fg_c, file=paste0(result_dir0, "_", tube, "_ctrl/fg.Rdata"))
+    
+    
+    ## make a new class: mixed
+    normali = which(fg@meta$class=="control")
+    amli = which(fg@meta$class=="aml")
+    if (is.null(randomindp))
+        for (i in 1:min(length(normali),length(amli))) {
+            randomindp[[i]] = list()
+            randomindp[[i]]$normal = sample(normali, matchsamples)
+            randomindp[[i]]$aml = sample(amli, matchsamples)
+        }
+    weight = 1/(2*matchsamples)
+    
+    fg2 = fg
+    for (nfeat in names(fg2@feat)) {
+        for (nne in names(fg2@feat[[nfeat]])) {
+            m = as.matrix(fg2@feat[[nfeat]][[nne]])
+            mc2 = as.matrix(do.call(rbind,llply(randomindp,function(ri)
+                weight*colSums(m[append(ri$normal,ri$aml),,drop=FALSE]) )))
+            rownames(mc2) = c((1+nrow(m)):(nrow(mc2)+nrow(m)))
+            fg2@feat[[nfeat]][[nne]] = mc2
+        }
+    }
+    
+    # meta
+    fg2@meta = meta2 = data.frame(
+        class=rep("mix", length(randomindp)),
+        id=rownames(mc2),
+        train=append(rep(FALSE,floor(length(randomindp)/2)),
+                     rep(TRUE,ceiling(length(randomindp)/2))),
+        subject=0,
+        tube=tube
+    )
+    fg1 = fg
+    fg = fg_merge_samples(fg1, fg2)
+    dir.create(paste0(result_dir0, "_", tube), showWarnings=FALSE)
+    save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
+}
+
+time_output(start, "data_flowcap")
+```
+
+
+## genentech
+
+```{r genentech, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input: genetech by daniel yokosawa on the genetech data (bone marrow + blood for 3 patients x 5 samples; computationally mixed)
+## output: feat_file_cell_count, meta_file
+
+## input directories
+input_dir0 = "/mnt/f/Brinkman group/current/Alice/gating_projects/genentech"
+
+for (tube in 2:4) {
+    input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/comp_mix")
+    
+    ## ouput directories
+    result_dir = paste0(root, "/result/genentech_",tube); dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
+    
+    start = Sys.time()
+    
+    ## prepare flowtype directories
+    # ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+    ftl = get(load(paste0(input_dir,"/flowType_sing.Rdata")))
+    names(ftl) = gsub("[%]","",names(ftl))
+    markers = get(load(paste0(input_dir,"/MarkerNames_sing.Rdata")))
+    
+    ## prepare meta
+    temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
+    meta_file = data.frame(id=names(ftl), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
+    meta_file$class[meta_file$class=="100WB"] = "control"
+    for (uc in unique(meta_file$class)) {
+        uci = meta_file$class==uc
+        meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
+    }
+    
+    fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+}
+
+time_output(start, "data_genetech")
+```
+
+
+## pregnancy
+
+```{r pregnancy, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input: gates + fcm files,  meta data paths
+## output: feat_file_cell_count, meta_file
+## process:
+## - takes gates + fcm files, outputs flowtype vectors
+## - compiles flowtype vectors together to create cell count matrix
+## - reformats meta file (meta info for fcm files)
+## - creates cell meta file (meta info for fcm cell populations)
+
+## input directories
+input_dir = "/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy"
+meta_file_dir = paste0(input_dir, "/meta_file.Rdata")
+flowtype_dir = paste0(input_dir, "/flowtype")
+
+## ouput directories
+result_dir0 = paste0(root, "/result/pregnancy"); dir.create(result_dir0, showWarnings=FALSE, recursive=TRUE)
+
+
+start = Sys.time()
+
+## prepare flowtype directories
+ft_dirs = list.files(flowtype_dir, full.names=TRUE)
+ft_names = sapply(strsplit(ft_dirs,"/"), function(a) gsub(".Rdata","",a[length(a)]) )
+ft_names = gsub(".Rdata|.fcs|Gates_|_Unstim|_Repeat","",ft_names)
+ft_names = gsub("BL","4",ft_names)
+
+## prepare meta
+meta_file0 = get(load(meta_file_dir))
+colnames(meta_file0)[1] = "subject"
+meta_file0 = meta_file0[match(ft_names, meta_file0$id),,drop=FALSE]
+meta_file0$class[meta_file0$class==4] = "control"
+meta_file0$train = ifelse(meta_file0$type=="train",TRUE,FALSE)
+meta_file0 = meta_file0[,-4]
+
+## feat/file-cell-count: load and compile flowtype count files
+fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores, norm_path=paste0(result_dir0,"/count_norm"))
+fg = fg_feat_mean_class(fg, cls="subject", no_cores=no_cores)
+
+save(fg, file=paste0(result_dir0,"/fg.Rdata"))
+
+time_output(start, "data_pregnancy")
+```
+
+## positive/negative control
+
+```{r control, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input: gates + fcm files,  meta data paths
+## output: feat_file_cell_count, meta_file
+## process:
+## - takes gates + fcm files (values randomly generated via normal distribution; see different pos_ for how positive controls are changed
+## - compiles flowtype vectors together to create cell count matrix
+## - reformats meta file (meta info for fcm files)
+## - creates cell meta file (meta info for fcm cell populations)
+
+## options
+nsample = 1000 # # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
+nctrl = .5 # % of control samples
+markern = 4 # # of markers
+maxmarker = 6
+
+normean = 300000 # 301234.7 for pregnancy
+normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countAdj & run 01_feat_normalizeadj
+
+lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
+
+## cores
+no_cores = 6
+registerDoMC(no_cores)
+
+
+start = Sys.time()
+
+# define number of cells in each fcs file
+# for pregnancy data set, mean=301234.7, sd=64734.05
+# ncells = floor(rnorm(nsample,300000,65000)) # number of cells for each sample
+ncells = rnorm(nsample,normean,normsd) # number of cells for each sample
+
+## meta/file
+meta_file = data.frame(id=paste0("a",1:nsample), class="exp")
+meta_file$class[1:(nctrl*nsample)] = "control"
+meta_file$train = rep(FALSE,nrow(meta_file))
+meta_file$train[(nctrl*nsample+1):(nctrl*nsample+(1-nctrl)*nsample/2)] = meta_file$train[1:(nctrl*nsample/2)] = TRUE
+
+## prepare flowtype files
+# load sample fcs file
+# f = read.FCS("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/samplefcs.fcs")
+f = new("flowFrame")
+
+markers = LETTERS[1:markern] # markers
+
+# marker thresholds
+cvd = rnorm(ncells[1],2,1)
+p50 = quantile(cvd, .5)
+p60 = quantile(cvd, .6)
+p75 = quantile(cvd, .75)
+p25 = quantile(cvd, .25)
+thress0 = llply(markers, function(x) p50); names(thress0) = markers
+# thress1 = thress2 = thress4 =
+thress5 = thress0
+# thress1[[markers[1]]] = thress2[markers[1:2]] = p25
+# thress4[markers[1:4]] = quantile(cvd, .501)
+thress5[[markers[1]]] = c(p25,p50)
+thress5[[markers[2]]] = c(p25,p50,p60)
+
+#paste0("ctrl",c(0:9)),
+#paste0("pos",c(1:30))
+for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
+    start2 = Sys.time()
+    
+    # ouput directories
+    result_dir = paste0(root, "/result/",ds)
+    fcs_dir = paste0(result_dir,"/fcs"); dir.create(fcs_dir, showWarnings=FALSE, recursive=TRUE)
+    
+    # make cell names
+    f@exprs = matrix(rnorm(ncells[1]*length(markers),2,1),nrow=ncells[1])
+    # a = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+    #              MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+    #              Thresholds=thress0,
+    #              Methods='Thresholds', verbose=FALSE, MemLimit=60)
+    # ftcell = unlist(lapply(a@PhenoCodes, function(x){return( decodePhenotype(x, markers, a@PartitionsPerMarker) )}))
+    # ftcell_ = str_count(ftcell,"[+|-]")
+    # lastlcp = ftcell[ftcell_==length(markers)]
+    # lastlcpm = llply(str_extract_all(lastlcp,"[A-Z][+|-]"), function(x)
+    #   grepl("[+]",x) )
+    # lastlallposi = which(sapply(lastlcpm, function(x) all(x)))
+    # lastlallnegi = which(sapply(lastlcpm, function(x) all(!x)))
+    
+    # flowtype
+    loop_ind = loop_ind_f(1:nsample,no_cores)
+    ftl = llply(loop_ind, function(ii) {
+        llply(ii, function(i) {
+            # v1 randomized matrix
+            f@exprs = matrix(rnorm(ncells[i]*markern,2,1), nrow=ncells[i])
+            colnames(f@exprs) = markers
+            ci = c(1:ncol(f@exprs)); names(ci) = colnames(f@exprs) # marker indices in f@exprs
+            
+            thress = thress0
+            if (i>(nsample*nctrl) & grepl("pos",ds)) {
+                # make base graph for plot
+                # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+                #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+                #                 MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+                #                 Thresholds=thress,
+                #                 Methods='Thresholds', verbose=FALSE, MemLimit=60)
+                #   ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+                #     decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+                #   ftv0 = ftv0_ = ft@CellFreqs
+                #   ftv0 = round(ftv0/ftv0[1],3)
+                # }
+                dp = f@exprs[,4]>thress[[4]]
+                ap = f@exprs[,1]>thress[[1]]
+                bp = f@exprs[,2]>thress[[2]]
+                cp = f@exprs[,3]>thress[[3]]
+                # ep = f@exprs[,5]>thress[[5]]
+                double = ap & bp
+                triple = ap & bp & cp
+                quad   = ap & bp & cp & dp
+                # quint = ap & bp & cp & dp & ep
+                
+                # change f values
+                if (ds=="pos1") { # A+ > .75; A- > .25
+                    tm = sum(ap)/2
+                    f@exprs[sample(which(!ap),tm),1] = p75 #
+                }
+                else if (ds=="pos2") { # A+, B+ > .75; A-, B- > .25
+                    tm = sum(ap)/2
+                    f@exprs[sample(which(!ap),tm),1] = p75 #
+                    f@exprs[sample(which(!bp),tm),2] = p75 #
+                }
+                else if (ds=="pos3") { # A-B+ > A+B+ x1.5
+                    tm = sum(double)/2
+                    f@exprs[sample(which(bp & !ap),tm),1] = p75 #
+                    f@exprs[sample(which(ap & !bp),tm),1] = p25 #
+                    f@exprs[sample(which(!ap & !bp),tm),1] = p25 #
+                }
+                else if (ds=="pos4") { # A-B+ > A+B+ x1.5; D+c- > D+c+ x1.5
+                    tm = sum(double)/2
+                    f@exprs[sample(which(bp & !ap),tm),1] = p75 #
+                    f@exprs[sample(which(ap & !bp),tm),1] = p25 #
+                    f@exprs[sample(which(!ap & !bp),tm),1] = p25 #
+                    
+                    f@exprs[sample(which(dp & !cp),tm),3] = p75 #
+                    f@exprs[sample(which(cp & !dp),tm),3] = p25 #
+                    f@exprs[sample(which(!dp & !cp),tm),3] = p25 #
+                }
+                else if (ds=="pos5") { # A-B+C+ > A+B+C+ x1.5
+                    tm = sum(triple)/2
+                    f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+                    f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
+                    f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
+                    f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+                }
+                else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; b+D+c- > b+D+c+ x1.5
+                    tm = sum(triple)/2
+                    f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
+                    f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
+                    f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
+                    f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+                    
+                    f@exprs[sample(which(bp & cp & !dp),tm),3] = p75 # bc
+                    f@exprs[sample(which(bp & dp & !cp),tm),3] = p25 # ac
+                    f@exprs[sample(which(dp & cp & !bp),tm),3] = p25 # ab
+                    f@exprs[sample(which(!bp & !cp & !dp),tm),3] = p75 # a
+                }
+                else if (ds=="pos7") { # A+B+C+D+ > x2
+                    f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
+                }
+                else if (ds=="pos8") { # A-B-C-D-E- > x2
+                    f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
+                }
+                else if (ds=="pos9") { # same as above but both
+                    f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
+                    f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
+                }
+                else if (ds=="pos10") { #1.5x A+, B+C+D+
+                    tm = sum(ap)/2
+                    tripleind = which(ap)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    tm = sum(triple)/2
+                    tripleind = which(cp & dp & bp)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                }
+                else if (ds=="pos11") { #1.5x A+
+                    tm = sum(double)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
+                }
+                else if (ds=="pos12") { #1.5x A+, B+
+                    tm = sum(double)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(bp),tm),])
+                }
+                else if (ds=="pos13") { #1.5x A+B+
+                    tm = sum(double)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
+                }
+                else if (ds=="pos14") { #1.5x A+B+, C+D+
+                    tm = sum(double)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(dp & cp),tm),])
+                }
+                else if (ds=="pos15") {
+                    tm = sum(triple)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                }
+                else if (ds=="pos16") { #1.5x A+B+C+, B+C+D+
+                    tm = sum(triple)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp & bp),tm),])
+                }
+                else if (ds=="pos17") { #1.5x A+B+; decrease other ones accordingly
+                    tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
+                    f@exprs[c(sample(which(!ap & !bp),tm/3) ,
+                              sample(which(ap & !bp),tm/3) ,
+                              sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                }
+                else if (ds=="pos18") { #1.5x A+B+, C+D+, like above
+                    tm = sum(double)/2
+                    f@exprs[c(sample(which(!ap & !bp),tm/3) ,
+                              sample(which(ap & !bp),tm/3) ,
+                              sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                }
+                else if (ds=="pos19") { #1.5x A+, A+B+C+
+                    tm = sum(triple)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                    tm = sum(ap)*1.5-sum(ap)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(
+                        which(f@exprs[,1]>thress[[1]] & f@exprs[,2]>thress[[2]]), tm),])
+                }
+                else if (ds=="pos20") { #1.5x A+, A+B+C+
+                    tm = sum(ap)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
+                    tm = sum(triple)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & ap & bp),tm),])
+                }
+                else if (ds=="pos21") { # 1.5x A+
+                    tm = sum(double)
+                    f@exprs = f@exprs[-sample(which(ap),tm),]
+                }
+                else if (ds=="pos22") { # 1.5x A+, B+
+                    tm = sum(double)
+                    f@exprs = f@exprs[-unique(c(sample(which(bp),tm), sample(which(ap),tm))),]
+                }
+                else if (ds=="pos23") { #1.5x A+B+
+                    tm = sum(double)/2
+                    f@exprs = f@exprs[-sample(which(ap & bp),tm),]
+                }
+                else if (ds=="pos24") { #1.5x A+B+, C+D+
+                    tm = sum(double)/2
+                    tind = sample(which(dp & cp),tm)
+                    tind2 = sample(which(ap & bp),tm)
+                    f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
+                }
+                else if (ds=="pos25") {
+                    tm = sum(triple)/2
+                    f@exprs = f@exprs[-sample(which(ap & bp & cp),tm),]
+                }
+                else if (ds=="pos26") { #1.5x
+                    tm = sum(double)/2
+                    tind = sample(which(bp & cp),tm)
+                    tind2 = sample(which(ap & bp),tm)
+                    f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
+                }
+                else if (ds=="pos27") { #1.5x A+B+C+, B+C+D+
+                    tm = sum(triple)/2
+                    f@exprs = f@exprs[unique(c(which(ap & bp & cp),sample(which(cp & dp & bp),tm))),]
+                }
+                else if (ds=="pos28") { #1.5x A+, A+B+C+
+                    tm = sum(triple)/2
+                    tripleind = which(ap & bp & cp)
+                    f@exprs = rbind(f@exprs,f@exprs[-unique(c(sample(which(ap & bp & cp),sum(triple)/2),sample(which(ap),sum(ap)/2))),])
+                }
+                
+                else if (ds=="pos29") { #1.5x A+, B+C+D+
+                    tm = sum(ap)/2
+                    tripleind = which(ap)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    tm = sum(triple)/2
+                    tripleind = which(cp & dp & bp)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                }
+                else if (ds=="pos30") { #same as 25; A+B+C+ + 50%
+                    tm = sum(triple)/2
+                    tripleind = which(ap & bp & cp)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                }
+                
+                # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
+                #
+                #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+                #                 MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+                #                 Thresholds=thress,
+                #                 Methods='Thresholds', verbose=FALSE, MemLimit=60)
+                #   ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+                #     decodePhenotype(x, ft@MarkerNames, rep(2,length(ft@MarkerNames))) ))
+                #   ftv = ftv_ = ft@CellFreqs
+                #   ftv = round(ftv/ftv[1],3)
+                #   names(ftv) = ftcell
+                #   a = getPhenCP(cp=ftcell,no_cores=no_cores)
+                # }
+            }
+            fe = f@exprs
+            colnames(fe) = LETTERS[1:ncol(fe)]
+            if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds)) save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
+            if (ds%in%c("pos30")) {
+                thress = thress5
+                ppm = rep(2,markern)
+                ppm[1] = 3
+                ppm[2] = 4
+                ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
+                              MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=ppm,
+                              Thresholds=thress,
+                              Methods='Thresholds', verbose=FALSE, MemLimit=60)
+                ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+                    decodePhenotype(x, ft@MarkerNames, ppm) ))
+                # ft = ft@CellFreqs
+                names(ft@CellFreqs) = ftcell
+            } else {
+                thress = thress[colnames(f@exprs)]
+                ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=colnames(f@exprs),
+                              MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=2,
+                              Thresholds=thress,
+                              Methods='Thresholds', verbose=FALSE, MemLimit=60)#@CellFreqs
+            }
+            return(ft)
+        })
+    }, .parallel=TRUE)
+    ftl = unlist(ftl,recursive=FALSE)
+    
+    if (ds=="pos30") {
+        fg0 = flowGraph(ftl, no_cores=no_cores, meta=meta_file,
+                        prop=FALSE, specenr=FALSE, normalize=FALSE)
+        fg1 = fg_feat_cumsum(fg0, no_cores=no_cores)
+        
+        fg0 = fg_feat_node_prop(fg0)
+        fg0 = fg_feat_edge_prop(fg0, no_cores=no_cores)
+        fg0 = fg_feat_node_norm(fg0, norm_path=paste0(result_dir,"/count_norm"), no_cores=no_cores)
+        fg0 = fg_feat_node_specenr(fg0, no_cores=no_cores)
+        save(fg0, file=paste0(result_dir,"/fg.Rdata"))
+        
+        fg1 = fg_feat_node_prop(fg1)
+        fg1 = fg_feat_edge_prop(fg1, no_cores=no_cores)
+        fg1 = fg_feat_node_norm(fg1, norm_path=paste0(result_dir,"_cumsum/count_norm"), no_cores=no_cores)
+        fg1 = fg_feat_node_specenr(fg1, no_cores=no_cores)
+        save(fg1, file=paste0(result_dir,"_cumsum/fg.Rdata"))
+        
+    } else {
+        fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+        save(fg, file=paste0(result_dir,"/fg.Rdata"))
+    }
+    
+    time_output(start2, ds)
+    rm(list=c("ftl","fg")); gc()
+}
+
+time_output(start)
+
+```
+
+
+# Calculate summary statistics
+
+```{r p_values, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## cores
+no_cores = detectCores()-1
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs) {
+    try ({
+        start1 = Sys.time()
+        cat(result_dir)
+        fg = get(load(paste0(result_dir,"/fg.Rdata")))
+        fg = fg_clear_summary(fg)
+        fg = fg_summary(
+            fg, no_cores=no_cores, cls="class", control="control",
+            overwrite=FALSE,
+            test_name="t_byLayer",
+            diminish=FALSE, # don't test if all parents are insignificant, stricter the lower the layer
+            p_thres=.05, p_rate=2, # only used if diminish=TRUE
+            test_custom="t",
+            adjust_custom="byLayer"
+        )
+        fg = fg_summary(
+            fg, no_cores=no_cores, cls="class", control="control",
+            overwrite=FALSE,
+            test_name="t_byLayer_diminish",
+            diminish=TRUE, # don't test if all parents are insignificant, stricter the lower the layer
+            p_thres=.05, p_rate=2, # only used if diminish=TRUE
+            test_custom="t",
+            adjust_custom="byLayer"
+        )
+        
+        save(fg, file=paste0(result_dir,"/fg.Rdata"))
+        time_output(start1)
+        
+    })
+}
+
+```
+
+
+# Plots
+
+## Summary statistics plots
+
+```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs) {
+    # if (!grepl("genentech",result_dir)) next
+    start1 = Sys.time()
+    cat(result_dir)
+    
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    for (cls in unique(fg@meta$class)) {
+        try ({
+            if (cls=="control") next
+            path_ = paste0(result_dir,"/plots/class/control_",cls)
+            dir.create(path_, recursive=TRUE, showWarnings=FALSE)
+            gr = fg_plot(
+                fg, sum_plot=FALSE,
+                cls_label1="control", cls_label2=cls, cls="class",
+                node_feature="SpecEnr", show_label=rep(TRUE,nrow(fg@graph$v)),
+                label1="expect_prop", label2="prop", # node only
+                show_bgedges=TRUE, width=20, height=9,
+                path=paste0(path_,"/SpecEnr.png"))
+            
+            # # interactive version for testing
+            # gr_ = gr = fg_plot(
+            #     fg, sum_plot=FALSE,
+            #     cls_label1="control", cls_label2=cls, cls="class",
+            #     node_feature="SpecEnr", show_label=rep(TRUE,nrow(fg@graph$v)),
+            #     label1="expect_prop", label2="prop", # node only
+            #     show_bgedges=TRUE)
+            # gp = gggraph(gr_, interactive=T)
+        })
+    }
+    
+}
+time_output(start1)
+
+```
+
+
+## Feature plots
+
+```{r plots_feature, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+for (result_dir in result_dirs) {
+    if (!grepl("genentech",result_dir)) next
+    start1 = Sys.time()
+    cat(result_dir)
+    
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+    for (cls in unique(fg@meta$class)) {
+        try ({
+            if (cls=="control") next
+            path_ = paste0(result_dir,"/plots/class/control_",cls)
+            dir.create(path_, recursive=TRUE, showWarnings=FALSE)
+            gr = fg_plot(
+                fg, sum_plot=TRUE,
+                test_name="t_byLayer", cls="class",
+                cls_label1="control", cls_label2=cls,
+                node_feature="SpecEnr", edge_feature="prop",
+                label1="expect_prop", label2="prop", # node only
+                p_thres=.05, show_bgedges=TRUE,
+                path=paste0(path_,"/SpecEnr_t_byLayer.png"))
+        })
+    }
+    
+}  
+
+time_output(start1)
+```
+
+
+## Plots examining SpecEnr and its p values
+
+Summary statistics: T-test + byLayer adjustment
+
+byLayer adjustment is a family-wise adjustment where each 
+p value x # of nodes in its layer x total number of layers in the cell hierarchy.
+
+### Density/histograms for each node
+
+```{r plots_test_p-histograms, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## DENSITY HISTOGRAMS
+## test for pos15 data set to compare SpecEnr values of controls and exp
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+result_dir = result_dirs[grepl("pos15", result_dirs)] # ABC
+fg = get(load(paste0(result_dir,"/fg.Rdata")))
+
+for (cpop in fg@graph$v$phenotype[-1]) {
+    # cpop = "A+B+C+"
+    
+    a1 = fg@feat$node$expect_prop[1:500,cpop]
+    a2 = fg@feat$node$prop[1:500,cpop]
+    a = a1/a2
+    b1 = fg@feat$node$expect_prop[501:1000,cpop]
+    b2 = fg@feat$node$prop[501:1000,cpop]
+    b = b1/b2
+    
+    # create directory
+    dir.create(paste0(result_dir,"/plots/ratios"), recursive=TRUE, showWarnings=F)
+    
+    # plot
+    try ({
+        gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(a,b)$p.value,"\nmeans: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) +
+            geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
+            geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
+        
+        ggsave(paste0(result_dir,"/plots/ratios/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
+        
+    })
+    
+    # plot logged version
+    try({
+        
+        gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", t.test(log(a),log(b))$p.value,"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) +
+            geom_density(aes(x=x), colour="red",data=data.frame(x=log(a))) +
+            geom_density(aes(x=x), colour="blue",data=data.frame(x=log(b)))
+        
+        ggsave(paste0(result_dir,"/plots/ratios/",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
+    })
+    
+}
+
+```
+
+
+### qq plot
+
+```{r plotS_test_qq, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+phen = fg@graph$v$phenotype
+phen_ = gsub("A[-+]|B[-+]|C[-+]", "", phen)
+sig_inds = phen_==""
+qvals = fg_get_summary(fg, type="node", feature="SpecEnr", test_name="t_byLayer",
+                       cls="class", cls_labels="control_exp")$values
+
+# plot for all q values
+plotly::plot_ly(x=~c(1:length(qvals)), y=~sort(qvals), mode="markers",
+                text=paste0(names(qvals)[order(qvals)], ": ", sort(qvals)),
+                hoverinfo="text")
+
+# plot removed 0's
+no0 = qvals!=0
+p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvals[no0]), mode="markers",
+                text=paste0(names(qvals[no0])[order(qvals[no0])], ": ", sort(qvals[no0])),
+                hoverinfo="text") %>%
+plotly::layout(title="qq plot for pos15 (A+B+C+); no sig nodes included; T-test")
+# htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qq_no-ABC.html"))
+
+# plot removed 0's logged
+qvalsl = log(qvals)
+p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvalsl[no0]), mode="markers",
+                text=paste0(names(qvalsl[no0])[order(qvalsl[no0])], ": ", sort(qvalsl[no0])),
+                hoverinfo="text") %>%
+plotly::layout(title="qq plot for pos15 (A+B+C+) LOGGED; no sig nodes included; T-test")
+# htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qqlog_no-ABC.html"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# References

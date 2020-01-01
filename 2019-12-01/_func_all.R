@@ -13,7 +13,7 @@ options(stringsAsFactors=F)
 ## input: list of package names to load
 ## output: none; load/install package
 libr <- function(pkgs) {
-  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) 
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0)
     install.packages(setdiff(pkgs, rownames(installed.packages())), verbose=F)
   if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) {
     if (!requireNamespace("BiocManager", quietly=T)) install.packages("BiocManager")
@@ -33,7 +33,7 @@ time_output = function(start, message="", tz="GMT") {
 }
 
 ## unload all pkgs
-unloadpkg = function() 
+unloadpkg = function()
   a = lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE)
 
 
@@ -99,7 +99,7 @@ col_probe = function(m,n=15) {
     la = length(a)
     if (la == 1) u1 = append(u1,col)
     if (la == nm) ua = append(ua,col)
-    
+
     cat("\n", coln, ": ", la)
     if (la<n) cat("; ",a)
   }
@@ -151,7 +151,7 @@ gray2rgb <- function(im) {
 ## input: list of package names to load
 ## output: none; load/install package
 libr <- function(pkgs) {
-  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) 
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0)
     install.packages(setdiff(pkgs, rownames(installed.packages())), verbose=F)
   if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) {
     if (!requireNamespace("BiocManager", quietly=T)) install.packages("BiocManager")
@@ -176,7 +176,7 @@ ftime = function(time, tz="GMT") return( format(.POSIXct(time,tz=tz), "%H:%M:%S"
 
 
 ## unload all pkgs
-unloadpkg = function() 
+unloadpkg = function()
   a = lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE)
 
 
@@ -206,7 +206,7 @@ image.scale <- function(z, zlim, col = heat.colors(12),
     if(length(breaks) != (length(col)+1)){stop("must have one more break than colour")}
   }
   if(missing(breaks) & !missing(zlim)){
-    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1)) 
+    breaks <- seq(zlim[1], zlim[2], length.out=(length(col)+1))
   }
   if(missing(breaks) & missing(zlim)){
     zlim <- range(z, na.rm=TRUE)
@@ -224,7 +224,7 @@ image.scale <- function(z, zlim, col = heat.colors(12),
   if(!horiz){YLIM<-range(breaks); XLIM<-c(0,1)}
   if(missing(xlim)) xlim=XLIM
   if(missing(ylim)) ylim=YLIM
-  plot(1,1,t="n",ylim=ylim, xlim=xlim, xaxt=xaxt, yaxt=yaxt, xaxs="i", yaxs="i", ...)  
+  plot(1,1,t="n",ylim=ylim, xlim=xlim, xaxt=xaxt, yaxt=yaxt, xaxs="i", yaxs="i", ...)
   for(i in seq(poly)){
     if(horiz){
       polygon(poly[[i]], c(0,0,1,1), col=col[i], border=NA)
@@ -275,31 +275,31 @@ dens_plot <- function(val,group=NULL,filename=NULL,title="Density with Histogram
   require(plotly)
   if (is.null(group)) {
     if (hist) {
-      p <- ggplot(data.frame(x=val,group=rep("A",length(val))), aes(x)) + 
-        geom_histogram(aes(y = ..density..), alpha = 0.7, fill = fillh, na.rm=T, binwidth=binwidth) + 
-        geom_density(fill = filld, alpha = 0.5, na.rm=T) + 
-        theme(panel.background = element_rect(fill = '#ffffff')) + 
+      p <- ggplot(data.frame(x=val,group=rep("A",length(val))), aes(x)) +
+        geom_histogram(aes(y = ..density..), alpha = 0.7, fill = fillh, na.rm=T, binwidth=binwidth) +
+        geom_density(fill = filld, alpha = 0.5, na.rm=T) +
+        theme(panel.background = element_rect(fill = '#ffffff')) +
         ggtitle(title)
     } else {
-      p <- ggplot(data.frame(x=val,group=rep("A",length(val))), aes(x)) + 
-        geom_density(fill = filld, alpha = 0.5, na.rm=T) + 
-        theme(panel.background = element_rect(fill = '#ffffff')) + 
+      p <- ggplot(data.frame(x=val,group=rep("A",length(val))), aes(x)) +
+        geom_density(fill = filld, alpha = 0.5, na.rm=T) +
+        theme(panel.background = element_rect(fill = '#ffffff')) +
         ggtitle(title)
-      
+
     }
   } else {
     if (hist) {
-      p <- ggplot(data.frame(x=val,group=group), aes(x, fill = group)) + 
-        geom_histogram(aes(y = ..density..), alpha = 0.7, position=multipleoverlay, na.rm=T, binwidth=binwidth) + 
-        geom_density(position = multipleoverlay, alpha = 0.3, na.rm=T) + 
-        theme(panel.background = element_rect(fill = '#ffffff')) + 
+      p <- ggplot(data.frame(x=val,group=group), aes(x, fill = group)) +
+        geom_histogram(aes(y = ..density..), alpha = 0.7, position=multipleoverlay, na.rm=T, binwidth=binwidth) +
+        geom_density(position = multipleoverlay, alpha = 0.3, na.rm=T) +
+        theme(panel.background = element_rect(fill = '#ffffff')) +
         ggtitle(title)
     } else {
-      p <- ggplot(data.frame(x=val,group=group), aes(x, fill = group)) + 
-        geom_density(position = multipleoverlay, alpha = 0.3, na.rm=T) + 
-        theme(panel.background = element_rect(fill = '#ffffff')) + 
+      p <- ggplot(data.frame(x=val,group=group), aes(x, fill = group)) +
+        geom_density(position = multipleoverlay, alpha = 0.3, na.rm=T) +
+        theme(panel.background = element_rect(fill = '#ffffff')) +
         ggtitle(title)
-      
+
     }
   }
   if (is.null(filename)) {
@@ -307,7 +307,7 @@ dens_plot <- function(val,group=NULL,filename=NULL,title="Density with Histogram
   } else {
     #devtools::install_github("ropensci/plotly@fix/nse")
     htmlwidgets::saveWidget(ggplotly(p), filename)
-  } 
+  }
 }
 
 # INPUT: n= number of cores; x=length of equilateral triangle (e.g. distance matrix, only lower/upper triangle is unique) you want to calculate
@@ -317,12 +317,12 @@ triLoopInd <- function(x,n) {
   if (n==1) return(list(c(1,x-1)))
   loopInd = 1
   perloop = 0
-  if ((x-1)<=n) { 
+  if ((x-1)<=n) {
     perloop = 1:min((x-1),n)
-  } else if ((x-1)<=(n*2)) { 
+  } else if ((x-1)<=(n*2)) {
     perloop = rep(1,n)+c(rep(0,n-((x-1)-n)),rep(1,(x-1)-n))
   } else { loopInd = ceiling(c(1,x*triSplit(n))) }
-  
+
   if (length(loopInd)==1 & length(perloop)>1) {
     for (i in 2:length(perloop)) {
       loopInd[i] = loopInd[i-1]+perloop[i-1]
@@ -347,20 +347,20 @@ triSplit <- function(n) 1-c(sapply((n-1):1, function(x) sqrt((x)/(n))))
 
 
 #Output: columns where all values are lower than or equal to a threshold
-colIndBelow <- function(m,thres) {
-  return(which(apply(m,2,function(x) all(x<=thres))))
-}
+colIndBelow <- function(m,thres)
+  which(apply(m,2,function(x) all(x<=thres)))
+
 
 #Output: Random matrix
-randomMatrix <- function(nrow,ncol) {
-  return(matrix(rexp(ncol*nrow, rate=.1), ncol=ncol))
-}
+randomMatrix <- function(nrow,ncol)
+  matrix(rexp(ncol*nrow, rate=.1), ncol=ncol)
+
 
 #Input: package
 #Output: TRUE if package is installed, FALSE otherwise
 is.installed <- function(pkg){
   is.element(pkg, installed.packages()[,1])
-} 
+}
 
 charOccurences <- function(char, str) {
   str2 <- gsub(char,"",str)
@@ -386,7 +386,7 @@ colNamesSame <- function(pathList) {
   return(colNameSame)
 }
 
-#Input: file path and a file extension 
+#Input: file path and a file extension
 #Output: List of all file names in given path with the given extension
 fileNames <- function(pathList, ext="fcs") {
   for (i in 1:length(pathList)) {
@@ -426,7 +426,7 @@ getMarkers <- function(phenotype) {
 
 
 #given number of markers, output number of nodes, edges
-getGraphInfo <- function(m) { 
+getGraphInfo <- function(m) {
   npl = epl = rep(0,m)
   for (i in 1:m) {
     npl[i] = choose(m,i)*(2^i)
@@ -446,9 +446,9 @@ getGraphInfo <- function(m) {
 getleaves <- function (phenoMeta, no_cores) {
   require(foreach)
   require(doMC)
-  
+
   registerDoMC(no_cores)
-  
+
   finalLevel = which(phenoMeta$phenolevel==max(phenoMeta$phenolevel))
   notFinalLevel = setdiff(1:nrow(phenoMeta), finalLevel)
   nflleaves = foreach (i=1:length(notFinalLevel), .combine="c") %dopar% {
@@ -483,7 +483,7 @@ getPhen <- function(phen) {
   markers = markers[!markers==""]
   pm$phenocode = sapply(phen, function(x) encodePhenotype(x, markers))
   pm$phenolevel = cell_type_layers(phen)
-  
+
   return(pm)
 }
 
@@ -517,51 +517,51 @@ jsd <- function(p,q, list=T) { #p,q are two distributions, two lists of distribu
 #Output: vector of 3iTcell gating strategy phenotypes
 GatingStrategyPhenotypes <- function(){
   GatingStrategyPop <- c(NA, NA, "")
-  
+
   GatingStrategyPop[4] <- "TCRb-CD8a-CD161+TCRd-" #2.1
   GatingStrategyPop[5] <- "CD44+CD62L-TCRb-CD8a-CD161+TCRd-" #2.11
   GatingStrategyPop[6] <- "CD44+CD62L+TCRb-CD8a-CD161+TCRd-" #2.12
   GatingStrategyPop[7] <- "CD44+TCRb-KLRG1+CD8a-CD161+TCRd-" #2.13
-  
+
   GatingStrategyPop[8] <- "TCRb-TCRd+" #1
   GatingStrategyPop[9] <- "TCRb-KLRG1+GITR-TCRd+" #1.2
   GatingStrategyPop[10] <- "CD44+CD62L-TCRb-TCRd+" #1.3
   GatingStrategyPop[11] <- "CD44+CD62L+TCRb-TCRd+" #1.4
-  
+
   GatingStrategyPop[12] <- "TCRb+CD161+CD4-TCRd-" #3.1
   GatingStrategyPop[14] <- "CD44+CD62L-TCRb+CD161+CD4-TCRd-" #3.11
   GatingStrategyPop[15] <- "CD44+CD62L+TCRb+CD161+CD4-TCRd-" #3.12
   GatingStrategyPop[16] <- "TCRb+KLRG1+CD161+CD4-TCRd-" #3.13
-  
+
   GatingStrategyPop[13] <- "TCRb+CD161+CD4+TCRd-" #3.2
   GatingStrategyPop[17] <- "CD44+CD62L-TCRb+CD161+CD4+TCRd-" #3.21
   GatingStrategyPop[18] <- "CD44+CD62L+TCRb+CD161+CD4+TCRd-" #3.22
   GatingStrategyPop[19] <- "TCRb+KLRG1+CD161+CD4+TCRd-" #3.23
-  
+
   GatingStrategyPop[24] <- "TCRb+CD8a-CD161-CD4+TCRd-" #3.31
   GatingStrategyPop[20] <- "CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-" #3.311
   GatingStrategyPop[21] <- "CD44+CD62L-CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-" #3.3112
   GatingStrategyPop[22] <- "CD44+CD62L+CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-" #3.3111
   GatingStrategyPop[23] <- "CD44+CD25+TCRb+KLRG1+CD8a-CD161-CD4+GITR+TCRd-" #3.3113
-  
+
   GatingStrategyPop[26] <- "CD25-TCRb+CD8a-CD161-CD4+TCRd-" #3.312
   GatingStrategyPop[27] <- "CD44+CD62L-CD25-TCRb+CD8a-CD161-CD4+TCRd-" #3.3121
   GatingStrategyPop[28] <- "CD62L+CD25-TCRb+CD8a-CD161-CD4+TCRd-" #3.3122
   GatingStrategyPop[29] <- "CD44+CD25-TCRb+KLRG1+CD8a-CD161-CD4+TCRd-" #3.3123
-  
+
   GatingStrategyPop[25] <- "TCRb+CD8a+CD161-CD4-TCRd-" #3.32
   GatingStrategyPop[30] <- "CD44+CD62L-TCRb+CD8a+CD161-CD4-TCRd-" #3.322
   GatingStrategyPop[31] <- "CD44+CD62L+TCRb+CD8a+CD161-CD4-TCRd-" #3.321
   GatingStrategyPop[32] <- "CD44+TCRb+KLRG1+CD8a+CD161-CD4-TCRd-" #3.324
-  
+
   GatingStrategyPop[33] <- "TCRb+TCRd-" #3
   GatingStrategyPop[34] <- "TCRb+CD161+TCRd-" #3.1/2 CD4?
-  
+
   GatingStrategyPop[35] <- "TCRb-KLRG1-GITR+TCRd+" #1.1
   GatingStrategyPop[36] <- "CD44-CD62L+TCRb-TCRd+" #1.5
   GatingStrategyPop[37] <- "TCRb-TCRd-" #2
   GatingStrategyPop[38] <- "CD44-CD62L+TCRb+CD8a+CD161-CD4-TCRd-" #3.323
-  
+
   GatingStrategyPop[39] <- "TCRb+CD161-TCRd-" #3.3
   return(GatingStrategyPop)
 }
@@ -601,7 +601,7 @@ extractMarkerCol <- function(f, MarkerStartCol, MarkerEndCol, parData=NULL) {
     parData <- extractextractMarkerColPar(f, MarkerStartCol, MarkerEndCol)
   }
   f@parameters@data <- parData
-  
+
   return(f)
 }
 
@@ -642,7 +642,7 @@ replaceOutliers <- function(vec) {
   #  Create fake data that has a a small standard deviation and no outliers to use to trick ArrayOutliers to find outliers from a vector.
   # if (!exists("GoodFakeData")) {
   #   GoodFakeData <- NULL
-  #   for(i in 1:4) { 
+  #   for(i in 1:4) {
   #     GoodFakeData <- cbind(GoodFakeData, runif(length(vec),5,5.5))
   #   }
   # }
@@ -654,13 +654,13 @@ replaceOutliers <- function(vec) {
   # outlier <- ArrayOutliers(asDF, alpha=0.5)$outl # find all outliers for each marker
   # outlierNo <- as.numeric(c(isNA, rownames(outlier)))
   # outlierNo <- outlierNo[c(order(outlierNo))]
-  
+
   #assumes normal distribution; can use either method 1 or 2
   outlier <- getOutliers(vec, method="I", distribution="normal") #Method 1: detects outliers by checking which are below (above) the limit where according to the model distribution less then rho[1] (rho[2]) observations are expected (given length(y) observations)
   # outlier <- getOutliers(vec, method="II") #Method 2:  detects outliers by finding the observations (not used in the fit) who's fit residuals are below (above) the estimated confidence limit alpha[1] (alpha[2]) while all lower (higher) observations are outliers too
   outlierNo <- c(outlier$iRight, outlier$iLeft)
   avg <- mean(vec[-outlierNo])
-  if (length(outlierNo)!= 0) {    
+  if (length(outlierNo)!= 0) {
     cat(paste("\nChanging FCS#", outlierNo, " from ", vec[outlierNo], " to ", round(avg, 4), sep=""))
     vec[outlierNo] <- avg
   }
@@ -673,7 +673,7 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
   if (!is.null(fcleanFrames)) { gthres <- matrix(0, nrow=length(fcleanFrames), ncol=ncol(fcleanFrames[[as.character(1)]]@exprs) ) } #matrix of thresholds
   else if (!is.null(fcleanFilePath)) { gthres <- matrix(0, nrow=length(fcleanFilePath), ncol=16 ) }
   # if ( Genotype[i] != "+_+" && Genotype[i] != "+_Y" ){ # skip wildtypes
-  
+
   #Col 10, 16---------------------------------
   cat("\nColumn 10 (TCRb), 16 (TCRd): ")
   for(i in 1:max(length(fcleanFrames), length(fcleanFilePath))){
@@ -685,8 +685,8 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
   }
   #Find and replace outliers using avg; not channel 16 because the outliers of TCRd are actually fine for the 186XX files
   gthres[,10] <- replaceOutliers(gthres[,10])
-  
-  
+
+
   #Col 12, 13, 14---------------------------------
   gthres13 <- NULL
   cat("\nColumn 12 (CD8a), 13 (CD161), 14 (CD4): ")
@@ -709,8 +709,8 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
   gthres[,12] <- replaceOutliers(gthres[,12])
   gthres[,13] <- replaceOutliers(gthres[,13])
   gthres[,14] <- replaceOutliers(gthres[,14])
-  
-  
+
+
   #Col 7, 8, 11---------------------------------
   cat("\nColumn 7 (CD44), 8 (CD62L), 11 (KLRG1): ")
   for(i in 1:max(length(fcleanFrames), length(fcleanFilePath))){
@@ -729,8 +729,8 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
   #Find and replace outliers using avg; do channel 2 seperately,
   gthres[,7] <- replaceOutliers(gthres[,7])
   gthres[,11] <- replaceOutliers(gthres[,11])
-  
-  
+
+
   #Col 9, 15---------------------------------
   gthres15a <- 0
   gthres15b <- 0
@@ -746,12 +746,12 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
     # gthres[i,15] <- deGate(F3.31,channel=c(15))
     gthres15temp1a <- deGate(F3.31, channel=15, tinypeak.removal=0.01)
     gthres15temp1b <- deGate(F3.31, channel=15, upper=T)
-    tempD <- density(F3.31@exprs[,15]) # have 
+    tempD <- density(F3.31@exprs[,15]) # have
     peakValue <- tempD$x[which.max(tempD$y)]
     if(gthres15temp1a > peakValue && gthres15temp1b > peakValue) {
       gthres15temp1 <- min(gthres15temp1a, gthres15temp1b)
     } else {
-      gthres15temp1 <- max(gthres15temp1a, gthres15temp1b)    
+      gthres15temp1 <- max(gthres15temp1a, gthres15temp1b)
     }
     if(gthres15temp1==gthres15temp1a) {
       gthres15a <- gthres15a+1
@@ -763,7 +763,7 @@ gthres3iTcell <- function(fcleanFrames=NULL, fcleanFilePath=NULL) {
   #Find and replace outliers using avg
   gthres[,9] <- replaceOutliers(gthres[,9])
   gthres[,15] <- replaceOutliers(gthres[,15])
-  
+
   colnames(gthres) <- c(1:ncol(gthres))
   return(gthres)
 }
@@ -779,48 +779,48 @@ ScatterPlots3iTCell <- function(f, gthresi, path) {
   F1 <- getflowFrame(flowDensity(f, channels=c(10,16), position=c(F,T), gates=c(gthresi[10],gthresi[16]))) #gd T-cells
   F2 <- getflowFrame(flowDensity(f, channels=c(10,16), position=c(F,F), gates=c(gthresi[10],gthresi[16]))) #TCR-
   F3 <- getflowFrame(flowDensity(f, channels=c(10,16), position=c(T,F), gates=c(gthresi[10],gthresi[16]))) #ab T-cells
-  
+
   F2.1 <- getflowFrame(flowDensity(F2, channels=c(13,12), position=c(T,F), gates=c(gthresi[13],gthresi[12]))) #TCR-; NK-cells
   F3.1 <- getflowFrame(flowDensity(F3, channels=c(13,14), position=c(T,F),  gates=c(gthresi[13],gthresi[14]))) #ab; NKT-cells
   F3.2 <- getflowFrame(flowDensity(F3, channels=c(13,14), position=c(T,T),  gates=c(gthresi[13],gthresi[14]))) #ab; iNKT-cells
   F3.3 <- getflowFrame(flowDensity(F3, channels=c(13,14), position=c(F,NA), gates=c(gthresi[13],gthresi[14]))) #ab; P4
-  
+
   F3.31 <- getflowFrame(flowDensity(F3.3, channels=c(12,14), position=c(F,T), gates=c(gthresi[12],gthresi[14]))) #ab; P4; CD4+ T-cells
   F3.32 <- getflowFrame(flowDensity(F3.3, channels=c(12,14), position=c(T,F), gates=c(gthresi[12],gthresi[14]))) #ab; P4; CD8+ T-cells
-  
+
   F3.311 <- getflowFrame(flowDensity(F3.31, channels=c(9,15), position=c(T,T),  gates=c(gthresi[9],gthresi[15]))) #ab; P4; CD4+ T-cells; KLRG1+
   F3.312 <- getflowFrame(flowDensity(F3.31, channels=c(9,15), position=c(F,NA), gates=c(gthresi[9],gthresi[15]))) #ab; P4; CD4+ T-cells;
-  
+
   #Plot! Error :(
   tryCatch({
     png(file=path) #, width=1800, height=1200)
     #par(mar(c(5, 5, 10, 2) + 0.1))
     layout(rbind(c(1:6),c(7:11,0),c(12,13,0,0,0,0)))
-    
-    plotDens(f, c(10,16), main=paste("0_TCRb_TCRd"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[10]); abline(h=gthresi[16]); 
-    plotDens(F1, c(11,15), main=paste("1_KLRG1_GITTR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]); 
-    plotDens(F1, c(8,7), main=paste("1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);     
-    
-    plotDens(F2, c(13,12), main=paste("2_CD161_CD8a"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[13]); abline(h=gthresi[12]); 
-    plotDens(F2.1, c(8,7), main=paste("2.1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]); 
-    plotDens(F2.1, c(7,11), main=paste("2.1_CD44_KLRG1"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[7]); abline(h=gthresi[11]); 
-    
-    plotDens(F3, c(13,14), main=paste("3_CD161_CD4"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[13]); abline(h=gthresi[14]); 
-    plotDens(F3.1, c(8,7), main=paste("3.1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]); 
-    plotDens(F3.1, c(11,15), main=paste("3.1_KLRG1_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]);    
-    plotDens(F3.2, c(8,7), main=paste("3.2_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]); 
-    plotDens(F3.2, c(11,15), main=paste("3.2_KLRG1_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]);    
-    
-    plotDens(F3.3, c(12,14), main=paste("3.3_CD8a_CD4"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[12]); abline(h=gthresi[14]); 
-    plotDens(F3.31, c(9,15), main=paste("3.31_CD25_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[9]); abline(h=gthresi[15]);       
+
+    plotDens(f, c(10,16), main=paste("0_TCRb_TCRd"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[10]); abline(h=gthresi[16]);
+    plotDens(F1, c(11,15), main=paste("1_KLRG1_GITTR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]);
+    plotDens(F1, c(8,7), main=paste("1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+
+    plotDens(F2, c(13,12), main=paste("2_CD161_CD8a"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[13]); abline(h=gthresi[12]);
+    plotDens(F2.1, c(8,7), main=paste("2.1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+    plotDens(F2.1, c(7,11), main=paste("2.1_CD44_KLRG1"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[7]); abline(h=gthresi[11]);
+
+    plotDens(F3, c(13,14), main=paste("3_CD161_CD4"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[13]); abline(h=gthresi[14]);
+    plotDens(F3.1, c(8,7), main=paste("3.1_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+    plotDens(F3.1, c(11,15), main=paste("3.1_KLRG1_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]);
+    plotDens(F3.2, c(8,7), main=paste("3.2_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+    plotDens(F3.2, c(11,15), main=paste("3.2_KLRG1_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[15]);
+
+    plotDens(F3.3, c(12,14), main=paste("3.3_CD8a_CD4"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[12]); abline(h=gthresi[14]);
+    plotDens(F3.31, c(9,15), main=paste("3.31_CD25_GITR"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[9]); abline(h=gthresi[15]);
     plotDens(F3.311, c(8,7), main=paste("3.311_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
     plotDens(F3.311, c(11,7), main=paste("3.311_KLRG1_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[7]);
-    plotDens(F3.312, c(8,7), main=paste("3.312_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]); 
-    plotDens(F3.312, c(11,7), main=paste("3.312_KLRG1_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[7]);       
-    
-    plotDens(F3.32, c(8,7), main=paste("3.32_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]); 
-    plotDens(F3.32, c(11,7), main=paste("3.32_KLRG1_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[7]);   
-    
+    plotDens(F3.312, c(8,7), main=paste("3.312_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+    plotDens(F3.312, c(11,7), main=paste("3.312_KLRG1_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[7]);
+
+    plotDens(F3.32, c(8,7), main=paste("3.32_CD62L_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[8]); abline(h=gthresi[7]);
+    plotDens(F3.32, c(11,7), main=paste("3.32_KLRG1_CD44"), cex.lab = 2, cex.axis = 2, cex.main=2, devn=FALSE); abline(v=gthresi[11]); abline(h=gthresi[7]);
+
     dev.off()
   }, error = function(err) {
     cat(" Error in plotting\n")
@@ -828,10 +828,10 @@ ScatterPlots3iTCell <- function(f, gthresi, path) {
 }
 
 flowtypeDF <- function(f, PropMarkers=7:16, Thresholds) {
-  
-  
+
+
   #   FP-Growth
-  #   
+  #
   #   Input: A database DB, represented by FP-tree constructed according to Algorithm 1
   #   Output: The complete set of frequent patterns.
   #   Method: call FP-growth(FP-tree, null).
@@ -853,7 +853,7 @@ flowtypeDF <- function(f, PropMarkers=7:16, Thresholds) {
   #     }
   #     (14) return(freq pattern set(P) ?? freq pattern set(Q) ?? (freq pattern set(P) ?? freq pattern set(Q)))
   #   }
-  
+
   #   FP-tree construction
   #   Input: A transaction database DB and a minimum support threshold ?.
   #   Output: FP-tree, the frequent-pattern tree of DB.
@@ -862,7 +862,7 @@ flowtypeDF <- function(f, PropMarkers=7:16, Thresholds) {
   #   Create the root of an FP-tree, T, and label it as ??null??. For each transaction Trans in DB do the following:
   #     Select the frequent items in Trans and sort them according to the order of FList. Let the sorted frequent-item list in Trans be [ p | P], where p is the first element and P is the remaining list. Call insert tree([ p | P], T ).
   #   The function insert tree([ p | P], T ) is performed as follows. If T has a child N such that N.item-name = p.item-name, then increment N ??s count by 1; else create a new node N , with its count initialized to 1, its parent link linked to T , and its node-link linked to the nodes with the same item-name via the node-link structure. If P is nonempty, call insert tree(P, N ) recursively.
-  
+
   #   FPTree
   #   One root labeled as ??null?? with a set of item-prefix subtrees as children, and a frequent-item-header table (presented in the left side of Figure 1);
   #   Each node in the item-prefix subtree consists of three fields:
@@ -894,30 +894,30 @@ matrixCellCountF <- function(MarkersNo, ftFrames=NULL, ftFilePath=NULL, markers,
   Phenotypes <- unlist(lapply(ft@PhenoCodes, function(x){return( decodePhenotype(x, markers, ft@PartitionsPerMarker) )}))
   rownames(matrixP) <- Phenotypes
   colnames(matrixP) <- Genotype
-  
+
   # -- Merge flowType Res begin; project specific 3iTcells ------------------------------
   # sub("CD44[+][+]","CD44+",(dude[which(regexec("CD44[+][+]", dude) !=-1)])[7:16])
-  # dude[which(regexec("CD44-", dude) !=-1)] 
-  # 
+  # dude[which(regexec("CD44-", dude) !=-1)]
+  #
   # dude[which(regexec("CD44-", dude) !=-1)][7:16]
   # dude[which(regexec("CD44[+][+]", dude) !=-1)][7:16]
   # setdiff(dude[which(regexec("CD44[+]", dude) !=-1)], dude[which(regexec("CD44[+][+]", dude) !=-1)])[7:16]
-  # 
+  #
   # Proportions[which(regexec("CD44-", dude) !=-1)][7:16]
   # Proportions[which(regexec("CD44[+][+]", dude) !=-1)][7:16]
   # setdiff(Proportions[which(regexec("CD44[+]", dude) !=-1)], Proportions[which(regexec("CD44[+][+]", dude) !=-1)])[7:16]
   # -- merge flowType Res end
-  
+
   #remove files that look bad ------------------------------
   # reducedIndices <- union(which(regexec("L00001865", FTKOFilePath) !=-1), which(regexec("L00001866", FTKOFilePath) !=-1))
-  
+
   # FTKOFilePath_reduced <- FTKOFilePath[-reducedIndices]
   # Matrix3iTcell_reduced <- Matrix3iTcell[,-reducedIndices]
   # FTKOFilePath <- FTKOFilePath[-reducedIndices]
   # Matrix3iTcell <- Matrix3iTcell[,-reducedIndices]
   # FTGenotype <- FTGenotype[-reducedIndices]
   # FTGenotypeLong <- FTGenotypeLong[-reducedIndices]
-  
+
   return(matrixP)
 }
 
@@ -927,7 +927,7 @@ matrixCellCountF <- function(MarkersNo, ftFrames=NULL, ftFilePath=NULL, markers,
 #005_Barcode --------------------------------------------------------------------
 
 
-#Input: Matrix of cell counts (Phenotypes (row) vs. Samples/FCS files (colNames=Genotype)), 
+#Input: Matrix of cell counts (Phenotypes (row) vs. Samples/FCS files (colNames=Genotype)),
 matrixSigINPROGRESS <- function(matrixCellCount, colCombos, compareColCombos, method, #comparedCols=list of columns to compare
                                 test="wilcox", pAdj="BH", # pValThres=.05, cellCountThres=300, method="pVal"; test=c(), pAdj=c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none")
                                 colLabel) {
@@ -985,7 +985,7 @@ matrixPValBC <- function(matrixCellCount, colCombos, colLabel,
     }
     return(list(matrixPVal, matrixPValAdj))
   }
-  
+
   return(matrixPVal)
 }
 
@@ -1056,12 +1056,12 @@ brokenLatticeAdjList <- function(k) {
 #Input: Reference phenocode & its markers; phenocode and markers that need to be changed to reference
 #Output: phenoMatch order (p2[phenoMatch]) & markerMatch (m2[markerMatch])
 phenoCC <- function(p1,m1,p2,m2) {
-  
+
   markerMatch <- match(m1, m2)
   m2new <- m2[markerMatch] #CD44&CD45 different (10), will put in same position here # match(markeri, markers) #index of marker[[i]] in markers e.g. c(1,2,5,7)
   m2NA <- which((m2%in%m1)==F)
   m2newAll <- append(m2new, m2[m2NA])
-  
+
   # in p2, make NA phenocodes not in p1 & Reorder those in p1
   if (length(m2NA)>0) {
     p2excludedi <- NULL
@@ -1079,7 +1079,7 @@ phenoCC <- function(p1,m1,p2,m2) {
     pc2new[which(is.na(pc2new))] <- "0"
     p2temp[i] <- paste(pc2new, collapse="")
   }
-  
+
   phenoMatch <- match(p1, p2) #p1 <- p2[phenoMatch]
   return(list(phenoMatch, markerMatch))
 }
@@ -1098,7 +1098,7 @@ matrixPValFull <- function(matrixPR, Genotype, compareCol, test="wilcox") {
     return()
   }
   WTIndex <- which(is.na(match(Genotype,uniqueWTGT))==FALSE)
-  
+
   #start
   Phenotypes <- rownames(matrixPR)
   matrixPVal <- matrix(NA, nrow=nrow(matrixPR), ncol=length(compareCol), dimnames=list(Phenotypes, uniqueKOGT)) #get rid of uniqueKOGT
@@ -1164,7 +1164,7 @@ featDist <- function(m, dis) {
   require(vegan)
   m[1,which(m[1,]==0 & m[2,]!=0)] <- 1
   m[2,which(m[1,]!=0 & m[2,]==0)] <- 1
-  
+
   return(unlist( lapply(c(1:ncol(m)), function(x) { return(vegdist(as.matrix(m[,x]), method=dis))}) ))
 }
 
@@ -1234,9 +1234,9 @@ legend.col <- function(col, lev){
   box.cx <- c(bx[2] + (bx[2] - bx[1]) / 1000, bx[2] + (bx[2] - bx[1]) / 1000 + (bx[2] - bx[1]) / 50)
   box.cy <- c(bx[3], bx[3])
   box.sy <- (bx[4] - bx[3]) / n
-  
+
   xx <- rep(box.cx, each = 2)
-  
+
   par(xpd = TRUE)
   for(i in 1:n){
     yy <- c(box.cy[1] + (box.sy * (i - 1)),
@@ -1317,58 +1317,58 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
 #SangerTCellSPLEEN
 getGSsanger <- function() {
   GatingStrategyPop <- NULL
-  
+
   GatingStrategyPop[3] <- (("") )
-  
-  GatingStrategyPop[4]  <- (("TCRb-CD8a-CD161+TCRd-") ) 
-  GatingStrategyPop[5]  <- (("CD44+CD62L-TCRb-CD8a-CD161+TCRd-") ) 
-  GatingStrategyPop[6]  <- (("CD44+CD62L+TCRb-CD8a-CD161+TCRd-") ) 
-  GatingStrategyPop[7]  <- (("CD44+TCRb-KLRG1+CD8a-CD161+TCRd-") ) 
-  
-  GatingStrategyPop[9]  <- (("TCRb-KLRG1+GITR-TCRd+") ) 
-  GatingStrategyPop[10] <- (("CD44+CD62L-TCRb-TCRd+") ) 
-  GatingStrategyPop[11] <- (("CD44+CD62L+TCRb-TCRd+") ) 
-  
-  GatingStrategyPop[12] <- (("TCRb+CD161+CD4-TCRd-") ) 
-  GatingStrategyPop[14] <- (("CD44+CD62L-TCRb+CD161+CD4-TCRd-") ) 
-  GatingStrategyPop[15] <- (("CD44+CD62L+TCRb+CD161+CD4-TCRd-") ) 
-  GatingStrategyPop[16] <- (("TCRb+KLRG1+CD161+CD4-TCRd-") ) 
-  
-  GatingStrategyPop[13] <- (("TCRb+CD161+CD4+TCRd-") ) 
-  GatingStrategyPop[17] <- (("CD44+CD62L-TCRb+CD161+CD4+TCRd-") ) 
-  GatingStrategyPop[18] <- (("CD44+CD62L+TCRb+CD161+CD4+TCRd-") ) 
-  GatingStrategyPop[19] <- (("TCRb+KLRG1+CD161+CD4+TCRd-") ) 
-  
-  GatingStrategyPop[24] <- (("TCRb+CD8a-CD161-CD4+TCRd-") ) 
-  GatingStrategyPop[20] <- (("CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") ) 
-  GatingStrategyPop[21] <- (("CD44+CD62L-CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") ) 
-  GatingStrategyPop[22] <- (("CD44+CD62L+CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") ) 
-  GatingStrategyPop[23] <- (("CD44+CD25+TCRb+KLRG1+CD8a-CD161-CD4+GITR+TCRd-") ) 
-  
-  GatingStrategyPop[26] <- (("CD25-TCRb+CD8a-CD161-CD4+TCRd-") ) 
+
+  GatingStrategyPop[4]  <- (("TCRb-CD8a-CD161+TCRd-") )
+  GatingStrategyPop[5]  <- (("CD44+CD62L-TCRb-CD8a-CD161+TCRd-") )
+  GatingStrategyPop[6]  <- (("CD44+CD62L+TCRb-CD8a-CD161+TCRd-") )
+  GatingStrategyPop[7]  <- (("CD44+TCRb-KLRG1+CD8a-CD161+TCRd-") )
+
+  GatingStrategyPop[9]  <- (("TCRb-KLRG1+GITR-TCRd+") )
+  GatingStrategyPop[10] <- (("CD44+CD62L-TCRb-TCRd+") )
+  GatingStrategyPop[11] <- (("CD44+CD62L+TCRb-TCRd+") )
+
+  GatingStrategyPop[12] <- (("TCRb+CD161+CD4-TCRd-") )
+  GatingStrategyPop[14] <- (("CD44+CD62L-TCRb+CD161+CD4-TCRd-") )
+  GatingStrategyPop[15] <- (("CD44+CD62L+TCRb+CD161+CD4-TCRd-") )
+  GatingStrategyPop[16] <- (("TCRb+KLRG1+CD161+CD4-TCRd-") )
+
+  GatingStrategyPop[13] <- (("TCRb+CD161+CD4+TCRd-") )
+  GatingStrategyPop[17] <- (("CD44+CD62L-TCRb+CD161+CD4+TCRd-") )
+  GatingStrategyPop[18] <- (("CD44+CD62L+TCRb+CD161+CD4+TCRd-") )
+  GatingStrategyPop[19] <- (("TCRb+KLRG1+CD161+CD4+TCRd-") )
+
+  GatingStrategyPop[24] <- (("TCRb+CD8a-CD161-CD4+TCRd-") )
+  GatingStrategyPop[20] <- (("CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") )
+  GatingStrategyPop[21] <- (("CD44+CD62L-CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") )
+  GatingStrategyPop[22] <- (("CD44+CD62L+CD25+TCRb+CD8a-CD161-CD4+GITR+TCRd-") )
+  GatingStrategyPop[23] <- (("CD44+CD25+TCRb+KLRG1+CD8a-CD161-CD4+GITR+TCRd-") )
+
+  GatingStrategyPop[26] <- (("CD25-TCRb+CD8a-CD161-CD4+TCRd-") )
   GatingStrategyPop[27] <- (("CD44+CD62L-CD25-TCRb+CD8a-CD161-CD4+TCRd-") )
   GatingStrategyPop[28] <- (("CD62L+CD25-TCRb+CD8a-CD161-CD4+TCRd-") )
   GatingStrategyPop[29] <- (("CD44+CD25-TCRb+KLRG1+CD8a-CD161-CD4+TCRd-") )
-  
+
   GatingStrategyPop[25] <- (("TCRb+CD8a+CD161-CD4-TCRd-") )
   GatingStrategyPop[30] <- (("CD44+CD62L-TCRb+CD8a+CD161-CD4-TCRd-") )
   GatingStrategyPop[31] <- (("CD44+CD62L+TCRb+CD8a+CD161-CD4-TCRd-") )
-  GatingStrategyPop[32] <- (("CD44+TCRb+KLRG1+CD8a+CD161-CD4-TCRd-") ) 
-  
+  GatingStrategyPop[32] <- (("CD44+TCRb+KLRG1+CD8a+CD161-CD4-TCRd-") )
+
   GatingStrategyPop[34] <- (("TCRb+CD161+TCRd-") )
-  
+
   GatingStrategyPop[35] <- (("TCRb-KLRG1-GITR+TCRd+") )
   GatingStrategyPop[36] <- (("CD44-CD62L+TCRb-TCRd+") )
   GatingStrategyPop[38] <- (("CD44-CD62L+TCRb+CD8a+CD161-CD4-TCRd-") )
-  
+
   GatingStrategyPop[39] <- (("TCRb+CD161-TCRd-") )
-  
+
   GatingStrategyPop <- GatingStrategyPop[-which(is.na(GatingStrategyPop))]
   GatingStrategyPop <- gsub("TCRb[-+]","",GatingStrategyPop)
   GatingStrategyPop <- gsub("CD8a","CD8",GatingStrategyPop)
   GatingStrategyPop <- gsub("KLRG1","KLRG",GatingStrategyPop)
-  
-  
+
+
   return (GatingStrategyPop)
 }
 
@@ -1420,7 +1420,7 @@ getPhenIndex <- function(phenName, phenoMeta, markers) {
     }
     phenIndex <- which(phenoMeta$phenotype==phenName2)
   }
-  
+
   return(phenIndex)
 }
 
@@ -1506,13 +1506,13 @@ checkmna <- function(m) {
 }
 
 
-## trim a list of matrices according to reference matrix, colnames and rownames must match. 
+## trim a list of matrices according to reference matrix, colnames and rownames must match.
 ## OLD
 trimlistmatrix = function(refmatrix,refdel=0, targetlist,targetdel=0, ncore=1) {
   require(foreach)
   require(doMC)
   registerDoMC(ncore)
-  
+
   pt0 = union(names(targetlist), Reduce('union',lapply(targetlist,function(y) return(colnames(y)))) )
   lpi = intersect(pt0, colnames(refmatrix))
   targetlistTRIM = targetlist[names(targetlist)%in%colnames(refmatrix)]
@@ -1533,7 +1533,7 @@ trimlistmatrix = function(refmatrix,refdel=0, targetlist,targetdel=0, ncore=1) {
     return(Matrix(a,sparse=T))
   }
   names(targetlistTRIM) = names(targetlist)[names(targetlist)%in%colnames(refmatrix)]
-  targetlistTRIM = targetlistTRIM[!sapply(targetlistTRIM, is.null)] 
+  targetlistTRIM = targetlistTRIM[!sapply(targetlistTRIM, is.null)]
   return(targetlistTRIM)
 }
 
@@ -1572,7 +1572,7 @@ Loadintermatrices <- function(mfilenames,verbose=T) {
       gt = intersect(gt, gt0)
     }
   }
-  
+
   #trim matrices (sample) based on samples/phenotypes in common
   if (length(mml)>1) {
     if (verbose) cat("trimming, ",sep="")
@@ -1589,7 +1589,7 @@ Loadintermatrices <- function(mfilenames,verbose=T) {
             # if (is.null(dim(b[[j]]))) {
             #   a = as.matrix(b[[j]],ncol=1)[ind,ptind]
             #   dimnames(a) = dimnames(b[[j]][ind,ptind])
-            # } else { 
+            # } else {
             a = b[[j]][ind,ptind]
             if (is.null(dim(a))) a = matrix(a,nrow=length(ind))
             rownames(a) = rownames(b[[j]])[ind]
@@ -1615,7 +1615,7 @@ Loadintermatrices <- function(mfilenames,verbose=T) {
     }
     if (length(mml)<length(mmlname)) { names(mml) = mmlname[1:length(mml)]
     } else { names(mml) = mmlname }
-    mml = mml[!sapply(mml, is.null)] 
+    mml = mml[!sapply(mml, is.null)]
   } else { names(mml) = mfilenames }
   if (verbose) cat("done")
   return(list(mml=mml,pt=pt,gt=gt))
@@ -1626,27 +1626,27 @@ Loadintermatrices <- function(mfilenames,verbose=T) {
 trimMatrices <- function(mml0,m0,pt,gt,phenoMeta,leavePhenotype,doneAll, countThres,k) {
   lowCountpt = colnames(m0)[apply(m0,2,function(x) all(x<=countThres))]
   if (!length(lowCountpt)>0) lowCountpt = c()
-  
+
   if (!is.null(dim(phenoMeta))) phenolevel = phenoMeta$phenolevel
-  
+
   highLevelpt = colnames(m0)[phenolevel>k]
   if (!length(highLevelpt)>0) highLevelpt = c()
-  
+
   # cat("length of countthres: ", length(lowCountInd))
   # cat("\nlength of highlevelind: ", length(highLevelInd))
   ## Load & fix cell count/countAdj/proportion matrix -----------------------------------------------------
   dpi0 = union(lowCountpt,highLevelpt)
   # cat("\nlength of dpi: ", length(dpi0), "\n")
-  
+
   lpi = setdiff(pt,dpi0)
-  
+
   #check if indices already calculated for on this matrix
   if (Position(function(x) identical(x, lpi), leavePhenotype, nomatch = 0) > 0) {cat("-skipped ", sep=""); return(0)}
   leavePhenotype[[paste0(k="k.",k,"_countThres.",countThres)]] = lpi
-  
+
   if (!doneAll & length(lpi)==length(pt)) doneAll = T
-  
-  
+
+
   #trim matrices (phenotype)
   mmlname = names(mml0)
   mml = mml0
@@ -1661,7 +1661,7 @@ trimMatrices <- function(mml0,m0,pt,gt,phenoMeta,leavePhenotype,doneAll, countTh
           # if (is.null(dim(b[[j]]))) {
           #   a = as.matrix(b[[j]],ncol=1)[ind,ptind]
           #   dimnames(a) = dimnames(b[[j]][ind,ptind])
-          # } else { 
+          # } else {
           a = b[[j]][,ptind]
           if (is.null(dim(a))) {
             a = matrix(a,nrow=nrow(b[[j]]))
@@ -1688,8 +1688,8 @@ trimMatrices <- function(mml0,m0,pt,gt,phenoMeta,leavePhenotype,doneAll, countTh
   if (!length(mml)>0) return(NULL)
   if (length(mml)<length(mmlname)) { names(mml) = mmlname[1:length(mml)]
   } else { names(mml) = mmlname }
-  mml = mml[!sapply(mml, is.null)] 
-  
+  mml = mml[!sapply(mml, is.null)]
+
   if (!is.null(dim(phenoMeta))) {
     pm = phenoMeta[match(lpi,phenoMeta$phenotype),]
     return(list(mml=mml,pm=pm,leavePhenotype=leavePhenotype,doneAll=doneAll))
@@ -1822,8 +1822,8 @@ distMetafun = function(distmfile, dis,features=NULL) {
     feature = paste0("^",features)
     distMeta$feature = sapply(distMeta$type, function(x) features[sapply(feature,function(y) grepl(y,x,ignore.case=T))] )
     distMeta$featend = sapply(1:nrow(distMeta), function(i) gsub(distMeta$feature[i],"",distMeta$type[i]) )
-  } 
-  
+  }
+
   return(distMeta)
 }
 
@@ -1855,19 +1855,19 @@ substrRight = function(x, n) substr(x, nchar(x)-n+1, nchar(x))
 ##Input: matrix / list of matrices with columnname = cell population;;; layer to prune at, each cell population must have atleast goodcount number of samples with more than countThres cells, each class must have more thatn good_sample amount of samples or else prune
 ##Output: trimmed matrix / list of matrices
 trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", target_col="class" ,control="control", order_cols=NULL, colsplitlen=NULL, k=NULL, konly=F,countThres=1000, goodcount=3, good_sample=3) {
-  
+
   TRIM=T;mc=mc;sampleMeta=meta_file;sampleMeta_to_m1_col="id"; target_col="class" ;control="control"; order_cols=NULL; colsplitlen=NULL; k=4; konly=F;countThres=1000; goodcount=3; good_sample=3
-  
-  require(stringr)  
+
+  require(stringr)
   #get matrix colnames/rownames (sample/celltype features)
   m0cn = colnames(m0)
   m0cn = sapply(str_split(m0cn,"_"), function(x) ifelse(length(x)>1, x[2], x[1]) )
   m0rn = rownames(m0)
-  
+
   #get feature layers if feature names represent cell types
   colsplitlen = cell_type_layers(m0cn)
   if (is.null(colsplitlen)) print("missing cell type features or column names; columns untrimmed.")
-  
+
   #get to-delete low count phenotype indices; CountAdj should be first one
   colIndexC = rep(T,length(m0cn))
   rowIndexC = rep(T,length(m0rn))
@@ -1880,7 +1880,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
     colIndexC = apply(as.matrix(mc0), 2, function(x) sum(x>=countThres)>=goodcount)
     rowIndexC = apply(as.matrix(mc0), 1, function(x) sum(x>=countThres)>=goodcount)
   }
-  
+
   #get to-delete high no of marker phenotypes
   colIndexL = rep(T,length(m0cn))
   if (!is.null(k) & k != 0) {
@@ -1890,11 +1890,11 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
       } else {
         colIndexL = colsplitlen <= k
       }
-    } 
+    }
   }
-  
-  
-  
+
+
+
   #trim matrix based on cell count and layer
   # if (m0list) {
   #   m = m0[colIndexC & colIndexL]
@@ -1914,7 +1914,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
   #     })
   #     m = Filter(Negate(is.null), m)
   #   }
-  #   
+  #
   # } else {
   m = m0[rowIndexC, colIndexC & colIndexL]
   if (TRIM) {
@@ -1923,12 +1923,12 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
     m = m[rowIndex0,colIndex0]
   }
   # }
-  
+
   #check matrix; if matrix is a list, merge; if matrix is empty, skip
   if (is.null(m)) return (NULL)
   if (all(m==0)) return (NULL)
-  
-  
+
+
   sm = sampleMeta
   if (!is.null(sampleMeta)) {
     # if (m0list) {
@@ -1938,7 +1938,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
     # }
     smorder = smorder[!is.na(smorder)]
     sm = sampleMeta[smorder,]
-    
+
     #order samples by date etc.
     if (!is.null(order_cols)) {
       for (order_col in order_cols) { # different centres have different filename colnames
@@ -1949,7 +1949,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
       #   morder = mrowind[!is.na(mrowind)]
       #   m = lapply(m, function(x) {
       #     xo = x[morder,]
-      #     if (is.null(dim(xo))) xo = matrix(xo, ncol=1, dimnames=list(names(xo),colnames(x))) 
+      #     if (is.null(dim(xo))) xo = matrix(xo, ncol=1, dimnames=list(names(xo),colnames(x)))
       #     return(xo)
       #   })
       # } else {
@@ -1957,7 +1957,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
       m = m[mrowind[!is.na(mrowind)],]
       # }
     }
-    
+
     #exclude genotypes with less than 3 samples
     if (good_sample>1 & !is.null(target_col)) {
       g = getGTindex(sm[,target_col], control, good_sample)
@@ -1967,7 +1967,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
       # if(m0list) {
       #   m = lapply(m, function(x) {
       #     xo =  x[goodind,]
-      #     if (is.null(dim(xo))) xo = matrix(xo, ncol=1, dimnames=list(names(xo),colnames(x))) 
+      #     if (is.null(dim(xo))) xo = matrix(xo, ncol=1, dimnames=list(names(xo),colnames(x)))
       #     return(xo)
       #   })
       # } else {
@@ -1975,7 +1975,7 @@ trimMatrix <- function(m0,TRIM=T,mc=NULL,sampleMeta,sampleMeta_to_m1_col="id", t
       # }
     }
   }
-  
+
   return(list(m=m,sm=sm))
 }
 
@@ -2009,7 +2009,7 @@ kmf <- function(m,cols) {
       fkffitall[[i]] <- statsfitall[[i]] <- yall
     } else {
       ## Set constant parameters:
-      dt <- ct <- matrix(0) 
+      dt <- ct <- matrix(0)
       Zt <- Tt <- matrix(1)
       a0 <- yall[1]           # Estimation of the first sample count
       P0 <- matrix(100)     # Variance of 'a0'
@@ -2047,11 +2047,11 @@ get_feat_matrix <- function(clust_fileName, feat_dir, mc, meta_file, id_col, tar
   layer = as.numeric(gsub("layer","",x[4]))
   countThres = as.numeric(str_split(x[5],"-")[[1]][2])
   m0 = get(load(paste0(feat_dir,"/",feature,".Rdata")))
-  
+
   mm = trimMatrix(m0,TRIM=T, mc=mc, sampleMeta=meta_file, sampleMeta_to_m1_col=id_col, target_col=target_col, control=control, order_cols=order_cols, colsplitlen=NULL, k=layer, countThres=countThres, goodcount=good_count, good_sample=good_sample)
   m_ordered = mm$m
   meta_file_ordered = mm$sm
-  
+
   #split up analysis by tube etc.
   split_col = str_split(str_split(x[3],"-")[[1]][2],"[.]")[[1]][1]
   if (split_col=="") {
@@ -2073,7 +2073,7 @@ get_feat_matrix2 <- function(clust_fileName=NULL, feat_dir=NULL, meta_file=NULL,
   getm = F
   if (!is.null(clust_fileName) & !is.null(feat_dir)) {
     getm = T
-    
+
     x = str_split(clust_fileName,"_")[[1]]
     # bcmethod = x[1]
     feature = x[2]
@@ -2086,17 +2086,17 @@ get_feat_matrix2 <- function(clust_fileName=NULL, feat_dir=NULL, meta_file=NULL,
     morder = morder[!is.na(morder)]
     m = m0[morder,]
   }
-  
+
   if (!is.null(col_names) & getm) {
     mcorder = match(col_names,colnames(m0))
     mcorder = mcorder[!is.na(mcorder)]
     m = m[,mcorder]
   }
-  
+
   getsm = F
   if (!is.null(meta_file) & !is.null(id_col)) {
     getsm = T
-    
+
     if (getm) {
       smorder = match(rownames(m),meta_file[,id_col])
     } else {
@@ -2129,9 +2129,9 @@ NCA_score <- function(x,y,delta=1,fast=F,doUnderflow=T) {
   require(Brobdingnag)
   require(foreach)
   require(doMC)
-  
+
   registerDoMC(no_cores)
-  
+
   #preprocess matrix
   x = as.matrix(x)
   if (nrow(x)!=length(y)) {
@@ -2154,7 +2154,7 @@ NCA_score <- function(x,y,delta=1,fast=F,doUnderflow=T) {
     xe = exp(xe)
     diag(xe) = 0
   }
-  
+
   #pij = prob of xi picking xj as neighbour (fill top half)
   if (underflow) {
     pij = list()
@@ -2167,16 +2167,16 @@ NCA_score <- function(x,y,delta=1,fast=F,doUnderflow=T) {
       pij[i,] = xe[i,]/sum(xe[i,-i])
     }
   }
-  
-  
+
+
   #pi = prob of classifying xi correctly; piy = prob of classifying points of class y correctly
   yt = table(y)
   yf = as.numeric(as.factor(y)) # as factor
   pyt = rep(0,length(yt))
   pi = rep(0,length(y))
   yi = lapply(1:length(yt), function(yn) return(which(y==names(yt)[yn])) )
-  
-  
+
+
   if (underflow) {
     # pi = sum(pij[[1]][yi[[yf[1]]]])
     # if (length(yf)==2) pi = cbrob(pi,sum(pij[[2]][yi[[yf[2]]]]))
@@ -2208,12 +2208,12 @@ NCA_score <- function(x,y,delta=1,fast=F,doUnderflow=T) {
 f.measure.comembership = function(la,cl) {
   # require(clusteval)
   # ftpn = comembership_table(la,cl)
-  # 
+  #
   # tn = ftpn$n_00
   # tp = ftpn$n_11
   # fn = ftpn$n_10
   # fp = ftpn$n_01
-  
+
   tn = tp = fn = fp = 0
   for (lai in 1:(length(la)-1)) {
     for (laj in (lai+1):length(la)) {
@@ -2234,7 +2234,7 @@ f.measure.comembership = function(la,cl) {
       }
     }
   }
-  
+
   p=tp/(tp+fp)
   r=tp/(tp+fn)
   sp=tn/(tn+fp)
@@ -2280,9 +2280,9 @@ duplicateindM = function(clt) {
 getphenoChild <- function (meta_cell, no_cores=1) {
   require(foreach)
   require(doMC)
-  
+
   registerDoMC(no_cores)
-  
+
   notFinalLevel = which(meta_cell$phenolevel!=max(meta_cell$phenolevel))
   ppcc = foreach (i=1:nrow(meta_cell)) %dopar% {
     if (!i%in%notFinalLevel) return(list(pc=NULL,pcpn=NULL))
@@ -2302,7 +2302,7 @@ getphenoChild <- function (meta_cell, no_cores=1) {
       pc = list()
       pc[[1]] = childrenind[-childplus]
       pc[[2]] = childrenind[childplus]
-      
+
       ## if there are missing counterparts
       nopm1 = gsub("[+-]","",meta_cell$phenotype[pc[[1]]])
       nopm2 = gsub("[+-]","",meta_cell$phenotype[pc[[2]]])
@@ -2321,7 +2321,7 @@ getphenoChild <- function (meta_cell, no_cores=1) {
         pcnp = list()
         pcnp[[1]] = pc[[1]][negposintersect1]
         pcnp[[2]] = pc[[2]][negposintersect2]
-        
+
         return(list(pc=pc, pcnp=pcnp))
       } else {
         return(list(pc=pc, pcnp=NULL))
@@ -2330,7 +2330,7 @@ getphenoChild <- function (meta_cell, no_cores=1) {
       return(list(pc=NULL, pcnp=NULL))
     }
   }
-  
+
   phenoChild = phenoChild_names = phenoChild_ind = phenoChildpn = phenoChildpn_names = phenoChildpn_ind = list()
   for (i in 1:length(ppcc)) {
     if (!is.null(ppcc[[i]]$pc)) {
@@ -2338,44 +2338,44 @@ getphenoChild <- function (meta_cell, no_cores=1) {
       phenoChild_names[[i]] = list()
       phenoChild_names[[i]][[1]] = meta_cell$phenotype[ppcc[[i]]$pc[[1]]]
       phenoChild_names[[i]][[2]] = meta_cell$phenotype[ppcc[[i]]$pc[[2]]]
-    } 
+    }
     if (!is.null(ppcc[[i]]$pcnp)) {
       phenoChildpn[[i]] = ppcc[[i]]$pcnp
       phenoChildpn_names[[i]] = list()
       phenoChildpn_names[[i]][[1]] = meta_cell$phenotype[ppcc[[i]]$pcnp[[1]]]
       phenoChildpn_names[[i]][[2]] = meta_cell$phenotype[ppcc[[i]]$pcnp[[2]]]
-    } 
+    }
   }
-  
+
   phenoChild_ind <- which(vapply(phenoChild, Negate(is.null), NA))
   phenoChildpn_ind <- which(vapply(phenoChildpn, Negate(is.null), NA))
-  
+
   phenoChild = meta_cell$phenotype[phenoChild_ind]
   phenoChildpn = meta_cell$phenotype[phenoChildpn_ind]
-  
+
   phenoChild = phenoChild[phenoChild_ind]
   phenoChild_names = phenoChild_names[phenoChild_ind]
   phenoChildpn = phenoChildpn[phenoChildpn_ind]
   phenoChildpn_names = phenoChildpn_names[phenoChildpn_ind]
-  
+
   names(phenoChild) = names(phenoChild_names) = meta_cell$phenotype[phenoChild_ind]
   names(phenoChildpn) = names(phenoChildpn_names) = meta_cell$phenotype[phenoChildpn_ind]
-  
+
   return(list(phenoChild=phenoChild, phenoChild_ind=phenoChild_ind, phenoChild_names=phenoChild_names, phenoChildpn=phenoChildpn, phenoChildpn_ind=phenoChildpn_ind, phenoChildpn_names=phenoChildpn_names))
 }
 
 getphenoParent <- function(meta_cell, no_cores=1) {
   require(foreach)
   require(doMC)
-  
+
   registerDoMC(no_cores)
-  
+
   phenoParent = foreach (i=c(1:nrow(meta_cell))[meta_cell$phenolevel!=0]) %dopar% {
     pheni = unlist(strsplit(meta_cell$phenocode[i],""))
     phenind = which(pheni!="0")
     zeroind = which(pheni=="0")
-    parentphenocode = as.vector(sapply(phenind, function(x) { 
-      pi0=pheni; 
+    parentphenocode = as.vector(sapply(phenind, function(x) {
+      pi0=pheni;
       pi0[x]="0"
       return(paste(pi0,collapse=""))
     } ))
@@ -2388,21 +2388,21 @@ getphenoParent <- function(meta_cell, no_cores=1) {
     }
   }
   phenoParent_ind <- which(vapply(phenoParent, Negate(is.null), NA))
-  
+
   phenoParent = phenoParent[phenoParent_ind]
   phenoParent_names = lapply(phenoParent, function(x) meta_cell$phenotype[x])
-  
+
   names(phenoParent) = names(phenoParent_names) = meta_cell$phenotype[phenoParent_ind]
-  
+
   return(list(phenoParent=phenoParent, phenoParent_names=phenoParent_names, phenoParent_ind=phenoParent_ind))
 }
 
 # getphenoParent <- function(meta_cell, phenoChildpn, phenoChildpn_ind, no_cores) {
 #   require(foreach)
 #   require(doMC)
-#   
+#
 #   registerDoMC(no_cores)
-#   
+#
 #   phenoParent = foreach (i=(1:nrow(meta_cell))) %dopar% {
 #     pheni = unlist(strsplit(meta_cell$phenocode[i],""))
 #     phenind = which(pheni!="0")
@@ -2413,11 +2413,11 @@ getphenoParent <- function(meta_cell, no_cores=1) {
 #     if (length(parentind)>0) return(parentind)
 #     return(NULL)
 #   }
-#   
+#
 #   phenoParent_ind = which(vapply(phenoParent, Negate(is.null), NA))
 #   phenoParent = phenoParent[phenoParent_ind]
 #   names(phenoParent) = meta_cell$phenotype[phenoParent_ind]
-#   
+#
 #   #delete parents from child whom doesn't have a twin under that parent.
 #   phenoParentpn = phenoParent
 #   phenoParentpn_ind = phenoParent_ind
@@ -2440,14 +2440,14 @@ getphenoParent <- function(meta_cell, no_cores=1) {
 #       phenoParentpn[[i]] = parents
 #     }
 #   }
-#   
+#
 #   if (length(delind)>0) {
 #     phenoParentpn[delind] = NULL
 #     phenoParentpn_ind = phenoParentpn_ind[-delind]
 #   }
-#   
+#
 #   return(list(phenoParent=phenoParent, phenoParent_ind=phenoParent_ind, phenoParentpn=phenoParentpn, phenoParentpn_ind=phenoParentpn_ind))
-#   
+#
 # }
 
 
@@ -2460,11 +2460,11 @@ prop_parent <- function(m, phen, list=F, par=T, no_cores=detectCores()-3) {
     cat("ncol(matrix) doesn't match length(phen)")
     return(NULL)
   }
-  
+
   #list of child phenotypes for each non-leaf phenotype
   children = phen_children(phen)
   parentind = which(!is.null(children))
-  
+
   if (par) {
     mplist = foreach(i = 1:length(children), .combine='list') %dopar% { #for each phenotype
       if (is.null(children[[i]])) return(NULL)
@@ -2487,8 +2487,8 @@ prop_parent <- function(m, phen, list=F, par=T, no_cores=detectCores()-3) {
 ## output: child (pos/neg) and parent list
 getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   require(plyr)
-  if (is.null(cp) & is.null(meta_cell)) { 
-    print("give me something!"); return(NULL) 
+  if (is.null(cp) & is.null(meta_cell)) {
+    print("give me something!"); return(NULL)
   } else if (is.null(meta_cell)) {
     meta_cell = getPhen(cp)
   }
@@ -2503,19 +2503,19 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   names(mcpls) = unique(meta_cell$phenolevel)
   maxl = max(meta_cell$phenolevel)
   minl = min(meta_cell$phenolevel)
-  
+
   ilevel = meta_cell$phenolevel==minl
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
-  
+
   for (pl in unique(meta_cell$phenolevel)) {
     # for (pl in 0:5) {
     start2 = Sys.time()
     cat(sum(ilevel)," pops ")
-    
+
     if(!is.null(ichild)) ccand = meta_cell_grid[ichild,,drop=F]
     if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
-    
+
     loop_ind = loopInd(which(ilevel),no_cores)
     result_ = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
       resulti = NULL
@@ -2536,13 +2536,13 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
           }
           resulti[[meta_cell$phenotype[i]]]$pos = names(cp)
           resulti[[meta_cell$phenotype[i]]]$neg = names(cn)
-          
+
         }
       } else {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$pos = NULL
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$neg = NULL
       }
-      
+
       if (pl==1) {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = ""
       } else if(!is.null(iparen)) {
@@ -2558,20 +2558,20 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
       } else {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = NULL
       }
-      
+
       return(resulti)
     }, .parallel=T)
     result = Reduce("append",result_)
     # result = unlist(result, recursive=F)
     # names(result) = meta_cell$phenotype[which(ilevel)]
     res = append(res, result)
-    
+
     iparen = ilevel
     ilevel = ichild
     ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
     time_output(start2,paste0("layer",pl))
   }
-  
+
   pchild = llply(res, function(x) {
     a = NULL
     if (!is.null(x$neg)) a$neg = x$neg
@@ -2579,22 +2579,22 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
     return(a)
   })
   pchild = Filter(Negate(is.null), pchild)
-  
+
   pparen = llply(res, function(x) return(x$parent))
   pparen = Filter(Negate(is.null), pparen)
-  
+
   # graph edge list
-  gc = ldply(names(pchild), function(x) 
+  gc = ldply(names(pchild), function(x)
     data.frame(from=x, to=unlist(ldply[[x]])) )
-  gp = ldply(names(pparen), function(x) 
+  gp = ldply(names(pparen), function(x)
     data.frame(from=pparen[[x]], to=x) )
   gr_e = unique(rbind(gc,gp))
   gr_v = meta_cell$phenotype
   gr_e = rbind(ldply(meta_cell$phenotype[meta_cell$phenolevel==1], function(x) data.frame(from="",to=x)), gr_e)
-  
+
   gr_vp = gr_v[!grepl("[-]",gr_v)]
   gr_ep = gr_e[!grepl("[-]",gr_e[,1]) & !grepl("[-]",gr_e[,2]),]
-  
+
   return(list(pchild=pchild, pparen=pparen,
               gr=list(e=gr_e,v=gr_v),
               grp=list(e=gr_ep,v=gr_vp)))
@@ -2604,7 +2604,7 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
   # FUN is a layout function from the igraph package
   # assume graph is connected, used internally
   require(igraph)
-  
+
   # edit layout
   gr_vxy_ = FUN(gr = graph_from_data_frame(gr_e)) # layout.circle
   gr_vxy = as.data.frame(gr_vxy_)
@@ -2631,17 +2631,17 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
       a + (gxnmaxwidth-(a[length(a)]-1))/2
     }))
   }
-  
+
   # get node
   colnames(gr_vxy) = c("x","y")
   gr_v = cbind(gr_v,gr_vxy)
-  
+
   # get edge
   gr_e$from.x <- gr_vxy$x[match(gr_e$from, gr_v$name)]
   gr_e$from.y <- gr_vxy$y[match(gr_e$from, gr_v$name)]
   gr_e$to.x <- gr_vxy$x[match(gr_e$to, gr_v$name)]
   gr_e$to.y <- gr_vxy$y[match(gr_e$to, gr_v$name)]
-  
+
   return(list(e=gr_e,v=gr_v))
 }
 s
@@ -2699,16 +2699,16 @@ child_JSD <- function(m, phenoChildpn, phenoChildpn_ind) { # use only overlappin
       dist[m[,coli]==0 & m[,colj]==0] = 0
       dist[(m[,coli]!=0 & m[,colj]==0) | m[,coli]==0 & m[,colj]!=0] = log(2)
       non0parents = (m[,coli]!=0 & m[,colj]!=0) #parents that are not 000
-      
+
       parenti = m[,coli]
       childreni = cbind(m[,unlist(phenoChildpn[[i]][[1]])])
       parentj = m[,colj]
       childrenj = cbind(m[,unlist(phenoChildpn[[j]][[1]])])
-      
+
       dist[non0parents] = sapply(non0parents, function(x) return(jsd(
         mapply(c,as.list(childreni[x,]),as.list(parenti[x]-childreni[x,]),SIMPLIFY=F),
         mapply(c,as.list(childrenj[x,]),as.list(parentj[x]-childrenj[x,]),SIMPLIFY=F) )))
-      
+
     }
   }
 }
@@ -2763,12 +2763,12 @@ tmm <- function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,
   require(foreach)
   require(doMC)
   registerDoMC(no_cores)
-  
+
   if (is.null(x0)) x0 = x
   if (!samplesOnCol) { x = t(x); x0 = t(x0) }
-  
-  ## Taken from TMM 
-  
+
+  ## Taken from TMM
+
   #f <- rep(NA,ncol(x))
   #fdiff <- rep(NA,ncol(x)) #diff between density peak and value (note: logged)
   ref <- x[,refColumn]
@@ -2777,8 +2777,8 @@ tmm <- function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,
   logratioTrim <- .3
   sumTrim <- 0.05
   minlogR <- 1e-6 #min value of log2((obs/obsn)/(ref/refn))
-  
-  
+
+
   ff <- foreach(i=1:ncol(x), .combine = list, .maxcombine = ncol(x), .multicombine = T) %dopar% {
     #for(i in ncol(x):1) { cat(i," ",sep="")
     obs <- x[,i]
@@ -2787,57 +2787,57 @@ tmm <- function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,
     logR <- log2(obs/ref)			#log ratio of expression, accounting for libr size
     absE <- (log2(obs/obsn) + log2(ref/refn))/2	#absolute expression
     v <- (obsn-obs)/obsn/obs + (refn-ref)/refn/ref	 #estimated asymptotic variance
-    
+
     #remove infinite values, cutoff based on A
     fin <- is.finite(logR) & is.finite(absE) & (absE > Acutoff)
     logR <- logR[fin]
     absE <- absE[fin]
     v <- v[fin]
-    
+
     if(max(abs(logR)) < minlogR) { return(list(f=1, fdiff=0)) # f[i] <- 1
     } else {
-      
+
       #taken from the original mean() function
       n <- length(logR)
       loL <- floor(n * logratioTrim) + 1
       hiL <- n + 1 - loL
       loS <- floor(n * sumTrim) + 1
       hiS <- n + 1 - loS
-      
+
       #keep <- (rank(logR) %in% loL:hiL) & (rank(absE) %in% loS:hiS)
       #a fix from leonardo ivan almonacid cardenas, since rank() can return
       #non-integer values when there are a lot of ties
       keep <- (rank(logR)>=loL & rank(logR)<=hiL) & (rank(absE)>=loS & rank(absE)<=hiS)
-      
+
       if(doWeighting) {
         fi <- sum(logR[keep]/v[keep], na.rm=TRUE) / sum(1/v[keep], na.rm=TRUE)
       } else { fi <- mean(logR[keep], na.rm=TRUE) } #f[i] <- mean(logR[keep], na.rm=TRUE) }
-      
+
       #Results will be missing if the two libraries share no features with positive counts
       #In this case, return unity
       #if(is.na(f[i])) f[i] <- 0
       if(is.na(fi)) fi <- 0
-      
+
       #check if close to peak; if not, switch to peak
       d <- density(log2((obs)/ref), na.rm=T)
       p <- as.matrix(findpeaks(d$y)); if(ncol(p)==1) p <- t(p)
       p1 <- d$x[p[which.max(p[,1]),2]]
       #fdiff[i] <- p1-f[i]
       fdiffi <- p1-fi
-      
+
       if (plotimg) {
         pngname <- pngnames[i]
         png (file=pngname , width=700, height=1800)
         par(mfrow=c(3,1), mar=(c(5, 5, 4, 2) + 0.1))
-        
-        #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue"); 
-        plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue"); 
-        
+
+        #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue");
+        plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue");
+
         plot((x0[,i]+x0[,refColumn])/2, log(x0[,i]/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
         #abline(h=f[i], col="red")
         abline(h=fi, col="red")
       }
-      
+
       #if f[i] too far from peak
       #if (abs(f[i]-p1)>cutoff) {
       if (abs(fi-p1)>cutoff) {
@@ -2845,31 +2845,31 @@ tmm <- function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,
         #f[i] <- p1
         fi = p1
       }
-      
+
       #f[i] <- 1/2^f[i]
       fi <- 1/2^fi
-      
+
       #plot((matrixCount[,i]+matrixCount[,refColumn])/2, log2((matrixCount[,i]*f[i])/matrixCount[,refColumn]), cex=.5, main=paste("AFTER CHANGE: mean count vs. log2 fold change: ", sampleMeta$gene[i]," over refColumn ", sampleMeta$gene[refColumn],": f=",f[i], sep=""))
       if (plotimg) {
         plot((x0[,i]+x0[,refColumn])/2, log((x0[,i]*fi)/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
         abline(h=0, col="red")
         dev.off()
       }
-      
+
       return(list(f=fi, fdiff=fdiffi))
-      
+
     }
   }
   #multiple of 1
   rm(x)
-  
+
   f <- rep(NA,length(ff))
   fdiff <- rep(NA,length(ff)) #diff between density peak and value (note: logged)
   for (i in 1:length(ff)) {
     f[i] <- ff[[i]]$f
     try({ fdiff[i] <- ff[[i]]$fdiff })
   }
-  
+
   return(list(f=f,fdiff=fdiff))
 }
 
@@ -2917,7 +2917,7 @@ spectable = function(mm,nclass,label,methods=c("rbf"),tries=1,savedist=NULL,save
   require(kernlab)
   require(stringr)
   tryCatch({
-    
+
     parlist = pp0t = NULL
     for (method in methods) {
       parlist0 = sil = NCA = cl = sim = dist = NULL
@@ -2944,7 +2944,7 @@ spectable = function(mm,nclass,label,methods=c("rbf"),tries=1,savedist=NULL,save
   }, error = function(e) {
     return(NULL)
   })
-  
+
 }
 
 spec1table = function(sim,nclass) {
@@ -2991,14 +2991,14 @@ dctable = function(mm,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
 dc1table = function(dd,k=3,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
   require(densitycut)
   require(FastKNN)
-  
+
   #create knn.ind, knn.dist
   dd = as.matrix(dd)
   ki = t(sapply(1:nrow(dd), function(x) k.nearest.neighbors(x,dd,k=k)))
   kd = t(sapply(1:nrow(dd), function(x) dd[x,ki[x,]]))
   rownames(ki) = rownames(kd) = rownames(dd)
   colnames(ki) = colnames(kd) = 1:k
-  
+
   clt = DensityCut(knn.dist=kd,knn.index=ki, alpha=alpha, nu=nu, show.plot=F)$cluster
   clt = matrix(clt,ncol=1)
   rownames(clt) = rownames(dd)
@@ -3010,7 +3010,7 @@ dc1table = function(dd,k=3,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
 rw1table = function(sim,rwThres) {
   require(igraph)
   gr = graph_from_adjacency_matrix(sim, weighted=T,mode='undirected', diag=F)
-  
+
   pp0t = sapply(rwThres, function(rwt) {
     tops = quantile(as.vector(sim),rwt)
     gr1 = delete.edges(gr, which(E(gr)$weight<tops))
@@ -3019,7 +3019,7 @@ rw1table = function(sim,rwThres) {
   colnames(pp0t) = rwThres
   rownames(pp0t) = rownames(sim)
   return(pp0t)
-  
+
 }
 
 

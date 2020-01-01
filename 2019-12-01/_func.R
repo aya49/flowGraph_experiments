@@ -13,7 +13,7 @@ options(stringsAsFactors=F)
 ## input: list of package names to load
 ## output: none; load/install package
 libr = function(pkgs) {
-  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) 
+  if (length(setdiff(pkgs, rownames(installed.packages()))) > 0)
     install.packages(setdiff(pkgs, rownames(installed.packages())), verbose=F)
   if (length(setdiff(pkgs, rownames(installed.packages()))) > 0) {
     if (!requireNamespace("BiocManager", quietly=T)) install.packages("BiocManager")
@@ -25,7 +25,7 @@ libr = function(pkgs) {
 
 
 ## unload all pkgs
-unloadpkg = function() 
+unloadpkg = function()
   a = lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""), detach, character.only=T, unload=T)
 
 
@@ -77,7 +77,7 @@ folderNames = function(pathList) {
 
 
 
-#remove NULL elements from list
+#remove NULL elements from list; USE plyr::compact()
 remove_null = function(x) return(Filter(Negate(is.null), x))
 
 
@@ -92,7 +92,7 @@ delcols = function(x) x[sapply(x, function(y) length(unique(y))>1)]
 
 
 ## input: matrix
-## output: returns u1 (col index with only 1 unique element), 
+## output: returns u1 (col index with only 1 unique element),
 ##                 ua (col index where every row is a unique element), prints colnames and its unique elements if there is less than n unique elements
 col_probe = function(m,n=15) {
   require(data.table)
@@ -109,7 +109,7 @@ col_probe = function(m,n=15) {
     la = length(a)
     if (la == 1) u1 = append(u1,col)
     if (la == nm) ua = append(ua,col)
-    
+
     cat("\n", coln, ": ", la)
     if (la<n) cat("; ",a)
   }
@@ -201,7 +201,7 @@ ggblank = function(gr_v=NULL) {
   } else {
     gp = ggplot(gr_v,aes(x=x, y=y, colour=color))
   }
-    
+
   gp +
   scale_x_continuous(expand=c(0,1)) +  # expand x limits
   scale_y_continuous(expand=c(0,1)) + # expand y limits
@@ -212,8 +212,8 @@ ggblank = function(gr_v=NULL) {
     axis.ticks = element_blank(),  # rm axis ticks
     axis.title.x = element_blank(), # rm x-axis labels
     axis.title.y = element_blank(), # rm y-axis labels
-    panel.background = element_blank(), 
-    panel.border = element_blank(), 
+    panel.background = element_blank(),
+    panel.border = element_blank(),
     panel.grid.major = element_blank(),  #rm grid labels
     panel.grid.minor = element_blank(),  #rm grid labels
     plot.background = element_blank())
@@ -224,21 +224,21 @@ gggraph = function(a, main="", bgedges=T) { # indices of whether to apply color 
   # gr_e: from to from.x from.y to.x to.y color
   require(ggrepel)
   require(ggplot2)
-  
+
   gr_v = a$v
   gr_e = a$e
   label_ind = gr_v$label_ind
   v_ind = gr_v$v_ind
   vb_ind = gr_v$vb_ind
   e_ind = gr_e$e_ind
-  
+
   # base graph
   if (bgedges) { # keep greyed out edges on
     gp = ggblank() + ggtitle(main) +
       scale_fill_brewer(palette="Pastel2") +
       geom_segment(data=gr_e[!e_ind,], color="grey",
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
-      geom_segment(data=gr_e[e_ind,], 
+      geom_segment(data=gr_e[e_ind,],
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
       # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
       # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
@@ -251,7 +251,7 @@ gggraph = function(a, main="", bgedges=T) { # indices of whether to apply color 
       scale_fill_brewer(palette="Pastel2") +
       # geom_segment(data=gr_e[!e_ind,], color="grey",
       #              aes(x=from.x,xend=to.x, y=from.y,yend=to.y)) +
-      geom_segment(data=gr_e[e_ind,], 
+      geom_segment(data=gr_e[e_ind,],
                    aes(x=from.x,xend=to.x, y=from.y,yend=to.y), color="grey50") +
       # geom_point(data=gr_v[vb_ind,],aes(x=x,y=y, color=colorb),size=gr_v[vb_ind,"size"]+1) +
       # geom_point(data=gr_v[!v_ind,],aes(x=x,y=y), size=1, color="grey")+
@@ -260,7 +260,7 @@ gggraph = function(a, main="", bgedges=T) { # indices of whether to apply color 
                        aes(x=x,y=y,label=label, color=color),
                        nudge_x=-.1, direction="y", hjust=1, segment.size=0.2)
   }
-  
+
 
   return(gp)
 }
@@ -306,7 +306,7 @@ getPhen = function(phen) {
   markers = markers[!markers==""]
   pm$phenocode = sapply(phen, function(x) encodePhenotype(x, markers))
   pm$phenolevel = cell_type_layers(phen)
-  
+
   return(pm)
 }
 
@@ -320,8 +320,8 @@ cell_type_layers <- function(phen) sapply(str_split(phen,"[+-]+"), function(x) s
 ## output: child (pos/neg) and parent list
 getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   require(plyr)
-  if (is.null(cp) & is.null(meta_cell)) { 
-    print("give me something!"); return(NULL) 
+  if (is.null(cp) & is.null(meta_cell)) {
+    print("give me something!"); return(NULL)
   } else if (is.null(meta_cell)) {
     meta_cell = getPhen(cp)
   }
@@ -336,19 +336,19 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
   names(mcpls) = unique(meta_cell$phenolevel)
   maxl = max(meta_cell$phenolevel)
   minl = min(meta_cell$phenolevel)
-  
+
   ilevel = meta_cell$phenolevel==minl
   iparen = NULL; ichild = meta_cell$phenolevel==minl+1
   res = NULL
-  
+
   for (pl in sort(unique(meta_cell$phenolevel))) {
     # for (pl in 0:5) {
     start2 = Sys.time()
     cat(sum(ilevel)," pops ")
-    
+
     if(!is.null(ichild)) ccand = meta_cell_grid[ichild,,drop=F]
     if(!is.null(iparen)) pcand = meta_cell_grid[iparen,,drop=F]
-    
+
     loop_ind = loopInd(which(ilevel),no_cores)
     result_ = llply(loop_ind, function(ii) { #for (ii in loop_ind) {
       resulti = NULL
@@ -369,13 +369,13 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
           }
           resulti[[meta_cell$phenotype[i]]]$pos = names(cp)
           resulti[[meta_cell$phenotype[i]]]$neg = names(cn)
-          
+
         }
       } else {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$pos = NULL
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$neg = NULL
       }
-      
+
       if (pl==1) {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = ""
       } else if(!is.null(iparen)) {
@@ -391,20 +391,20 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
       } else {
         for (i in ii) resulti[[meta_cell$phenotype[i]]]$parent = NULL
       }
-      
+
       return(resulti)
     }, .parallel=T)
     result = Reduce("append",result_)
     # result = unlist(result, recursive=F)
     # names(result) = meta_cell$phenotype[which(ilevel)]
     res = append(res, result)
-    
+
     iparen = ilevel
     ilevel = ichild
     ichild = NULL; if ((pl+1)!=maxl) ichild = meta_cell$phenolevel==pl+2
     time_output(start2,paste0("layer",pl))
   }
-  
+
   pchild = llply(res, function(x) {
     a = NULL
     if (!is.null(x$neg)) a$neg = x$neg
@@ -412,22 +412,22 @@ getPhenCP = function(cp=NULL, meta_cell=NULL, no_cores=1) {
     return(a)
   })
   pchild = Filter(Negate(is.null), pchild)
-  
+
   pparen = llply(res, function(x) return(x$parent))
   pparen = Filter(Negate(is.null), pparen)
-  
-  
+
+
   # graph edge list
-  gc = ldply(1:length(pchild), function(x) 
+  gc = ldply(1:length(pchild), function(x)
     data.frame(from=names(pchild)[x], to=unlist(pchild[[x]])) )
-  gp = ldply(1:length(pparen), function(x) 
+  gp = ldply(1:length(pparen), function(x)
     data.frame(from=pparen[[x]], to=names(pparen)[x]) )
   gr_e = unique(rbind(gc,gp))
   gr_v = meta_cell$phenotype
 
   gr_vp = gr_v[!grepl("[-]",gr_v)]
   gr_ep = gr_e[!grepl("[-]",gr_e[,1]) & !grepl("[-]",gr_e[,2]),]
-  
+
   gr_v = data.frame(name=gr_v)
   gr_vp = data.frame(name=gr_vp)
 
@@ -440,7 +440,7 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
   # FUN is a layout function from the igraph package
   # assume graph is connected, used internally
   require(igraph)
-  
+
   # edit layout
   gr0 = graph_from_data_frame(gr_e)
   gr_vxy_ = FUN(gr0) # layout.circle
@@ -471,7 +471,7 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
     gr_vxy = gr_vxy[,2:1]
     gr_vxy[,1] = max(gr_vxy[,1])-gr_vxy[,1]
   }
-  
+
   # get node
   colnames(gr_vxy) = c("x","y")
   gr_v = cbind(gr_v,gr_vxy[match(gr_v$name,names(V(gr0)[[]])),])
@@ -481,7 +481,7 @@ layout_gr = function(gr_e,gr_v,FUN=layout.reingold.tilford) {
   gr_e$from.y <- gr_v$y[match(gr_e$from, gr_v$name)]
   gr_e$to.x <- gr_v$x[match(gr_e$to, gr_v$name)]
   gr_e$to.y <- gr_v$y[match(gr_e$to, gr_v$name)]
-  
+
   return(list(e=gr_e,v=gr_v))
 }
 
@@ -501,7 +501,7 @@ kmf = function(m,cols) {
       fkffitall[[i]] = statsfitall[[i]] = yall
     } else {
       ## Set constant parameters:
-      dt = ct = matrix(0) 
+      dt = ct = matrix(0)
       Zt = Tt = matrix(1)
       a0 = yall[1]           # Estimation of the first sample count
       P0 = matrix(100)     # Variance of 'a0'
@@ -548,9 +548,9 @@ NCA_score = function(x,y,delta=1, fast=F, doUnderflow=T, no_cores=1) {
   require(Brobdingnag)
   require(foreach)
   require(doMC)
-  
+
   registerDoMC(no_cores)
-  
+
   #preprocess matrix
   x = as.matrix(x)
   if (nrow(x)!=length(y)) {
@@ -573,7 +573,7 @@ NCA_score = function(x,y,delta=1, fast=F, doUnderflow=T, no_cores=1) {
     xe = exp(xe)
     diag(xe) = 0
   }
-  
+
   #pij = prob of xi picking xj as neighbour (fill top half)
   if (underflow) {
     pij = list()
@@ -586,16 +586,16 @@ NCA_score = function(x,y,delta=1, fast=F, doUnderflow=T, no_cores=1) {
       pij[i,] = xe[i,]/sum(xe[i,-i])
     }
   }
-  
-  
+
+
   #pi = prob of classifying xi correctly; piy = prob of classifying points of class y correctly
   yt = table(y)
   yf = as.numeric(as.factor(y)) # as factor
   pyt = rep(0,length(yt))
   pi = rep(0,length(y))
   yi = lapply(1:length(yt), function(yn) return(which(y==names(yt)[yn])) )
-  
-  
+
+
   if (underflow) {
     # pi = sum(pij[[1]][yi[[yf[1]]]])
     # if (length(yf)==2) pi = cbrob(pi,sum(pij[[2]][yi[[yf[2]]]]))
@@ -627,12 +627,12 @@ NCA_score = function(x,y,delta=1, fast=F, doUnderflow=T, no_cores=1) {
 f.measure.comembership = function(la,cl) {
   # require(clusteval)
   # ftpn = comembership_table(la,cl)
-  # 
+  #
   # tn = ftpn$n_00
   # tp = ftpn$n_11
   # fn = ftpn$n_10
   # fp = ftpn$n_01
-  
+
   tn = tp = fn = fp = 0
   for (lai in 1:(length(la)-1)) {
     for (laj in (lai+1):length(la)) {
@@ -653,7 +653,7 @@ f.measure.comembership = function(la,cl) {
       }
     }
   }
-  
+
   p=tp/(tp+fp)
   r=tp/(tp+fn)
   sp=tn/(tn+fp)
@@ -683,12 +683,12 @@ tmm = function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,m
   require(foreach)
   require(doMC)
   registerDoMC(no_cores)
-  
+
   if (is.null(x0)) x0 = x
   if (!samplesOnCol) { x = t(x); x0 = t(x0) }
-  
-  ## Taken from TMM 
-  
+
+  ## Taken from TMM
+
   #f = rep(NA,ncol(x))
   #fdiff = rep(NA,ncol(x)) #diff between density peak and value (note: logged)
   ref = x[,refColumn]
@@ -697,8 +697,8 @@ tmm = function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,m
   logratioTrim = .3
   sumTrim = 0.05
   minlogR = 1e-6 #min value of log2((obs/obsn)/(ref/refn))
-  
-  
+
+
   ff = foreach(i=1:ncol(x), .combine = list, .maxcombine = ncol(x), .multicombine = T) %dopar% {
     #for(i in ncol(x):1) { cat(i," ",sep="")
     obs = x[,i]
@@ -707,57 +707,57 @@ tmm = function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,m
     logR = log2(obs/ref)			#log ratio of expression, accounting for libr size
     absE = (log2(obs/obsn) + log2(ref/refn))/2	#absolute expression
     v = (obsn-obs)/obsn/obs + (refn-ref)/refn/ref	 #estimated asymptotic variance
-    
+
     #remove infinite values, cutoff based on A
     fin = is.finite(logR) & is.finite(absE) & (absE > Acutoff)
     logR = logR[fin]
     absE = absE[fin]
     v = v[fin]
-    
+
     if(max(abs(logR)) < minlogR) { return(list(f=1, fdiff=0)) # f[i] = 1
     } else {
-      
+
       #taken from the original mean() function
       n = length(logR)
       loL = floor(n * logratioTrim) + 1
       hiL = n + 1 - loL
       loS = floor(n * sumTrim) + 1
       hiS = n + 1 - loS
-      
+
       #keep = (rank(logR) %in% loL:hiL) & (rank(absE) %in% loS:hiS)
       #a fix from leonardo ivan almonacid cardenas, since rank() can return
       #non-integer values when there are a lot of ties
       keep = (rank(logR)>=loL & rank(logR)<=hiL) & (rank(absE)>=loS & rank(absE)<=hiS)
-      
+
       if(doWeighting) {
         fi = sum(logR[keep]/v[keep], na.rm=TRUE) / sum(1/v[keep], na.rm=TRUE)
       } else { fi = mean(logR[keep], na.rm=TRUE) } #f[i] = mean(logR[keep], na.rm=TRUE) }
-      
+
       #Results will be missing if the two libraries share no features with positive counts
       #In this case, return unity
       #if(is.na(f[i])) f[i] = 0
       if(is.na(fi)) fi = 0
-      
+
       #check if close to peak; if not, switch to peak
       d = density(log2((obs)/ref), na.rm=T)
       p = as.matrix(findpeaks(d$y)); if(ncol(p)==1) p = t(p)
       p1 = d$x[p[which.max(p[,1]),2]]
       #fdiff[i] = p1-f[i]
       fdiffi = p1-fi
-      
+
       if (plotimg) {
         pngname = pngnames[i]
         png (file=pngname , width=700, height=1800)
         par(mfrow=c(3,1), mar=(c(5, 5, 4, 2) + 0.1))
-        
-        #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue"); 
-        plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue"); 
-        
+
+        #plot(d); abline(v=f[i], col="red"); abline(v=p1, col="blue");
+        plot(d); abline(v=fi, col="red"); abline(v=p1, col="blue");
+
         plot((x0[,i]+x0[,refColumn])/2, log(x0[,i]/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
         #abline(h=f[i], col="red")
         abline(h=fi, col="red")
       }
-      
+
       #if f[i] too far from peak
       #if (abs(f[i]-p1)>cutoff) {
       if (abs(fi-p1)>cutoff) {
@@ -765,31 +765,31 @@ tmm = function(x,x0=NULL,lib.size,refColumn,cutoff=Inf,plotimg=T,pngnames=NULL,m
         #f[i] = p1
         fi = p1
       }
-      
+
       #f[i] = 1/2^f[i]
       fi = 1/2^fi
-      
+
       #plot((matrixCount[,i]+matrixCount[,refColumn])/2, log2((matrixCount[,i]*f[i])/matrixCount[,refColumn]), cex=.5, main=paste("AFTER CHANGE: mean count vs. log2 fold change: ", sampleMeta$gene[i]," over refColumn ", sampleMeta$gene[refColumn],": f=",f[i], sep=""))
       if (plotimg) {
         plot((x0[,i]+x0[,refColumn])/2, log((x0[,i]*fi)/x0[,refColumn]), cex=.5, main=paste(mains[i],": f=",fi, sep=""))
         abline(h=0, col="red")
         dev.off()
       }
-      
+
       return(list(f=fi, fdiff=fdiffi))
-      
+
     }
   }
   #multiple of 1
   rm(x)
-  
+
   f = rep(NA,length(ff))
   fdiff = rep(NA,length(ff)) #diff between density peak and value (note: logged)
   for (i in 1:length(ff)) {
     f[i] = ff[[i]]$f
     try({ fdiff[i] = ff[[i]]$fdiff })
   }
-  
+
   return(list(f=f,fdiff=fdiff))
 }
 
@@ -837,7 +837,7 @@ spectable = function(mm,nclass,label,methods=c("rbf"),tries=1,savedist=NULL,save
   require(kernlab)
   require(stringr)
   tryCatch({
-    
+
     parlist = pp0t = NULL
     for (method in methods) {
       parlist0 = sil = NCA = cl = sim = dist = NULL
@@ -864,7 +864,7 @@ spectable = function(mm,nclass,label,methods=c("rbf"),tries=1,savedist=NULL,save
   }, error = function(e) {
     return(NULL)
   })
-  
+
 }
 
 spec1table = function(sim,nclass) {
@@ -911,14 +911,14 @@ dctable = function(mm,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
 dc1table = function(dd,k=3,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
   require(densitycut)
   require(FastKNN)
-  
+
   #create knn.ind, knn.dist
   dd = as.matrix(dd)
   ki = t(sapply(1:nrow(dd), function(x) k.nearest.neighbors(x,dd,k=k)))
   kd = t(sapply(1:nrow(dd), function(x) dd[x,ki[x,]]))
   rownames(ki) = rownames(kd) = rownames(dd)
   colnames(ki) = colnames(kd) = 1:k
-  
+
   clt = DensityCut(knn.dist=kd,knn.index=ki, alpha=alpha, nu=nu, show.plot=F)$cluster
   clt = matrix(clt,ncol=1)
   rownames(clt) = rownames(dd)
@@ -930,7 +930,7 @@ dc1table = function(dd,k=3,alpha=.85,nu=seq(0.0, 1.0, by=0.05)) {
 rw1table = function(sim,rwThres) {
   require(igraph)
   gr = graph_from_adjacency_matrix(sim, weighted=T,mode='undirected', diag=F)
-  
+
   pp0t = sapply(rwThres, function(rwt) {
     tops = quantile(as.vector(sim),rwt)
     gr1 = delete.edges(gr, which(E(gr)$weight<tops))
@@ -939,7 +939,7 @@ rw1table = function(sim,rwThres) {
   colnames(pp0t) = rwThres
   rownames(pp0t) = rownames(sim)
   return(pp0t)
-  
+
 }
 
 
