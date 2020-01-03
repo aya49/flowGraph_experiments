@@ -417,6 +417,7 @@ save(fg, file=paste0(result_dir0,"/fg.Rdata"))
 time_output(start, "data_pregnancy")
 ```
 
+
 ## positive/negative control
 
 ```{r control, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
@@ -816,7 +817,7 @@ for (result_dir in result_dirs) {
 
 # Plots
 
-## Summary statistics plots
+## Feature plots
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
@@ -856,11 +857,11 @@ time_output(start1)
 ```
 
 
-## Feature plots
+## Summary statistics plot
 
 ```{r plots_feature, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 for (result_dir in result_dirs) {
-    if (!grepl("genentech",result_dir)) next
+    if (!grepl("pos",result_dir)) next
     start1 = Sys.time()
     cat(result_dir)
     
@@ -873,12 +874,22 @@ for (result_dir in result_dirs) {
             dir.create(path_, recursive=TRUE, showWarnings=FALSE)
             gr = fg_plot(
                 fg, sum_plot=TRUE,
-                test_name="t_byLayer", cls="class",
+                cls="class", test_name="t_byLayer",
                 cls_label1="control", cls_label2=cls,
                 node_feature="SpecEnr", edge_feature="prop",
                 label1="expect_prop", label2="prop", # node only
                 p_thres=.05, show_bgedges=TRUE,
                 path=paste0(path_,"/SpecEnr_t_byLayer.png"))
+            
+            gr = fg_plot(
+                fg, sum_plot=TRUE,
+                cls="class", test_name="t_byLayer",
+                cls_label1="control", cls_label2=cls,
+                node_feature="SpecEnr", edge_feature="prop",
+                label1=NULL, label2=NULL, # node only
+                p_thres=.05, show_bgedges=TRUE,
+                path=paste0(path_,"/SpecEnr_t_byLayer_SpecEnr.png"))
+
         })
     }
     
@@ -887,6 +898,15 @@ for (result_dir in result_dirs) {
 time_output(start1)
 ```
 
+```{r example_cellhierarchy}
+
+result_dir = result_dirs[grepl("pos1",result_dir)]
+fg = get(load(paste0(result_dir,"/fg.Rdata")))
+
+gr = fg_get_graph(fg)
+gr = ggdf(gr)
+
+```
 
 ## Plots examining SpecEnr and its p values
 
