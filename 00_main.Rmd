@@ -43,12 +43,14 @@ source(paste0(root,"/src/functions_generic.R"))
 ## libraries
 libr(c("flowCore", "flowType",
        "doParallel", "foreach",
-       "plyr","stringr",
-       "plotly", "html"))
+       "stringr", "furrr", "purrr",
+       "plotly", "htmlwidgets"))
 
 ## cores
 no_cores = detectCores()-1
 doParallel::registerDoParallel(no_cores)
+
+future::plan(future::multiprocess)
 
 options
 options(stringsAsFactors=FALSE)
@@ -195,7 +197,7 @@ for (i in 1:length(fslist)) {
 }
 
 ## flowType
-ftl = llply(1:length(fslist), function(i) {
+ftl = future_map(1:length(fslist), function(i) {
     flowType(Frame=fslist[[i]],
              PropMarkers=match(markers, meta_mark$marker_name),
              MarkerNames=markers,
@@ -306,7 +308,7 @@ for (tube in unique(meta_file0$tube)) {
     for (nfeat in names(fg2@feat)) {
         for (nne in names(fg2@feat[[nfeat]])) {
             m = as.matrix(fg2@feat[[nfeat]][[nne]])
-            mc2 = as.matrix(do.call(rbind,llply(randomindp,function(ri)
+            mc2 = as.matrix(do.call(rbind, future_map(randomindp,function(ri)
                 weight*colSums(m[append(ri$normal,ri$aml),,drop=FALSE]) )))
             rownames(mc2) = c((1+nrow(m)):(nrow(mc2)+nrow(m)))
             fg2@feat[[nfeat]][[nne]] = mc2
@@ -471,7 +473,7 @@ p50 = quantile(cvd, .5)
 p60 = quantile(cvd, .6)
 p75 = quantile(cvd, .75)
 p25 = quantile(cvd, .25)
-thress0 = llply(markers, function(x) p50); names(thress0) = markers
+thress0 = future_map(markers, function(x) p50); names(thress0) = markers
 # thress1 = thress2 = thress4 =
 thress5 = thress0
 # thress1[[markers[1]]] = thress2[markers[1:2]] = p25
@@ -504,8 +506,8 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
     
     # flowtype
     loop_ind = loop_ind_f(1:nsample,no_cores)
-    ftl = llply(loop_ind, function(ii) {
-        llply(ii, function(i) {
+    ftl = future_map(loop_ind, function(ii) {
+        future_map(ii, function(i) {
             # v1 randomized matrix
             f@exprs = matrix(rnorm(ncells[i]*markern,2,1), nrow=ncells[i])
             colnames(f@exprs) = markers
@@ -727,7 +729,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                               MaxMarkersPerPop=min(markern,maxmarker), PartitionsPerMarker=ppm,
                               Thresholds=thress,
                               Methods='Thresholds', verbose=FALSE, MemLimit=60)
-                ftcell = unlist(lapply(ft@PhenoCodes, function(x)
+                ftcell = unlist(map(ft@PhenoCodes, function(x)
                     decodePhenotype(x, ft@MarkerNames, ppm) ))
                 # ft = ft@CellFreqs
                 names(ft@CellFreqs) = ftcell
@@ -740,7 +742,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
             }
             return(ft)
         })
-    }, .parallel=TRUE)
+    })
     ftl = unlist(ftl,recursive=FALSE)
     
     if (ds=="pos30") {
