@@ -36,10 +36,7 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric" # CHANGE THIS
 # setwd(root)
 
 source(paste0(root,"/src/functions_generic.R"))
-```
 
-
-```{r start_primer, message=FALSE}
 ## libraries
 libr(c("flowCore", "flowType",
        "doParallel", "foreach",
@@ -48,11 +45,9 @@ libr(c("flowCore", "flowType",
 
 ## cores
 no_cores = detectCores()-1
-doParallel::registerDoParallel(no_cores)
-
 future::plan(future::multiprocess)
 
-options
+## options
 options(stringsAsFactors=FALSE)
 
 ```
@@ -204,7 +199,7 @@ ftl = future_map(1:length(fslist), function(i) {
              MaxMarkersPerPop=6, PartitionsPerMarker=2, Methods='Thresholds',
              Thresholds=as.list(gates[i,gthresm]),
              verbose=FALSE, MemLimit=60)
-}, .parallel=TRUE)
+})
 
 ## prepare meta
 meta_file = meta_file0[!duplicated(meta_file0$sample_id),-4]
@@ -343,6 +338,8 @@ time_output(start, "data_flowcap")
 ## input directories
 input_dir0 = "/mnt/f/Brinkman group/current/Alice/gating_projects/genentech"
 
+start = Sys.time()
+
 for (tube in 2:4) {
     input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/comp_mix")
     
@@ -411,7 +408,8 @@ meta_file0$train = ifelse(meta_file0$type=="train",TRUE,FALSE)
 meta_file0 = meta_file0[,-4]
 
 ## feat/file-cell-count: load and compile flowtype count files
-fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores, norm_path=paste0(result_dir0,"/count_norm"))
+fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores,
+               norm_path=paste0(result_dir0,"/count_norm"))
 fg = fg_feat_mean_class(fg, cls="subject", no_cores=no_cores)
 
 save(fg, file=paste0(result_dir0,"/fg.Rdata"))
@@ -444,7 +442,6 @@ lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*n
 
 ## cores
 no_cores = 6
-registerDoMC(no_cores)
 
 
 start = Sys.time()
@@ -617,7 +614,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(dp & cp),tm),])
                 }
-                else if (ds=="pos15") {
+                else if (ds=="pos15") { #1.5x A+B+C+
                     tm = sum(triple)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
                 }
@@ -626,18 +623,30 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp & bp),tm),])
                 }
-                else if (ds=="pos17") { #1.5x A+B+; decrease other ones accordingly
-                    tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
-                    f@exprs[c(sample(which(!ap & !bp),tm/3) ,
-                              sample(which(ap & !bp),tm/3) ,
-                              sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                else if (ds=="pos17") { #1.5x A+B+, A+B+C+
+                    tm = sum(triple)/2
+                    tm2 = sum(double)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm2),])
                 }
-                else if (ds=="pos18") { #1.5x A+B+, C+D+, like above
-                    tm = sum(double)/2
-                    f@exprs[c(sample(which(!ap & !bp),tm/3) ,
-                              sample(which(ap & !bp),tm/3) ,
-                              sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                # else if (ds=="pos17") { #1.5x A+B+; decrease other ones accordingly
+                #     tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
+                #     f@exprs[c(sample(which(!ap & !bp),tm/3) ,
+                #               sample(which(ap & !bp),tm/3) ,
+                #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                # }
+                else if (ds=="pos18") { #1.5x A+B+C+, C+D+, like above
+                    tm = sum(triple)/2
+                    tm2 = sum(double)/2
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp),tm2),])
                 }
+                # else if (ds=="pos18") { #1.5x A+B+, C+D+, like above
+                #     tm = sum(double)/2
+                #     f@exprs[c(sample(which(!ap & !bp),tm/3) ,
+                #               sample(which(ap & !bp),tm/3) ,
+                #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
+                # }
                 else if (ds=="pos19") { #1.5x A+, A+B+C+
                     tm = sum(triple)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
@@ -647,27 +656,32 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                 }
                 else if (ds=="pos20") { #1.5x A+, A+B+C+
                     tm = sum(ap)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
-                    tm = sum(triple)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & ap & bp),tm),])
+                    tm2 = sum(triple)/2
+                    f@exprs = rbind(f@exprs,
+                                    f@exprs[sample(which(ap),tm),],
+                                    f@exprs[sample(which(cp & ap & bp),tm2),])
                 }
-                else if (ds=="pos21") { # 1.5x A+
-                    tm = sum(double)
-                    f@exprs = f@exprs[-sample(which(ap),tm),]
-                }
-                else if (ds=="pos22") { # 1.5x A+, B+
-                    tm = sum(double)
-                    f@exprs = f@exprs[-unique(c(sample(which(bp),tm), sample(which(ap),tm))),]
-                }
-                else if (ds=="pos23") { #1.5x A+B+
+                else if (ds=="pos21") { # 1.5x A+B+ - A-B-
                     tm = sum(double)/2
-                    f@exprs = f@exprs[-sample(which(ap & bp),tm),]
+                    f@exprs = rbind(f@exprs[-sample(which(!ap & !bp),tm),],
+                                    f@exprs[sample(which(ap & bp),tm),])
                 }
-                else if (ds=="pos24") { #1.5x A+B+, C+D+
+                else if (ds=="pos22") { # 1.5x A+B+ - A+B-
                     tm = sum(double)/2
-                    tind = sample(which(dp & cp),tm)
-                    tind2 = sample(which(ap & bp),tm)
-                    f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
+                    f@exprs = rbind(f@exprs[-sample(which(ap & !bp),tm),],
+                                    f@exprs[sample(which(ap & bp),tm),])
+                }
+                else if (ds=="pos23") { #1.5x A+B+ A-B-
+                    tm = sum(double)/2
+                    f@exprs = rbind(f@exprs,
+                                    f@exprs[sample(which(!ap & !bp),tm),],
+                                    f@exprs[sample(which(ap & bp),tm),])
+                }
+                else if (ds=="pos24") { #1.5x A+B+, A+B-
+                    tm = sum(double)/2
+                    f@exprs = rbind(f@exprs,
+                                    f@exprs[sample(which(ap & !bp),tm),],
+                                    f@exprs[sample(which(ap & bp),tm),])
                 }
                 else if (ds=="pos25") {
                     tm = sum(triple)/2
@@ -766,8 +780,8 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
         fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
     }
-    
     time_output(start2, ds)
+    cat("\n")
     rm(list=c("ftl","fg")); gc()
 }
 
@@ -785,9 +799,9 @@ no_cores = detectCores()-1
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
     try ({
-        start1 = Sys.time()
-        cat(result_dir)
+        cat(result_dir,"\n")
         fg = get(load(paste0(result_dir,"/fg.Rdata")))
+        # fg = fg_feat_node_specenr(fg)
         fg = fg_clear_summary(fg)
         fg = fg_summary(
             fg, no_cores=no_cores, cls="class", control="control",
@@ -809,8 +823,7 @@ for (result_dir in result_dirs) {
         )
         
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
-        time_output(start1)
-        
+
     })
 }
 
@@ -839,7 +852,8 @@ for (result_dir in result_dirs) {
                 cls_label1="control", cls_label2=cls, cls="class",
                 node_feature="SpecEnr", show_label=rep(TRUE,nrow(fg@graph$v)),
                 label1="expect_prop", label2="prop", # node only
-                show_bgedges=TRUE, width=20, height=9,
+                show_bgedges=TRUE, 
+                width=20, height=9,
                 path=paste0(path_,"/SpecEnr.png"))
             
             # # interactive version for testing
@@ -862,17 +876,19 @@ time_output(start1)
 ## Summary statistics plot
 
 ```{r plots_feature, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+start1 = Sys.time()
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
     if (!grepl("pos",result_dir)) next
     start1 = Sys.time()
-    cat(result_dir)
+    cat(result_dir,"\n")
     
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     
     for (cls in unique(fg@meta$class)) {
         try ({
             if (cls=="control") next
-            path_ = paste0(result_dir,"/plots/class/control_",cls)
+            path_ = paste0(result_dir,"/plots/summary/t_byLayer/control_",cls)
             dir.create(path_, recursive=TRUE, showWarnings=FALSE)
             gr = fg_plot(
                 fg, sum_plot=TRUE,
@@ -880,29 +896,189 @@ for (result_dir in result_dirs) {
                 cls_label1="control", cls_label2=cls,
                 node_feature="SpecEnr", edge_feature="prop",
                 label1="expect_prop", label2="prop", # node only
-                p_thres=.05, show_bgedges=TRUE,
-                path=paste0(path_,"/SpecEnr_t_byLayer.png"))
+                p_thres=0, show_bgedges=TRUE)
+                #path=paste0(path_,"/SpecEnr.png"))
             
-            gr = fg_plot(
-                fg, sum_plot=TRUE,
-                cls="class", test_name="t_byLayer",
-                cls_label1="control", cls_label2=cls,
-                node_feature="SpecEnr", edge_feature="prop",
-                label1=NULL, label2=NULL, # node only
-                p_thres=.05, show_bgedges=TRUE,
-                path=paste0(path_,"/SpecEnr_t_byLayer_SpecEnr.png"))
+            p = fg@feat_summary$node[[5]]$values
+            p_ = p==0
+            pparen = fg@edge_list$parent
+            pchild = fg@edge_list$child
+
+            mse = as.matrix(fg_get_feature(fg, "node","SpecEnr"))
+            mse_c = colMeans(mse[fg_get_meta(fg)$class=="control",])
+            mse_m = colMeans(mse[fg_get_meta(fg)$class=="exp",])
+            mse_ = mse_m - mse_c
+            mep = as.matrix(fg_get_feature(fg, "node","expect_prop"))
+            mep_c = colMeans(mep[fg_get_meta(fg)$class=="control",])
+            mep_m = colMeans(mep[fg_get_meta(fg)$class=="exp",])
+            mpp = as.matrix(fg_get_feature(fg, "node","prop"))
+            mpp_c = colMeans(mpp[fg_get_meta(fg)$class=="control",])
+            mpp_m = colMeans(mpp[fg_get_meta(fg)$class=="exp",])
+            mpp_ = mpp_m-mpp_c
+            
+            gr$v$label = sapply(seq_len(length(mse_m)), function(j)
+                gsub("[:]",paste0(": ",round(mse_m[j],3)),gr$v$label[j]))
+            
+            gp = gggraph(gr)
+            ggplot2::ggsave(paste0(path_,"/SpecEnr.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+
+            gr$v$colour = mse_
+
+                        
+            # difference between its most similar sibling pops with same markers
+            sediff = rep(0,length(mse_))
+            names(sediff) = names(mse_)
+            sediff__ = sediff_ = sediff
+            
+            sediffthres = .05
+            
+            # get unique difference specenr for each marker set
+            # pcind = gr$v$phenotype%in%names(pchild)
+            lyrs = unique(gr$v$phenolayer)
+            lyrsl = map(lyrs, function(l) gr$v$phenolayer==l)
+            names(lyrsl) = as.character(lyrs)
+            
+            levi_0 = which(p_)
+            if (length(levi_0)==0) next
+            levi_0_mrks = gsub("[+-]","",names(levi_0))
+            for (mrks in unique(levi_0_mrks)) {
+                mrki_1 = which(levi_0_mrks==mrks)
+                if (length(mrki_1)==1 | nchar(mrks)==1) {
+                    sediff[levi_0[mrki_1]] = 
+                        sediff_[levi_0[mrki_1]] = 
+                        sediff__[levi_0[mrki_1]] = 1
+                    next
+                }
+                diffsi = unlist(purrr::map(
+                    seq_len(length(mrki_1)), function(mi) {
+                        min(abs(mse_[levi_0[mrki_1[mi]]] -
+                                    mse_[levi_0[mrki_1[-mi]]]))
+                    }))
+                sediff[levi_0[mrki_1]] = diffsi/max(diffsi)
+                if (max(diffsi)==0)  # BETTTER IF THERES A THRESHOLD
+                    sediff[levi_0[mrki_1]] = 0
+                
+                sediff_[levi_0[mrki_1]] = sediff[levi_0[mrki_1]]
+                se_dup = duplicated(sediff_[levi_0[mrki_1]]) | 
+                    duplicated(sediff_[levi_0[mrki_1]], fromLast=T)
+                sediff_[levi_0[mrki_1[se_dup]]] = 0
+                
+                diffsi = unlist(purrr::map(
+                    seq_len(length(mrki_1)), function(mi) {
+                        min(abs(mpp_[levi_0[mrki_1[mi]]] -
+                                    mpp_[levi_0[mrki_1[-mi]]]))
+                    }))
+                sediff__[levi_0[mrki_1]] = diffsi/max(diffsi)
+                if (max(diffsi)==0)  # BETTTER IF THERES A THRESHOLD
+                    sediff__[levi_0[mrki_1]] = 0
+            }
+            spdiff = sediff
+
+            plot_ly(data.frame(y=sort(sediff)), 
+                    x=seq_len(length(sediff)), y=~y,
+                    text=names(sediff)[order(sediff)], label=text)
+            
+            gr$v$size = sediff#abs(exp_m-exp_c)
+            gr$v$label_ind = gr$v$v_ind = sediff > sediffthres# & smdiff < .01
+            gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode size & colour: non-repeating SpecEnr (exp-0) of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
+            ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+
+            gr$v$size = sediff#abs(exp_m-exp_c)
+            gr$v$label_ind = gr$v$v_ind = sediff > sediffthres# & smdiff < .01
+            gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode size & colour: non-repeating SpecEnr (exp-0) of nodes with same markers WITH NO DUPLICATES.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
+            ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+
+            gr$v$size = sediff__ #abs(exp_m-exp_c)
+            gr$v$label_ind = gr$v$v_ind = sediff__ > sediffthres# & smdiff < .01
+            gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode size & colour: non-repeating prop (exp-0) of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
+            ggplot2::ggsave(paste0(path_,"/SpecEnr_mrkprop.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+            
+            gr$v$size = sediff#abs(exp_m-exp_c)
+            gr$v$label_ind = gr$v$v_ind = sediff > sediffthres & # & smdiff < .01
+                sediff__ > sediffthres
+            gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode size & colour: non-repeating SpecEnr (exp-0) or prop of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
+            ggplot2::ggsave(paste0(path_,"/SpecEnr_mrkORprop.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+
+            
+            # parent must not repeat
+            ppind = gr$v$phenotype%in%names(pparen)
+            for (lev in sort(unique(gr$v$phenolayer), decreasing=TRUE)[-1]) {
+                levi_0_ = which(p_ & spdiff > sediffthres & 
+                                    lyrsl[[as.character(lev+1)]] & ppind)
+                levi_0 = which(p_ & spdiff > sediffthres & 
+                                   lyrsl[[as.character(lev)]] & ppind)
+                if (length(levi_0)==0 | length(levi_0_)==0) next
+                for (chld in names(levi_0_)) {
+                    prnt_1 = which(names(levi_0)%in%pparen[[chld]])
+                    if (length(prnt_1)==1) {
+                        spdiff[levi_0[prnt_1]] = 1
+                    } else {
+                        diffsp = unlist(purrr::map(
+                            seq_len(length(prnt_1)), function(mi) {
+                                min(abs(mse_[levi_0[prnt_1[mi]]] -
+                                            mse_[levi_0[prnt_1[-mi]]]))
+                            }))
+                        spdiff[levi_0[prnt_1]] = diffsp/max(diffsp)
+                        if (max(diffsp)==0) # BETTTER IF THERES A THRESHOLD
+                            spdiff[levi_0[prnt_1]] = 0
+                    }
+                }
+            }
+
+            plot_ly(data.frame(y=sort(spdiff)), 
+                    x=seq_len(length(spdiff)), y=~y,
+                    text=names(spdiff)[order(spdiff)], label=text)
+
+            
+            # cpop="A+B+"; c(mep_m[cpop],
+            #                sum(max(mep_m[pchild[[cpop]]]),
+            #                    min(mep_m[pchild[[cpop]]])),
+            #                mep_m[pchild[[cpop]]]) # same for nonsigs
+            # cpop="A+B+C+"; c(mep_m[cpop],
+            #                mep_m[pparen[[cpop]]]-mep_m[cpop])
+            # 
+            # cpop="A+B+"; c(mse_[cpop],
+            #                mse_[pchild[[cpop]]]) # same for nonsigs
+            # cpop="A+B+C+"; c(mse_[cpop],
+            #                mse_[pparen[[cpop]]])
+
+            gr$v$size = spdiff#abs(exp_m-exp_c)
+            gr$v$label_ind = gr$v$v_ind = spdiff > sediffthres# & smdiff < .01
+            gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode size & colour: non-repeating SpecEnr (exp-0) of nodes with same markers and of nodes who are parents of a single node.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
+            ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_par.png"),
+                        plot=gp, scale=1, width=10, height=9,
+                        units="in", dpi=500, limitsize=TRUE)
+
+            # gr = fg_plot(
+            #     fg, sum_plot=TRUE,
+            #     cls="class", test_name="t_byLayer",
+            #     cls_label1="control", cls_label2=cls,
+            #     node_feature="SpecEnr", edge_feature="prop",
+            #     label1=NULL, label2=NULL, # node only
+            #     p_thres=.05, show_bgedges=TRUE,
+            #     path=paste0(path_,"/SpecEnr_t_byLayer_SpecEnr.png"))
 
         })
     }
     
 }  
-
 time_output(start1)
 ```
 
 ```{r example_cellhierarchy}
 
-result_dir = result_dirs[grepl("pos1",result_dir)]
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+result_dir = result_dirs[grepl("pos1$",result_dir)]
 fg = get(load(paste0(result_dir,"/fg.Rdata")))
 
 gr = fg_get_graph(fg)
@@ -927,6 +1103,7 @@ result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 result_dir = result_dirs[grepl("pos15", result_dirs)] # ABC
 fg = get(load(paste0(result_dir,"/fg.Rdata")))
 
+result_dir_ = paste0(result_dir,"/plots/ratios")
 for (cpop in fg@graph$v$phenotype[-1]) {
     # cpop = "A+B+C+"
     
@@ -938,7 +1115,6 @@ for (cpop in fg@graph$v$phenotype[-1]) {
     b = b1/b2
     
     # create directory
-    dir.create(paste0(result_dir,"/plots/ratios"), recursive=TRUE, showWarnings=F)
     
     # plot
     try ({
@@ -946,7 +1122,7 @@ for (cpop in fg@graph$v$phenotype[-1]) {
             geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
             geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
         
-        ggsave(paste0(result_dir,"/plots/ratios/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
+        ggsave(paste0(result_dir_,"/",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
         
     })
     
@@ -967,7 +1143,7 @@ for (cpop in fg@graph$v$phenotype[-1]) {
 
 ### qq plot
 
-```{r plotS_test_qq, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+```{r plot_test_qq, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 phen = fg@graph$v$phenotype
 phen_ = gsub("A[-+]|B[-+]|C[-+]", "", phen)
 sig_inds = phen_==""
