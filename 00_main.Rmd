@@ -41,7 +41,7 @@ source(paste0(root,"/src/functions_generic.R"))
 libr(c("flowCore", "flowType",
        "doParallel", "foreach",
        "stringr", "furrr", "purrr",
-       "plotly", "htmlwidgets"))
+       "plotly", "htmlwidgets", "ggpubr"))
 
 ## cores
 no_cores = detectCores()-1
@@ -447,7 +447,7 @@ time_output(start, "data_pregnancy")
 ## - creates cell meta file (meta info for fcm cell populations)
 
 ## options
-nsample = 1000 # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
+nsample = 400 # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
 nctrl = .5 # % of control samples
 markern = 4 # # of markers
 maxmarker = 6
@@ -458,7 +458,7 @@ normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countA
 lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
 
 ## cores
-no_cores = 6
+# no_cores = 6
 
 
 start = Sys.time()
@@ -750,7 +750,8 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
             }
             fe = f@exprs
             colnames(fe) = LETTERS[1:ncol(fe)]
-            if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds)) save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
+            # if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds))
+            #     save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
             if (ds%in%c("pos30")) {
                 thress = thress5
                 ppm = rep(2,markern)
@@ -806,7 +807,7 @@ time_output(start)
 ```
 
 
-# Calculate summary statistics
+# Calculate summary statistics (don't need)
 
 ```{r p_values, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## cores
@@ -845,7 +846,7 @@ for (result_dir in result_dirs) {
 
 ```
 
-# P value ranking
+# P value vs SpecEnr difference ranking
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 
@@ -887,7 +888,7 @@ for (result_dir in result_dirs) {
             gp = ggplot2::ggplot(
                 data, aes(x=logPvalue, y=SpecEnrDifference, label=phenotype, color=phenolayer)) +
                 ggplot2::geom_point() + 
-                geom_text_repel(
+                ggrepel::geom_text_repel(
                     nudge_x      = -0.35,
                     direction    = "y",
                     hjust        = 1,
@@ -966,12 +967,8 @@ for (result_dir in result_dirs) {
             path_ = paste0(result_dir,"/plots/summary/t_byLayer/control_",cls)
             dir.create(path_, recursive=TRUE, showWarnings=FALSE)
             gr = fg_plot(
-                fg, sum_plot=TRUE,
-                cls="class", test_name="t_byLayer",
-                cls_label1="control", cls_label2=cls,
-                node_feature="SpecEnr", edge_feature="prop",
-                label1="expect_prop", label2="prop", # node only
-                p_thres=0.01, show_bgedges=TRUE)
+                fg,
+                cls_label1="control", cls_label2=cls)
                 #path=paste0(path_,"/SpecEnr.png"))
             
             mse = as.matrix(fg_get_feature(fg, "node","SpecEnr"))
@@ -987,7 +984,7 @@ for (result_dir in result_dirs) {
             mpp_ = mpp_m-mpp_c
             
             p = fg_get_summary(fg, type="node", feature="SpecEnr",
-                               test_name="t_byLayer", cls="class",
+                               test_name="t_byLayer_diminish", cls="class",
                                cls_labels=paste0("control_",cls))$values
             p[mpp_<.001] = 1
             p_ = p<0.01
@@ -1233,7 +1230,7 @@ p value x # of nodes in its layer x total number of layers in the cell hierarchy
 
 start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs[5:55]) {
+for (result_dir in result_dirs[-24]) {
     # if (!grepl("genentech",result_dir)) next
     start1 = Sys.time()
     print(result_dir)
@@ -1247,7 +1244,9 @@ for (result_dir in result_dirs[5:55]) {
             p = fg_get_summary(fg, type="node", feature="SpecEnr",
                                test_name="t_byLayer", cls="class",
                                cls_labels=paste0("control_",cls)) $values
-            for (cpop in names(head(sort(p),30))) {
+            cpops = names(head(sort(p),30))
+            for (cpopi in seq_len(length(cpops))) {
+                cpop = cpops[cpopi]
                 if (cpop=="") next
                 if (p[cpop]==1) next
                 # cpop = "A+B+C+"
@@ -1261,27 +1260,29 @@ for (result_dir in result_dirs[5:55]) {
                 b2 = fg@feat$node$prop[ei,cpop]
                 b = fg@feat$node$SpecEnr[ei,cpop]
                 
+                
+                
                 # create directory
                 
                 # plot
                 try ({
-                    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n SpecEnr t test p value (by layer adjustment): ", p[cpop],"\nexpected proportion means: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) +
+                    gp1 = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n SpecEnr t test p value (by layer adjustment): ", p[cpop],"\nexpected proportion means: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) +
                         geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
                         geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
                     
-                    ggsave(paste0(result_dir_,"/",signif(p[cpop],3),"_",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
+                    ggsave(paste0(result_dir_,"/",str_pad(cpopi,width=3,pad="0"),"_",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
                     
                 })
                 
-                # plot logged version
-                try({
-                    
-                    gp = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", p[cpop],"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) +
-                        geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
-                        geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
-                    
-                    ggsave(paste0(result_dir_,"/",signif(p[cpop],3),"_",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
-                })
+                # # plot logged version
+                # try({
+                #     
+                #     gp2 = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", p[cpop],"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) +
+                #         geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
+                #         geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
+                #     
+                #     ggsave(paste0(result_dir_,"/",signif(p[cpop],3),"_",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
+                # })
                 
             }
         })
