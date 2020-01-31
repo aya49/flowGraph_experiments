@@ -22,11 +22,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Start
 
-This document uses the `flowGraph` package to run main experiments;
-results are saved in the `flowtype_metric` folder.
+This document uses the `flowGraph` package to run experiments;
+results are saved in the root `flowtype_metric` folder.
 
 ```{r start_flowGraph, message=FALSE, include=FALSE, echo=FALSE}
-## load flowGraph
+## load flowGraph package
 rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
 library(flowGraph)
 
@@ -100,7 +100,7 @@ Data obtained from the HDCytoDate package:
 e.g. Levine_32dim_SE(metadata = FALSE) Levine_32dim_flowSet(metadata = FALSE)
 
 Remember to transform values; for cytof, usually use asinh with cofactor=5 
-(cofactor=150 for flow cytometry).
+(cofactor=150 for flow cytometry). Below describes other data sets inside the package. Proceeding it, the code to preprocess the bodenmiller data set.
 
 - Data sets to test clustering:
   - Levine_32dim:
@@ -227,6 +227,8 @@ time_output(start, "data_bodenmiller")
 
 ## flowCap-II AML
 
+This section preprocesses data from the flowCAP-II challenge AML data set comparing AML samples, healthy samples, and (generated below) mixed samples containing cells from AML and healthy samples.
+
 ```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input directories
 fc_dir = "/mnt/f/Brinkman group/current/Alice/flowCAP-II"
@@ -346,6 +348,8 @@ time_output(start, "data_flowcap")
 
 ## genentech
 
+This data set compares bone marrow and whole blood samples in incremental percentages from one random subject tested in genentech.
+
 ```{r genentech, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input: genetech by daniel yokosawa on the genetech data (bone marrow + blood for 3 patients x 5 samples; computationally mixed)
 ## output: feat_file_cell_count, meta_file
@@ -387,6 +391,8 @@ time_output(start, "data_genetech")
 
 
 ## pregnancy
+
+This data set compares womens' flow cytometry samples in their early, mid, late, and 6 weeks post-partum pregnancy stages
 
 ```{r pregnancy, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input: gates + fcm files,  meta data paths
@@ -436,6 +442,8 @@ time_output(start, "data_pregnancy")
 
 
 ## positive/negative control
+
+artificially generated data sets.
 
 ```{r control, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input: gates + fcm files,  meta data paths
@@ -807,7 +815,7 @@ time_output(start)
 ```
 
 
-# Calculate summary statistics (don't need)
+# Calculate summary statistics (don't need to run)
 
 ```{r p_values, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## cores
