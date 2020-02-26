@@ -46,6 +46,8 @@ samples should be normalized based on ko genes
 
 ## etc
 
+NOTE: 20200225 `devtools::run_summary()` doesn't work on manual `fg_get_summary_index`.
+
 A summary metric suggestion: number of standard deviations of control between means
 
 apriori

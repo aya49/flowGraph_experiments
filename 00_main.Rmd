@@ -36,6 +36,7 @@ root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric" # CHANGE THIS
 # setwd(root)
 
 source(paste0(root,"/src/functions_generic.R"))
+source(paste0(root,"/src/elbow.R"))
 
 ## libraries
 libr(c("flowCore", "flowType",
@@ -326,18 +327,11 @@ for (tube in unique(meta_file0$tube)) {
     fg <- fg_summary(fg, no_cores=no_cores, cls="class",
                      control="control",
                      node_features="SpecEnr",
-                     edge_features="NONE",
+                     edge_features="prop",
                      overwrite=FALSE,
                      test_name=paste0("t_byLayer_diminish"),
                      diminish=TRUE)
-    fg <- fg_summary(fg, no_cores=no_cores, cls="class",
-                     control="control",
-                     edge_features="prop",
-                     node_features="NONE",
-                     overwrite=FALSE,
-                     test_name="t_byLayer",
-                     diminish=FALSE)
-    
+
     dir.create(paste0(result_dir0, "_", tube), showWarnings=FALSE)
     save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
 }
@@ -360,10 +354,11 @@ input_dir0 = "/mnt/f/Brinkman group/current/Alice/gating_projects/genentech"
 start = Sys.time()
 
 for (tube in 2:4) {
-    input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/comp_mix")
+    for (dtype in c("man","comp")) {
+    input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/",dtype,"_mix")
     
     ## ouput directories
-    result_dir = paste0(root, "/result/genentech_",tube); dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
+    result_dir = paste0(root, "/result/genentech_",tube,"_",dtype); dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
     
     start = Sys.time()
     
@@ -374,16 +369,20 @@ for (tube in 2:4) {
     markers = get(load(paste0(input_dir,"/MarkerNames_sing.Rdata")))
     
     ## prepare meta
-    temp_ = Reduce("rbind", str_split(gsub(".fcs","",names(ftl)),"_"))
-    meta_file = data.frame(id=names(ftl), class=temp_[,3], patient=as.numeric(gsub(".fcs","",temp_[,4])))
-    meta_file$class[meta_file$class=="100WB"] = "control"
+    temp_ = str_extract(names(ftl),"[0-9]+BM")
+    temp_[is.na(temp_)] = "control"
+    meta_file = data.frame(id=names(ftl), class=temp_)
     for (uc in unique(meta_file$class)) {
         uci = meta_file$class==uc
         meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
     }
     
     fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
+            
+    }
+
 }
 
 time_output(start, "data_genetech")
@@ -432,8 +431,13 @@ meta_file0 = meta_file0[,-4]
 #  The total size of the 5 globals that need to be exported for the future expression (‘.f()’) is 746.88 MiB. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are ‘ep’ (579.19 MiB of class ‘numeric’), ‘mp’ (102.64 MiB of class ‘numeric’) and ‘pparen’ (55.13 MiB of class ‘list’).
 options(future.globals.maxSize=3000000000)
 fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores,
-               norm_path=paste0(result_dir0,"/count_norm"))
+               norm_path=paste0(result_dir0,"/count_norm"),
+               calculate_summary=FALSE)
 fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
+fg <- fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                 overwrite=FALSE, test_name="t_byLayer_diminish", diminish=TRUE,
+                 test_cutom="t", adjust_custom="byLayer",
+                 node_features="SpcEnr", edge_features="prop")
 
 save(fg, file=paste0(result_dir0,"/fg.Rdata"))
 
@@ -455,7 +459,7 @@ artificially generated data sets.
 ## - creates cell meta file (meta info for fcm cell populations)
 
 ## options
-nsample = 400 # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
+nsample = 20 # of samples to create per data set; don't change this, i hard coded in cytodx and save fcm below on which files to use
 nctrl = .5 # % of control samples
 markern = 4 # # of markers
 maxmarker = 6
@@ -466,7 +470,7 @@ normsd = 0 # 64734.05 for pregnancy; if >0, remember to save as count not countA
 lastlsdp = .1 # when generating only last layer cell proportions, use lastlsdp*normean/(2^markern) as sd
 
 ## cores
-# no_cores = 6
+no_cores = 6
 
 
 start = Sys.time()
@@ -805,6 +809,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
         fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
     }
+
     time_output(start2, ds)
     cat("\n")
     rm(list=c("ftl","fg")); gc()
@@ -815,7 +820,7 @@ time_output(start)
 ```
 
 
-# Calculate summary statistics (don't need to run)
+# Calculate summary statistics (don't need to run, unless don't have)
 
 ```{r p_values, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## cores
@@ -823,38 +828,16 @@ no_cores = detectCores()-1
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
-    try ({
         cat(result_dir,"\n")
         fg = get(load(paste0(result_dir,"/fg.Rdata")))
-        # fg = fg_feat_node_specenr(fg)
-        fg = fg_clear_summary(fg)
-        fg = fg_summary(
-            fg, no_cores=no_cores, cls="class", control="control",
-            overwrite=FALSE,
-            test_name="t_byLayer",
-            diminish=FALSE, # don't test if all parents are insignificant, stricter the lower the layer
-            p_thres=.05, p_rate=2, # only used if diminish=TRUE
-            test_custom="t",
-            adjust_custom="byLayer"
-        )
-        fg = fg_summary(
-            fg, no_cores=no_cores, cls="class", control="control",
-            overwrite=FALSE,
-            test_name="t_byLayer_diminish",
-            diminish=TRUE, # don't test if all parents are insignificant, stricter the lower the layer
-            p_thres=.05, p_rate=2, # only used if diminish=TRUE
-            test_custom="t",
-            adjust_custom="byLayer"
-        )
-        
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        test_name="t_BH_diminish", adjust_custom="BH")
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
-
-    })
 }
 
 ```
 
-# P value vs SpecEnr difference ranking
+print out results
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 
@@ -868,44 +851,7 @@ for (result_dir in result_dirs) {
         
         fg = get(load(paste0(result_dir,"/fg.Rdata")))
         grt = fg_get_summary_tables(fg)
-        write.csv(grt, file=paste0(result_dir,"/summary_table.csv"))
-        
-        phenolayer = fg@graph$v$phenolayer
-        # phenolayer[1] = 1
-        
-        path_ = paste0(result_dir,"/plots/PvsSpecEnr")
-        dir.create(path_, recursive=TRUE, showWarnings=FALSE)
-        for (cls in unique(fg@meta$class)) {
-            if (cls=="control") next
-            p = fg_get_summary(
-                fg, type="node", feature="SpecEnr",
-                test_name="t_byLayer_diminish", cls="class",
-                cls_labels=paste0("control_",cls))$values
-            mse = as.matrix(fg_get_feature(fg, "node","SpecEnr"))
-            mse_c = colMeans(mse[fg_get_meta(fg)$class=="control",])
-            mse_m = colMeans(mse[fg_get_meta(fg)$class==cls,])
-            mse_ = mse_m - mse_c
-            
-            p_ = -log(p)
-            p_[is.infinite(p_)] = max(p_[!is.infinite(p_)])
-            data = data.frame(logPvalue=p_, SpecEnrDifference=mse_, col="")
-            data$phenotype = ifelse(
-                names(p)%in%names(head(sort(p),10)) |
-                names(p)%in%names(tail(sort(abs(mse_)),10)), names(p), "")
-
-            gp = ggplot2::ggplot(
-                data, aes(x=logPvalue, y=SpecEnrDifference, label=phenotype, color=phenolayer)) +
-                ggplot2::geom_point() + 
-                ggrepel::geom_text_repel(
-                    nudge_x      = -0.35,
-                    direction    = "y",
-                    hjust        = 1,
-                    segment.size = 0.2
-                )
-                
-            ggplot2::ggsave(paste0(path_,"/",cls,".png"), plot=gp)
-
-        }
+        write.csv(grt, file=paste0(result_dir,"/summary_table_node.csv"))
     })
 }
 time_output(start1)
@@ -913,51 +859,157 @@ time_output(start1)
 ```
 
 
-
 # Plots
 
-## Feature plots
+
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+
+start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
     # if (!grepl("genentech",result_dir)) next
     start1 = Sys.time()
-    cat(result_dir)
+    print(result_dir)
     
+    # load flowGraph
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    for (cls in unique(fg@meta$class)) {
-        try ({
-            if (cls=="control") next
-            path_ = paste0(result_dir,"/plots/class/control_",cls)
-            dir.create(path_, recursive=TRUE, showWarnings=FALSE)
-            gr = fg_plot(
-                fg, sum_plot=FALSE,
-                cls_label1="control", cls_label2=cls, cls="class",
-                node_feature="SpecEnr", show_label=rep(TRUE,nrow(fg@graph$v)),
-                label1="expect_prop", label2="prop", # node only
-                show_bgedges=TRUE, 
-                width=20, height=9,
-                path=paste0(path_,"/SpecEnr.png"))
-            
-            # # interactive version for testing
-            # gr_ = gr = fg_plot(
-            #     fg, sum_plot=FALSE,
-            #     cls_label1="control", cls_label2=cls, cls="class",
-            #     node_feature="SpecEnr", show_label=rep(TRUE,nrow(fg@graph$v)),
-            #     label1="expect_prop", label2="prop", # node only
-            #     show_bgedges=TRUE)
-            # gp = gggraph(gr_, interactive=T)
-        })
-    }
     
+    # create directories
+    pvd_dir <- paste0(result_dir,"/plots/pVSdifference")
+    dir.create(pvd_dir, recursive=TRUE, showWarnings=FALSE)
+    hst_dir <- paste0(result_dir,"/plots/histograms")
+    dir.create(hst_dir, recursive=TRUE, showWarnings=FALSE)
+    qq_dir <- paste0(result_dir,"/plots/qq")
+    dir.create(qq_dir, recursive=TRUE, showWarnings=FALSE)
+    ecdf_dir <- paste0(result_dir,"/plots/ecdf")
+    dir.create(ecdf_dir, recursive=TRUE, showWarnings=FALSE)
+    ch_dir <- paste0(result_dir,"/plots/cell_hierarchy")
+    dir.create(ch_dir, recursive=TRUE, showWarnings=FALSE)
+
+    for (type in c("node", "edge")) {
+        if (base::is.null(fg@summary[[type]])) next
+        for (index in seq_len(length(fg@summary[[type]]))) {
+            try ({
+                summary_meta <- fg@summary_desc[[type]][index,]
+                
+                ## P value vs SpecEnr difference
+                path <- paste0(pvd_dir,"/",type,"_",
+                               paste0(summary_meta,collapse="_"), ".png")
+                gp <- fg_plot_pVSdiff(fg, type=type, summary_meta=NULL, 
+                                      index=index, max_label=10, path=path)
+            })
+            
+            try ({
+                ## Histograms for each node
+                pp = fg_get_summary(fg, type="node", index=index)
+                seda = abs(pp$m1 - pp$m2)
+                p = pp$values
+                cpops = union( names(head(sort(p),30)),  
+                               names(tail(sort(seda),30)))
+                rdir_ <- paste0(hst_dir,"/",type,"_",
+                                paste0(summary_meta,collapse="_"))
+                dir.create(rdir_, recursive=TRUE, showWarnings=FALSE)
+                for (cpopi in seq_len(length(cpops))) {
+                    cpop = cpops[cpopi]
+                    if (cpop=="") next
+                    # if (p[cpop]==1) next
+                    # cpop = "A+B+C+"
+                    path <- paste0(rdir_,"/",str_pad(cpopi,width=3,pad="0"),
+                                   "_",cpop,".png")
+                    gp <- fg_plot_hist(fg, type="node", index=index, cpop=cpop,
+                                       path=path)
+                }
+            })
+            
+            try ({
+                ## qq plot
+                path <- paste0(qq_dir,"/",type,"_",
+                               paste0(summary_meta,collapse="_"), ".png")
+                gp <- fg_plot_qq(fg, type=type, index=index, path=path)
+            })
+            
+            try ({
+                ## ecdf plot
+                p <- fg_get_summary(fg, type=type, index=index)$values
+                fun_ecdf <- ecdf(sort(p)); py <- fun.ecdf(sort(p))
+                df <- data.frame(y=sort(p),x=py)
+                a <- elbow(df)
+                path <- paste0(ecdf_dir,"/",type,"_",
+                               paste0(summary_meta,collapse="_"), ".png")
+                png(path)
+                plot.ecdf(p, main=paste0("p-value eCDF plot\nthres=",a[1],
+                                         ", sig_n=",sum(p<a[1])),
+                          xlab="p-values")
+                abline(v=a[1])
+                dev.off()
+            })
+            
+            try ({
+                ## cell hierarchy plot
+                p <- fg_get_summary(fg, type=type, index=index)$values
+                path <- paste0(ch_dir,"/",type,"_",
+                               paste0(summary_meta,collapse="_"))
+                
+                gr <- fg_plot(fg, type="node", p_thres=.01, index=index,
+                              show_bgedges=TRUE, path=path, label_max=20)
+                
+                if (sum(p<.01)>30)
+                    gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
+                                  index=index, label_max=20,
+                                  show_bgedges=TRUE, path=paste0(path,"_top25"))
+            })
+        }
+    }
 }
 time_output(start1)
 
 ```
 
 
-## Summary statistics plot
+
+
+### qq plot (pos15; temp)
+
+```{r plot_test_qq, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+# phen = fg@graph$v$phenotype
+# phen_ = gsub("A[-+]|B[-+]|C[-+]", "", phen)
+# sig_inds = phen_==""
+# qvals = fg_get_summary(fg, type="node", summary_meta=list(
+#     feature="SpecEnr", test_name="t_byLayer",
+#     cls="class", cls_labels="control_exp"))$values
+# 
+# # plot for all q values
+# plotly::plot_ly(x=~c(1:length(qvals)), y=~sort(qvals), mode="markers",
+#                 text=paste0(names(qvals)[order(qvals)], ": ", sort(qvals)),
+#                 hoverinfo="text")
+# 
+# # plot removed 0's
+# no0 = qvals!=0
+# p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvals[no0]), mode="markers",
+#                 text=paste0(names(qvals[no0])[order(qvals[no0])], ": ", sort(qvals[no0])),
+#                 hoverinfo="text") %>%
+# plotly::layout(title="qq plot for pos15 (A+B+C+); no sig nodes included; T-test")
+# # htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qq_no-ABC.html"))
+# 
+# # plot removed 0's logged
+# qvalsl = log(qvals)
+# p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvalsl[no0]), mode="markers",
+#                 text=paste0(names(qvalsl[no0])[order(qvalsl[no0])], ": ", sort(qvalsl[no0])),
+#                 hoverinfo="text") %>%
+# plotly::layout(title="qq plot for pos15 (A+B+C+) LOGGED; no sig nodes included; T-test")
+# # htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qqlog_no-ABC.html"))
+# 
+# time_output(start1)
+
+```
+
+
+
+
+
+
+## Cell hierarchy: summary statistics
 
 ```{r plots_feature, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 start1 = Sys.time()
@@ -972,12 +1024,9 @@ for (result_dir in result_dirs) {
     for (cls in unique(fg@meta$class)) {
         try ({
             if (cls=="control") next
-            path_ = paste0(result_dir,"/plots/summary/t_byLayer/control_",cls)
+            path_ = paste0(result_dir,"/plots/cell_hierarchy/temp/control_",cls)
             dir.create(path_, recursive=TRUE, showWarnings=FALSE)
-            gr = fg_plot(
-                fg,
-                cls_label1="control", cls_label2=cls)
-                #path=paste0(path_,"/SpecEnr.png"))
+            gr <- fg_plot(fg, type="node", p_thres=.01, show_bgedges=TRUE)
             
             mse = as.matrix(fg_get_feature(fg, "node","SpecEnr"))
             mse_c = colMeans(mse[fg_get_meta(fg)$class=="control",])
@@ -991,9 +1040,9 @@ for (result_dir in result_dirs) {
             mpp_m = colMeans(mpp[fg_get_meta(fg)$class==cls,])
             mpp_ = mpp_m-mpp_c
             
-            p = fg_get_summary(fg, type="node", feature="SpecEnr",
-                               test_name="t_byLayer_diminish", cls="class",
-                               cls_labels=paste0("control_",cls))$values
+            p = fg_get_summary(fg, type="node", summary_meta=list(
+                feature="SpecEnr", test_name="t_byLayer_diminish", cls="class",
+                cls_labels=paste0("control_",cls)))$values
             p[mpp_<.001] = 1
             p_ = p<0.01
             pparen = fg@edge_list$parent
@@ -1211,131 +1260,6 @@ for (result_dir in result_dirs) {
 }  
 time_output(start1)
 ```
-
-```{r example_cellhierarchy}
-
-result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-result_dir = result_dirs[grepl("pos1$",result_dir)]
-fg = get(load(paste0(result_dir,"/fg.Rdata")))
-
-gr = fg_get_graph(fg)
-gr = ggdf(gr)
-
-```
-
-## Plots examining SpecEnr and its p values
-
-Summary statistics: T-test + byLayer adjustment
-
-byLayer adjustment is a family-wise adjustment where each 
-p value x # of nodes in its layer x total number of layers in the cell hierarchy.
-
-### Density/histograms for each node
-
-```{r plots_test_p-histograms, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
-## DENSITY HISTOGRAMS
-## test for pos15 data set to compare SpecEnr values of controls and exp
-
-start1 = Sys.time()
-result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs[-24]) {
-    # if (!grepl("genentech",result_dir)) next
-    start1 = Sys.time()
-    print(result_dir)
-    
-    fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    for (cls in unique(fg@meta$class)) {
-        try ({
-            if (cls=="control") next
-            result_dir_ = paste0(result_dir,"/plots/ratios/control_",cls)
-            dir.create(result_dir_, recursive=TRUE, showWarnings=FALSE)
-            p = fg_get_summary(fg, type="node", feature="SpecEnr",
-                               test_name="t_byLayer", cls="class",
-                               cls_labels=paste0("control_",cls)) $values
-            cpops = names(head(sort(p),30))
-            for (cpopi in seq_len(length(cpops))) {
-                cpop = cpops[cpopi]
-                if (cpop=="") next
-                if (p[cpop]==1) next
-                # cpop = "A+B+C+"
-                
-                ci = fg@meta[["class"]]=="control"
-                a1 = fg@feat$node$expect_prop[ci,cpop]
-                a2 = fg@feat$node$prop[ci,cpop]
-                a = fg@feat$node$SpecEnr[ci,cpop]
-                ei = fg@meta[["class"]]==cls
-                b1 = fg@feat$node$expect_prop[ei,cpop]
-                b2 = fg@feat$node$prop[ei,cpop]
-                b = fg@feat$node$SpecEnr[ei,cpop]
-                
-                
-                
-                # create directory
-                
-                # plot
-                try ({
-                    gp1 = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n SpecEnr t test p value (by layer adjustment): ", p[cpop],"\nexpected proportion means: ", round(mean(a1),3),"/",round(mean(a2),3),", ",round(mean(b1),3),"/",round(mean(b2),3))) +
-                        geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
-                        geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
-                    
-                    ggsave(paste0(result_dir_,"/",str_pad(cpopi,width=3,pad="0"),"_",cpop,".png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
-                    
-                })
-                
-                # # plot logged version
-                # try({
-                #     
-                #     gp2 = ggplot() + ggtitle(paste0("population ",cpop,"\nred=control, blue=experiment","\nexpected/actual proportion", "\n t test p value: ", p[cpop],"\nmeans: ", round(mean(log(a1)),3),"/",round(mean(log(a2)),3),", ",round(mean(log(b1)),3),"/",round(mean(log(b2)),3))) +
-                #         geom_density(aes(x=x), colour="red",data=data.frame(x=a)) +
-                #         geom_density(aes(x=x), colour="blue",data=data.frame(x=b))
-                #     
-                #     ggsave(paste0(result_dir_,"/",signif(p[cpop],3),"_",cpop,"_log.png"), plot=gp, scale=1, width=5, height=5, units="in", dpi=500, limitsize=TRUE)
-                # })
-                
-            }
-        })
-    }
-    
-}
-time_output(start1)
-
-
-```
-
-
-### qq plot
-
-```{r plot_test_qq, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
-phen = fg@graph$v$phenotype
-phen_ = gsub("A[-+]|B[-+]|C[-+]", "", phen)
-sig_inds = phen_==""
-qvals = fg_get_summary(fg, type="node", feature="SpecEnr", test_name="t_byLayer",
-                       cls="class", cls_labels="control_exp")$values
-
-# plot for all q values
-plotly::plot_ly(x=~c(1:length(qvals)), y=~sort(qvals), mode="markers",
-                text=paste0(names(qvals)[order(qvals)], ": ", sort(qvals)),
-                hoverinfo="text")
-
-# plot removed 0's
-no0 = qvals!=0
-p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvals[no0]), mode="markers",
-                text=paste0(names(qvals[no0])[order(qvals[no0])], ": ", sort(qvals[no0])),
-                hoverinfo="text") %>%
-plotly::layout(title="qq plot for pos15 (A+B+C+); no sig nodes included; T-test")
-# htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qq_no-ABC.html"))
-
-# plot removed 0's logged
-qvalsl = log(qvals)
-p = plotly::plot_ly(x=~c(1:sum(no0)), y=~sort(qvalsl[no0]), mode="markers",
-                text=paste0(names(qvalsl[no0])[order(qvalsl[no0])], ": ", sort(qvalsl[no0])),
-                hoverinfo="text") %>%
-plotly::layout(title="qq plot for pos15 (A+B+C+) LOGGED; no sig nodes included; T-test")
-# htmlwidgets::saveWidget(plotly::as_widget(p), paste0(result_dir, "/plots/2019-12-30_pos15_ABC_t_byLayer_qqlog_no-ABC.html"))
-
-```
-
-
 
 
 
