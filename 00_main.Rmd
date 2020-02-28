@@ -831,13 +831,14 @@ for (result_dir in result_dirs) {
         cat(result_dir,"\n")
         fg = get(load(paste0(result_dir,"/fg.Rdata")))
         fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
-                        test_name="t_BH_diminish", adjust_custom="BH")
+                        test_name="t_BH_diminish", adjust_custom="BH",
+                        node_features="SpecEnr", edge_features="NONE")
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
 }
 
 ```
 
-print out results
+print out summary statistics as a table for node features
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 
@@ -867,7 +868,9 @@ time_output(start1)
 
 start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs) {
+result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
+for (result_dir in append(result_dirs[result_dirs_inds],
+                          result_dirs[-result_dirs_inds])) {
     # if (!grepl("genentech",result_dir)) next
     start1 = Sys.time()
     print(result_dir)
@@ -932,7 +935,7 @@ for (result_dir in result_dirs) {
             try ({
                 ## ecdf plot
                 p <- fg_get_summary(fg, type=type, index=index)$values
-                fun_ecdf <- ecdf(sort(p)); py <- fun.ecdf(sort(p))
+                fun_ecdf <- ecdf(sort(p)); py <- fun_ecdf(sort(p))
                 df <- data.frame(y=sort(p),x=py)
                 a <- elbow(df)
                 path <- paste0(ecdf_dir,"/",type,"_",
@@ -953,6 +956,38 @@ for (result_dir in result_dirs) {
                 
                 gr <- fg_plot(fg, type="node", p_thres=.01, index=index,
                               show_bgedges=TRUE, path=path, label_max=20)
+                
+                # plot only one group and their ancestors (cell pops with same markers)
+                pparen <- fg@edge_list$parent
+                v_ind <- which(gr$v$v_ind)
+                show_phen <- gr$v$phenotype[gr$v$v_ind]
+                show_phen_ <- gsub("[+-]","_",show_phen)
+                show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
+                if (length(show_phen_u) < length(show_phen)) {
+                    dir.create(path, showWarnings=FALSE)
+                    for (phen in show_phen_u) {
+                        gr_ <- gr
+                        leaves <- v_ind[show_phen_==phen]
+                        v_ind_ <- rep(FALSE, nrow(gr$v))
+                        v_ind_[leaves] <- TRUE
+                        layer <- gr$v$phenolayer[leaves[1]]
+                        curr <- gr$v$phenotype[leaves]
+                        if (layer > 0)
+                            while (length(curr)>0) {
+                                par_phen <- unlist(pparen[curr])
+                                par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
+                                v_ind_[par_ind] <- TRUE
+                                curr <- gr$v$phenotype[par_ind]
+                            }
+                        gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
+                        gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
+                            gr$e$to%in%gr$v$phenotype[v_ind_]
+                        gp <- plot_gr(gr_)
+                        ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"), 
+                               plot=gp, scale=1, width=9, height=9,
+                               units="in", dpi=500, limitsize=TRUE)
+                    }
+                }
                 
                 if (sum(p<.01)>30)
                     gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
