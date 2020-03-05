@@ -25,12 +25,17 @@ samples should be normalized based on ko genes
 
 - genentech
   - class: bone marrow and whole blood mixed and pure
+  - 2020-02-04 results based on linear regression (singlets tube4)
+    - manually mixed: CD13+CD10- & CD13+CD34- highly significant; not in computationally mixed. CD13+CD34+ did not show up.
+    - computationally mixed: CD13+CD11c- highly significant
+    - computationally mized: issue with the 25% bone marrow.
   - 2019-11-19 results based on a single random donor D
     - singlets tube4: CD13+CD11c-
     - singlets tube4 (suggested experimentally by GNE): CD13+CD16-
   - earlier results based on 3 donors (1 is an outlier) greatest mean separation:
     - my tube3: CD34+CD117+CD56-
     - blasts tube4: CD13+CD16-cd11c-
+
 
 - pregnancy [@aghaeepour2017immune]
   - class: 4 time points of pregnancy, early, mid, late, 6 weeks postpartum x 18 and 10 women of the training and validation cohort
