@@ -193,7 +193,7 @@ for (i in 1:length(fslist)) {
 }
 
 ## flowType
-ftl = future_map(1:length(fslist), function(i) {
+ftl = map(1:length(fslist), function(i) {
     flowType(Frame=fslist[[i]],
              PropMarkers=match(markers, meta_mark$marker_name),
              MarkerNames=markers,
@@ -217,9 +217,14 @@ for (uc in unique(meta_file$class)) {
 }
 
 ## save files
-fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, 
-               norm_path=paste0(result_dir,"/count_norm"))
-fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
+fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, cls="class",
+               control="control", 
+               norm_path=paste0(result_dir,"/count_norm"),
+               test_custom=function(x,y)
+                tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                         error=function(e) 1),
+               path=paste0(result_dir,"/fg"))
+# fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
 save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
 time_output(start, "data_bodenmiller")
@@ -329,10 +334,11 @@ for (tube in unique(meta_file0$tube)) {
                      node_features="SpecEnr",
                      edge_features="prop",
                      overwrite=FALSE,
-                     test_name=paste0("t_byLayer_diminish"),
+                     test_name=paste0("wilcox_byLayer_diminish"),
                      diminish=TRUE)
 
     dir.create(paste0(result_dir0, "_", tube), showWarnings=FALSE)
+    save_fg(fg, paste0(result_dir0, "_", tube, "/fg"))
     save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
 }
 
@@ -377,7 +383,9 @@ for (tube in 2:4) {
         meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
     }
     
-    fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+    fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file,
+                   path=paste0(result_dir0, "_", tube, "/fg"))
+)
 
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
             
@@ -432,12 +440,10 @@ meta_file0 = meta_file0[,-4]
 options(future.globals.maxSize=3000000000)
 fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores,
                norm_path=paste0(result_dir0,"/count_norm"),
-               calculate_summary=FALSE)
-fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
-fg <- fg_summary(fg, no_cores=no_cores, cls="class", control="control",
-                 overwrite=FALSE, test_name="t_byLayer_diminish", diminish=TRUE,
-                 test_cutom="t", adjust_custom="byLayer",
-                 node_features="SpcEnr", edge_features="prop")
+               test_custom=function(x,y)
+                tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                         error=function(e) 1),
+               path=paste0(result_dir0,"/fg"))
 
 save(fg, file=paste0(result_dir0,"/fg.Rdata"))
 
@@ -806,7 +812,8 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
         # save(fg1, file=paste0(result_dir,"_cumsum/fg.Rdata"))
         
     } else {
-        fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, norm_path=paste0(result_dir,"/count_norm"))
+        fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file,
+                       path=paste0(result_dir,"/fg"))
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
     }
 
@@ -828,36 +835,84 @@ no_cores = detectCores()-1
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
-        cat(result_dir,"\n")
-        fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+    if (!grepl("pregnancy|bodenmiller", result_dir)) {
         fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_BH_diminish", adjust_custom="BH",
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
+                        diminish=TRUE,
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, test_custom="t",
                         test_name="t_BH_diminish", adjust_custom="BH",
-                        node_features="SpecEnr", edge_features="NONE")
-        save(fg, file=paste0(result_dir,"/fg.Rdata"))
-}
-
-```
-
-print out summary statistics as a table for node features
-
-```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
-
-start1 = Sys.time()
-result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs) {
-    # if (!grepl("genentech",result_dir)) next
-    try ({
-        start1 = Sys.time()
-        print(result_dir)
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, test_name="t_byLayer_diminish",
+                        diminish=TRUE, test_custom="t",
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+    } else {
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_BH_diminish", adjust_custom="BH",
+                        test_custom=function(x,y)
+                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
+                        test_custom=function(x,y)
+                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        diminish=TRUE,
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, 
+                        test_name="t_BH_diminish", adjust_custom="BH",
+                        test_custom=function(x,y)
+                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+                        overwrite=FALSE, test_name="t_byLayer_diminish",
+                        test_custom=function(x,y)
+                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        diminish=TRUE,
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         
-        fg = get(load(paste0(result_dir,"/fg.Rdata")))
-        grt = fg_get_summary_tables(fg)
-        write.csv(grt, file=paste0(result_dir,"/summary_table_node.csv"))
-    })
+    }
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
 }
-time_output(start1)
+
+for (result_dir in result_dirs) {
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    if (!grepl("pregnancy|bodenmiller", result_dir)) {
+        save_fg_plots(fg, paste0(result_dir,"/plots"))
+        # distance plots, not yet added so will do separately
+        a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
+                         edge_features="NONE",
+                         cls="class",
+                         dist_method="euclidean", get_means=NULL,
+                         plot_path=paste0(result_dir,"/plots/distance.png"))
+        
+    } else {
+        save_fg_plots(fg, paste0(result_dir,"/plots"), paired=TRUE)
+        a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
+                         edge_features="NONE",
+                         cls="class",
+                         dist_method="euclidean", get_means="subject",
+                         plot_path=paste0(result_dir,"/plots/distance.png")) 
+    }
+}
 
 ```
+
 
 
 # Plots
@@ -866,11 +921,12 @@ time_output(start1)
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 
+
+# cell hierarchy plots without number labels
 start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
-for (result_dir in append(result_dirs[result_dirs_inds],
-                          result_dirs[-result_dirs_inds])) {
+# result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
+for (result_dir in result_dirs) {
     # if (!grepl("genentech",result_dir)) next
     start1 = Sys.time()
     print(result_dir)
@@ -879,157 +935,26 @@ for (result_dir in append(result_dirs[result_dirs_inds],
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     
     # create directories
-    pvd_dir <- paste0(result_dir,"/plots/pVSdifference")
-    dir.create(pvd_dir, recursive=TRUE, showWarnings=FALSE)
-    hst_dir <- paste0(result_dir,"/plots/histograms")
-    dir.create(hst_dir, recursive=TRUE, showWarnings=FALSE)
-    qq_dir <- paste0(result_dir,"/plots/qq")
-    dir.create(qq_dir, recursive=TRUE, showWarnings=FALSE)
-    ecdf_dir <- paste0(result_dir,"/plots/ecdf")
-    dir.create(ecdf_dir, recursive=TRUE, showWarnings=FALSE)
-    ch_dir <- paste0(result_dir,"/plots/cell_hierarchy")
-    dir.create(ch_dir, recursive=TRUE, showWarnings=FALSE)
 
-    for (type in c("node", "edge")) {
-        if (base::is.null(fg@summary[[type]])) next
-        for (index in seq_len(length(fg@summary[[type]]))) {
-                summary_meta <- fg@summary_desc[[type]][index,]
-                            try ({
-
-                ## P value vs SpecEnr difference
-                path <- paste0(pvd_dir,"/",type,"_",
-                               paste0(summary_meta,collapse="_"), ".png")
-                gp <- fg_plot_pVSdiff(fg, type=type, summary_meta=NULL, 
-                                      index=index, max_label=10, path=path)
-            })
-            
-            try ({
-                ## Histograms for each node
-                pp = fg_get_summary(fg, type="node", index=index)
-                seda = abs(pp$m1 - pp$m2)
-                p = pp$values
-                cpops = union( names(head(sort(p),30)),  
-                               names(tail(sort(seda),30)))
-                rdir_ <- paste0(hst_dir,"/",type,"_",
-                                paste0(summary_meta,collapse="_"))
-                dir.create(rdir_, recursive=TRUE, showWarnings=FALSE)
-                for (cpopi in seq_len(length(cpops))) {
-                    cpop = cpops[cpopi]
-                    if (cpop=="") next
-                    # if (p[cpop]==1) next
-                    # cpop = "A+B+C+"
-                    path <- paste0(rdir_,"/",str_pad(cpopi,width=3,pad="0"),
-                                   "_",cpop,".png")
-                    gp <- fg_plot_hist(fg, type="node", index=index, cpop=cpop,
-                                       path=path)
-                }
-            })
-            
-            try ({
-                ## qq plot
-                path <- paste0(qq_dir,"/",type,"_",
-                               paste0(summary_meta,collapse="_"), ".png")
-                gp <- fg_plot_qq(fg, type=type, index=index, path=path)
-            })
-            
-            try ({
-                ## ecdf plot
-                p <- fg_get_summary(fg, type=type, index=index)$values
-                fun_ecdf <- ecdf(sort(p)); py <- fun_ecdf(sort(p))
-                df <- data.frame(y=sort(p),x=py)
-                a <- elbow(df)
-                path <- paste0(ecdf_dir,"/",type,"_",
-                               paste0(summary_meta,collapse="_"), ".png")
-                png(path)
-                plot.ecdf(p, main=paste0("p-value eCDF plot\nthres=",a[1],
-                                         ", sig_n=",sum(p<a[1])),
-                          xlab="p-values")
-                abline(v=a[1])
-                dev.off()
-            })
-            
-            try ({
-                ## cell hierarchy plot
-                p <- fg_get_summary(fg, type=type, index=index)$values
-                path <- paste0(ch_dir,"/",type,"_",
-                               paste0(summary_meta,collapse="_"))
-                
-                gr <- fg_plot(fg, type="node", p_thres=.01, index=index,
-                              show_bgedges=TRUE, path=path, label_max=20)
-                
-                # plot only one group and their ancestors (cell pops with same markers)
-                pparen <- fg@edge_list$parent
-                v_ind <- which(gr$v$v_ind)
-                show_phen <- gr$v$phenotype[gr$v$v_ind]
-                show_phen_ <- gsub("[+-]","_",show_phen)
-                show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
-                if (length(show_phen_u) < length(show_phen)) {
-                    dir.create(path, showWarnings=FALSE)
-                    for (phen in show_phen_u) {
-                        gr_ <- gr
-                        leaves <- v_ind[show_phen_==phen]
-                        v_ind_ <- rep(FALSE, nrow(gr$v))
-                        v_ind_[leaves] <- TRUE
-                        layer <- gr$v$phenolayer[leaves[1]]
-                        curr <- gr$v$phenotype[leaves]
-                        if (layer > 0)
-                            while (length(curr)>0) {
-                                par_phen <- unlist(pparen[curr])
-                                par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
-                                v_ind_[par_ind] <- TRUE
-                                curr <- gr$v$phenotype[par_ind]
-                            }
-                        gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
-                        gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
-                            gr$e$to%in%gr$v$phenotype[v_ind_]
-                        gp <- plot_gr(gr_)
-                        ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"), 
-                               plot=gp, scale=1, width=9, height=9,
-                               units="in", dpi=500, limitsize=TRUE)
-                    }
-                }
-                
-                if (sum(p<.01)>30)
-                    gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
-                                  index=index, label_max=20,
-                                  show_bgedges=TRUE, path=paste0(path,"_top25"))
-            })
-        }
-    }
-}
-time_output(start1)
-
-#cell hierarchy plots without number labels
-start1 = Sys.time()
-result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
-for (result_dir in append(result_dirs[result_dirs_inds],
-                          result_dirs[-result_dirs_inds])) {
-    # if (!grepl("genentech",result_dir)) next
-    start1 = Sys.time()
-    print(result_dir)
-    
-    # load flowGraph
-    fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    
-    # create directories
-    ch_dir <- paste0(result_dir,"/plots/cell_hierarchy_null")
-    dir.create(ch_dir, recursive=TRUE, showWarnings=FALSE)
+    # fg <- fg_summary(fg, no_cores=no_cores, cls="class", control="control",
+    #                  overwrite=FALSE, test_name="t_byLayer", diminish=FALSE,
+    #                  node_features="prop", edge_features="NONE")
     
     for (type in c("node", "edge")) {
         if (base::is.null(fg@summary[[type]])) next
         for (index in seq_len(length(fg@summary[[type]]))) {
             summary_meta <- fg@summary_desc[[type]][index,]
+            plot_path_ <- paste0(result_dir,"/plots/", type, "_",
+                                 paste0(summary_meta, collapse="_"))
             
             try ({
                 ## cell hierarchy plot
                 p <- fg_get_summary(fg, type=type, index=index)$values
-                path <- paste0(ch_dir,"/",type,"_",
-                               paste0(summary_meta,collapse="_"))
-                
+                path <- paste0(plot_path_,"/cell_hierarchy_")
                 gr <- fg_plot(fg, type="node", p_thres=.01, index=index,
-                              show_bgedges=TRUE, path=path, label_max=20,
+                              show_bgedges=FALSE, path=path, label_max=15,
                               node_labels="NONE")
+                if (is.null(gr)) next
                 
                 # plot only one group and their ancestors (cell pops with same markers)
                 pparen <- fg@edge_list$parent
@@ -1072,6 +997,8 @@ for (result_dir in append(result_dirs[result_dirs_inds],
     }
 }
 time_output(start1)
+
+
 
 
 ```
@@ -1372,7 +1299,12 @@ time_output(start1)
 ```
 
 
+# custom plots for each data set
 
+```{r}
+
+
+```
 
 
 
