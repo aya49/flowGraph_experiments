@@ -39,7 +39,7 @@ source(paste0(root,"/src/functions_generic.R"))
 source(paste0(root,"/src/elbow.R"))
 
 ## libraries
-libr(c("flowCore", "flowType",
+libr(c("flowCore", "flowType", "RchyOptimyx",
        "doParallel", "foreach",
        "stringr", "furrr", "purrr",
        "plotly", "htmlwidgets", "ggpubr"))
@@ -997,8 +997,26 @@ for (result_dir in result_dirs) {
     }
 }
 time_output(start1)
+```
 
-
+### Rchy plots -- experimental
+```{r}
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs) {
+    # if (!grepl("genentech",result_dir)) next
+    print(result_dir)
+    try ({
+        # load flowGraph
+        fg = get(load(paste0(result_dir,"/fg.Rdata")))
+        
+        for (index in seq_len(length(fg@summary$node))) {
+            pdf(paste0(result_dir,"/plots/node_",
+                       paste0(unlist(fg@summary_desc$node[index,]),collapse="_"),"/rchy.pdf"))
+            fg_plot_rchy(fg, index=index, phen_start_n=3, pathCount=5)
+            dev.off()
+        }
+    })
+}
 
 
 ```
@@ -1303,6 +1321,8 @@ time_output(start1)
 
 ```{r}
 
+# flowcap_6 -- show these labels
+c("FS+CD117+CD34+CD38-", "CD45-CD34+","CD45+CD34-", "CD117+CD45+", "FS-CD45-CD38+", "FS-CD117+CD45-CD38+",  "FS-CD117+CD45-CD34+CD38+")
 
 ```
 

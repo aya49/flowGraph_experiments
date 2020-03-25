@@ -1488,9 +1488,6 @@ df_rchy <- aws.s3::s3read_using(
     object = sprintf("s3://epichipc-main/%s",paths_all_temp[3])
 ) # unadjusted p-values; rchyoptimyx input
 
-## how to download files?
-## there is a BCELL and a MYELOID panel
-## 2.50ml or below antibody concentration is uncertain
 
 #----- get results response Bcells panel ---------------
 

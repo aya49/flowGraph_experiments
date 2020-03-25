@@ -1,0 +1,143 @@
+
+## build flowGraph library
+
+The flowGraph library creates SpecEnr values based off of the proportion of cell populations. The library can be downloaded [here](https://github.com/aya49/flowGraph).
+
+Build the library!
+
+```{r}
+setwd("/home/joann/EPICHIPC/.Ruserdata/ayue/flowGraph")
+# setwd("/home/joann/EPICHIPC/.Ruserdata/smontante")
+```
+
+## preliminaries
+
+ Import libraries and functions
+```{r}
+## import libraries and connection to AWS system ###################
+source("/home/joann/EPICHIPC/.Ruserdata/smontante/Utils.R")
+source("/home/joann/EPICHIPC/.Ruserdata/ayue/src/00_data_epichipc_functions.R")
+
+#----- Call libraries -----
+#*** load data
+library(aws.s3)
+library(aws.signature)
+library(aws.ec2metadata)
+#***
+
+library(data.table)
+library(parallel)
+library(stringr)
+library(readxl)
+library(RchyOptimyx)
+library(plyr)
+library(qvalue)
+
+#---- Call the lists of the Amazon S3 buckets ----
+bucketlist() #*** buckets are a large folder, we are interested in the epichipc-main folder
+```
+
+
+## get feature values
+
+load flowtype data and summary statistics as provided by sebastiano and me
+
+```{r}
+paths_all_temp <- get_bucket_df(
+    "epichipc-main",
+    prefix = "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data",
+    max = Inf 
+)
+
+paths_all_temp <- paths_all_temp$Key
+path_data <- paths_all_temp[grepl("flowType_results_response_Bcells", paths_all_temp)]
+df_flowType_results_Bcells_final <- aws.s3::s3read_using(
+    FUN = read.csv,
+    colClasses="character",
+    object = sprintf("s3://epichipc-main/%s", path_data)
+)
+
+path_rchy <- paths_all_temp[grepl("rchyoptimyx_df_Bcells_full_data_cells_ul_blood", paths_all_temp)]
+df_rchy <- aws.s3::s3read_using(
+    FUN = read.csv,
+    colClasses="character",
+    object = sprintf("s3://epichipc-main/%s", path_rchy)
+) # unadjusted p-values; rchyoptimyx input; cells_ul_blood
+
+## RCHY! with standard p-value
+rchyoptimyx_results(
+    df_rchy,
+    panel = "Bcells",
+    n_path_counts = 2,
+    trim_level = 0,
+    n_starting_phenotypes = 2,
+    select_specific_starting_phenotypes = "None"
+)
+
+fg_dir <- "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data/fg.rds"
+# aws.s3::s3load(sprintf("s3://epichipc-main/%s",fg_dir)) # fg
+
+fg@summary_desc$node[,1:2]
+
+indices <- c(25,45,27,47,26,46,28,48)
+
+```
+
+
+```{r}
+# convert p values from fg into rchyoptymix p values;
+# starts from live cells as root
+fg_to_df <- function(fg, type="node", index=NULL, summary_meta=NULL) {
+    s <- fg_get_summary(fg, type=type, index=index, summary_meta=summary_meta)
+    data.frame(phenotypes=fg@graph$v$phenotype, p_value=s$values,
+               pheno_code=fg@graph$v$phenocode)
+}
+
+# sebastiano used: c("CD38+CD138+IgD-IgM+CD10+CD38CD10-", "CD38+CD138+IgD-IgM+CD27-CD10-")
+# plot rchyoptimyx plots
+for (i in indices) {
+    print(fg@summary_desc$node[i,1:2])
+    fg_plot_rchy(fg, index=i)
+    fg_plot_rchy(fg, index=i, phen_start=c("CD38+CD138+IgD-IgM+CD10+CD38CD10-", "CD38+CD138+IgD-IgM+CD27-CD10-"))
+}
+```
+
+```{r}
+## p vs difference plots
+for (i in indices) 
+    plot(fg_plot_pVSdiff(fg, index=i))
+
+```
+
+```{r}
+## qq plots
+for (i in indices)
+    plot(fg_plot_qq(fg, index=i))
+for (i in indices)
+    plot(fg_plot_qq(fg, index=i, logged=TRUE))
+# plot.ecdf(fg@summary$node[[i]]$values)
+
+```
+
+
+```{r}
+## box plots
+# top 10 significant wilcox/t-test BH adjusted p-values
+i=indices[4]    
+# print(fg@summary_desc$node[i,1:2])
+headp <- sort(fg@summary$node[[i]]$values)[fg_get_summary(fg, index=55)$values==0]
+# print(headp)
+for (j in names(headp)[1:8])
+    plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
+```
+
+```{r}
+## box plots
+# top 10 significant wilcox/t-test BH adjusted p-values
+i=indices[8]    
+# print(fg@summary_desc$node[i,1:2])
+headp <- sort(fg@summary$node[[i]]$values[fg_get_summary(fg, index=56)$values==0])
+# print(headp)
+for (j in names(headp)[1:8])
+    plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
+```
