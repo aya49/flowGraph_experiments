@@ -340,7 +340,7 @@ combine_all_flowtype_dfs<-function(paths_all_flowType_results,type_data="great_L
 ########################## Bcell panel ######################################################
 #############################################################################################
 
-
+#***
 project_dir <- "/mnt/f/FCS data/Tobias Kollmann"
 data_dirs <- list.dirs(paste0(project_dir,"/flowType_data"), recursive=TRUE, full.names=FALSE)
 data_dirs <- gsub("/df_thresholds","", data_dirs[grepl("df_thresholds",data_dirs)] )
@@ -359,7 +359,7 @@ for (di in data_dirs) {
 }
 end_time0 <- Sys.time()
 running_time0<-end_time0 - start_time0; print(running_time0)
-
+#***
 
 
 

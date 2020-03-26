@@ -231,6 +231,13 @@ time_output(start, "data_bodenmiller")
 ```
 
 
+## EPIC HIPC
+
+```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+## input directories
+```
+
+
 ## flowCap-II AML
 
 This section preprocesses data from the flowCAP-II challenge AML data set comparing AML samples, healthy samples, and (generated below) mixed samples containing cells from AML and healthy samples.
@@ -436,7 +443,7 @@ meta_file0$train = ifelse(meta_file0$type=="train",TRUE,FALSE)
 meta_file0 = meta_file0[,-4]
 
 ## feat/file-cell-count: load and compile flowtype count files
-#  The total size of the 5 globals that need to be exported for the future expression (‘.f()’) is 746.88 MiB. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are ‘ep’ (579.19 MiB of class ‘numeric’), ‘mp’ (102.64 MiB of class ‘numeric’) and ‘pparen’ (55.13 MiB of class ‘list’).
+#  The total size of the 5 globals that need to be exported for the future expression (�?.f()�?) is 746.88 MiB. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are ‘ep�? (579.19 MiB of class ‘numeric�?), ‘mp�? (102.64 MiB of class ‘numeric�?) and ‘pparen�? (55.13 MiB of class ‘list�?).
 options(future.globals.maxSize=3000000000)
 fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores,
                norm_path=paste0(result_dir0,"/count_norm"),
