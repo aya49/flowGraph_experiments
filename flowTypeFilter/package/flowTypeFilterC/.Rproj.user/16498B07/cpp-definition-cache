@@ -1,0 +1,323 @@
+[
+    {
+        "definitions" : [
+            {
+                "column" : 31,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 8,
+                "line" : 31,
+                "name" : "valueWithIndex",
+                "parent_name" : "",
+                "usr" : "c:countsAndMeans.cpp@T@valueWithIndex"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 33,
+                "name" : "comparator(const valueWithIndex &, const valueWithIndex &)",
+                "parent_name" : "",
+                "usr" : "c:@F@comparator#&1$@N@std@N@__1@S@pair>#d#I#S0_#"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 43,
+                "name" : "is_in_range(const double, const vector<double> &, const int, const int)",
+                "parent_name" : "",
+                "usr" : "c:@F@is_in_range#1d#&1$@N@std@N@__1@C@vector>#d#$@N@std@N@__1@C@allocator>#d#1I#1I#"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 67,
+                "name" : "is_in_filter(const double, const double, const vector<double>, const int)",
+                "parent_name" : "",
+                "usr" : "c:@F@is_in_filter#1d#1d#1$@N@std@N@__1@C@vector>#d#$@N@std@N@__1@C@allocator>#d#1I#"
+            },
+            {
+                "column" : 18,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 114,
+                "name" : "terminal_phenotype(const char *, const double *, vector<vector<double> > &, const int, const int *, const int, const int, const int *)",
+                "parent_name" : "",
+                "usr" : "c:@F@terminal_phenotype#*1C#*1d#&$@N@std@N@__1@C@vector>#$@N@std@N@__1@C@vector>#d#$@N@std@N@__1@C@allocator>#d#$@N@std@N@__1@C@allocator>#S4_#1I#*1I#1I#1I#S7_#"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 187,
+                "name" : "elements(tfl::NumberGenerator &, char *, char *)",
+                "parent_name" : "",
+                "usr" : "c:@F@elements#&$@N@tfl@C@NumberGenerator#*C#S2_#"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 211,
+                "name" : "calculateMFIs(const dynamic_bitset<> &, const vector<vector<double> *> &, const vector<map<int, int> *> &, NumericVector &)",
+                "parent_name" : "",
+                "usr" : "c:@F@calculateMFIs#&1$@N@boost@C@dynamic_bitset>#l#$@N@std@N@__1@C@allocator>#l#&1$@N@std@N@__1@C@vector>#*$@N@std@N@__1@C@vector>#d#$@N@std@N@__1@C@allocator>#d#$@N@std@N@__1@C@allocator>#S5_#&1$@N@std@N@__1@C@vector>#*$@N@std@N@__1@C@map>#I#I#$@N@std@N@__1@S@less>#I#$@N@std@N@__1@C@allocator>#$@N@std@N@__1@S@pair>#1I#I#$@N@std@N@__1@C@allocator>#S11_#&$@N@Rcpp@C@Vector>#VI14#@N@Rcpp@CT>1#T@PreserveStorage#"
+            },
+            {
+                "column" : 6,
+                "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+                "kind" : 6,
+                "line" : 277,
+                "name" : "calculateCountsAndMeans(const int, const int *, const int, const int, vector<vector<double> > &, const int, const int *, double *, NumericMatrix, const int, IntegerVector &, NumericMatrix &, StringVector &)",
+                "parent_name" : "",
+                "usr" : "c:@F@calculateCountsAndMeans#1I#*1I#1I#1I#&$@N@std@N@__1@C@vector>#$@N@std@N@__1@C@vector>#d#$@N@std@N@__1@C@allocator>#d#$@N@std@N@__1@C@allocator>#S3_#1I#S0_#*d#$@N@Rcpp@C@Matrix>#VI14#@N@Rcpp@CT>1#T@PreserveStorage#1I#&$@N@Rcpp@C@Vector>#VI13#@N@Rcpp@CT>1#T@PreserveStorage#&S7_#&$@N@Rcpp@C@Vector>#VI16#@N@Rcpp@CT>1#T@PreserveStorage#"
+            }
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.cpp",
+        "file_last_write" : 1579463540
+    },
+    {
+        "definitions" : [
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/countsAndMeans.h",
+        "file_last_write" : 1579463540
+    },
+    {
+        "definitions" : [
+            {
+                "column" : 8,
+                "file" : "/home/rstudio/flowTypeFilterC/src/exceptions.h",
+                "kind" : 2,
+                "line" : 15,
+                "name" : "Exception",
+                "parent_name" : "",
+                "usr" : "c:@N@tfl@C@Exception"
+            },
+            {
+                "column" : 11,
+                "file" : "/home/rstudio/flowTypeFilterC/src/exceptions.h",
+                "kind" : 7,
+                "line" : 25,
+                "name" : "getMsg",
+                "parent_name" : "Exception",
+                "usr" : "c:@N@tfl@C@Exception@F@getMsg#"
+            },
+            {
+                "column" : 8,
+                "file" : "/home/rstudio/flowTypeFilterC/src/exceptions.h",
+                "kind" : 2,
+                "line" : 28,
+                "name" : "NumberGeneratorOverflowException",
+                "parent_name" : "",
+                "usr" : "c:@N@tfl@C@NumberGeneratorOverflowException"
+            }
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/exceptions.h",
+        "file_last_write" : 1579463540
+    },
+    {
+        "definitions" : [
+            {
+                "column" : 15,
+                "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.cpp",
+                "kind" : 6,
+                "line" : 15,
+                "name" : "combinations(unsigned int, unsigned int)",
+                "parent_name" : "",
+                "usr" : "c:@F@combinations#i#i#"
+            },
+            {
+                "column" : 14,
+                "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.cpp",
+                "kind" : 6,
+                "line" : 35,
+                "name" : "calcNumPop(int, int)",
+                "parent_name" : "",
+                "usr" : "c:@F@calcNumPop#I#I#"
+            },
+            {
+                "column" : 25,
+                "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.cpp",
+                "kind" : 6,
+                "line" : 50,
+                "name" : "convertThresholds(List)",
+                "parent_name" : "",
+                "usr" : "c:@F@convertThresholds#$@N@Rcpp@C@Vector>#VI19#@N@Rcpp@CT>1#T@PreserveStorage#"
+            },
+            {
+                "column" : 10,
+                "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.cpp",
+                "kind" : 6,
+                "line" : 77,
+                "name" : "countCells(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP)",
+                "parent_name" : "",
+                "usr" : "c:@F@countCells#*$@S@SEXPREC#S0_#S0_#S0_#S0_#S0_#S0_#S0_#S0_#"
+            }
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.cpp",
+        "file_last_write" : 1579467180
+    },
+    {
+        "definitions" : [
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/flowTypeFilterC.h",
+        "file_last_write" : 1579467182
+    },
+    {
+        "definitions" : [
+            {
+                "column" : 35,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 73,
+                "name" : "operator=(const tfl::NumberGenerator &)",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@operator=#&1$@N@tfl@C@NumberGenerator#"
+            },
+            {
+                "column" : 30,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 95,
+                "name" : "data",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@data#"
+            },
+            {
+                "column" : 30,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 100,
+                "name" : "text",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@text#"
+            },
+            {
+                "column" : 35,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 112,
+                "name" : "first",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@first#"
+            },
+            {
+                "column" : 35,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 127,
+                "name" : "next",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@next#"
+            },
+            {
+                "column" : 23,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 166,
+                "name" : "hasNext",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@hasNext#"
+            },
+            {
+                "column" : 23,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 180,
+                "name" : "resetLessSignificantNonZeroDigits(int)",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@resetLessSignificantNonZeroDigits#I#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 201,
+                "name" : "greatestNonZeroIndex",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@greatestNonZeroIndex#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 209,
+                "name" : "firstIncreasableIndex",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@firstIncreasableIndex#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 222,
+                "name" : "firstZeroGreaterThanANonZeroIndex",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@firstZeroGreaterThanANonZeroIndex#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 230,
+                "name" : "getLength",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@getLength#"
+            },
+            {
+                "column" : 34,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 241,
+                "name" : "neighbor(int)",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@neighbor#I#"
+            },
+            {
+                "column" : 23,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 261,
+                "name" : "dataToText(const char *, char *)",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@dataToText#*1C#*C#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 268,
+                "name" : "nonZeroCount",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@nonZeroCount#"
+            },
+            {
+                "column" : 22,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+                "kind" : 7,
+                "line" : 277,
+                "name" : "firstDiff(const tfl::NumberGenerator &)",
+                "parent_name" : "NumberGenerator",
+                "usr" : "c:@N@tfl@C@NumberGenerator@F@firstDiff#&1$@N@tfl@C@NumberGenerator#"
+            }
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.cpp",
+        "file_last_write" : 1579463540
+    },
+    {
+        "definitions" : [
+            {
+                "column" : 8,
+                "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.h",
+                "kind" : 2,
+                "line" : 12,
+                "name" : "NumberGenerator",
+                "parent_name" : "",
+                "usr" : "c:@N@tfl@C@NumberGenerator"
+            }
+        ],
+        "file" : "/home/rstudio/flowTypeFilterC/src/numberGenerator.h",
+        "file_last_write" : 1579463540
+    }
+]

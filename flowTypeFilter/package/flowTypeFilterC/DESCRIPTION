@@ -1,0 +1,18 @@
+Package: flowTypeFilterC
+Type: Package
+Title: Phenotyping Flow Cytometry Assays
+Version: 1.0
+Date: 2020-01-20
+Author: Mehrnoush Malek, Nima Aghaeepour, Kieran O'Neill, Adrin Jalali
+Maintainer: Mehrnoush Malek <mehrmalek@gmail.com>
+Description: Phenotyping Flow Cytometry Assays using multidimentional expansion of single or double dimentional partitions.
+Imports: Biobase, graphics, grDevices, methods, flowCore, flowMeans,
+        sfsmisc, rrcov, flowClust, flowMerge, stats
+Depends: R (>= 2.10), Rcpp (>= 0.10.4), BH (>= 1.51.0-3)
+LinkingTo: Rcpp, BH
+Suggests: xtable
+biocViews: FlowCytometry
+License: Artistic-2.0
+LazyLoad: yes
+Packaged: 2019-12-09 00:00:00 UTC; biocbuild
+NeedsCompilation: yes

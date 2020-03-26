@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1579464208977.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "947685EA",
+    "lastKnownWriteTime" : 1579463451,
+    "last_content_update" : 1579463451,
+    "path" : "~/flowTypeFilterC/R/flowTypeFilterC.R",
+    "project_path" : "R/flowTypeFilterC.R",
+    "properties" : {
+        "cursorPosition" : "327,0",
+        "scrollLine" : "323"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
