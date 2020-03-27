@@ -298,7 +298,7 @@ combine_all_flowtype_dfs<-function(paths_all_flowType_results,type_data="great_L
     list_all_df<-list()
     # These are the subjects IDs with the best quality regarding the antibody concentration (reported on the server)
     subject_IDs_great_LOQ<-"G014K|G016D|G018C|G026E|G028G|G033F|G053B|G063J|G067C|G068A|G073K|G078D|G089J|G093G|G094J|G102K|G113F|G118B|G124C|G134F|G144E|G150K|G152D|G154G|G159F|G174A|G175E|G181C|G183G|G200J|G208B|G216J|G233G|G241A|G260G|G264A|G290B|G306H|G308A|G311F|G312J|G346D|G366B|G388G|G404K|G411J|G425G|G433D|G453H|G458E|G468K|G483J|G492K|G499D|G501C|G502A|G511G|G521E|G530H|G532K|G533C|G537J|G542C|G556D|G557E|G567B|G572E|G575G|G576C|G582J|G587H|G616F|G617K|G625J|G634G|G650H|G655F|G659D|G667A|G685K|G688E|G691G|G700D|G703E|G704C|G713J"
-    info_df<-read.csv(file = "/home/rstudio/data/Samples_info_plates_all_batches_complete.csv")
+    info_df<-read.csv(file = "/mnt/f/FCS data/Tobias Kollmann/Samples_info_plates_all_batches_complete.csv")
     inds<-grep("V2|Visit 2",info_df$Visit.Num)
     visitID_v2<-as.character(info_df$Visit.ID[inds])
     string_visit_v2<-paste0(visitID_v2,collapse = "|")
@@ -337,8 +337,7 @@ combine_all_flowtype_dfs<-function(paths_all_flowType_results,type_data="great_L
 ################# execute functions #####################################################################################
 #########################################################################################################################
 # the fcs files are stored on the bioinformatic server
-########################## Bcell panel ######################################################
-#############################################################################################
+
 
 #***
 project_dir <- "/mnt/f/FCS data/Tobias Kollmann"
@@ -364,8 +363,8 @@ running_time0<-end_time0 - start_time0; print(running_time0)
 
 
 ########## combine all dfs #########
-paths_all_flowType_results_Bcells<-list.files(paste0(project_dir, "/flowType_results/Bcell_panel/"),recursive = T,full.names = T)
-paths_all_flowType_results_myeloid<-list.files(paste0(project_dir, "/flowType_results/Myeloid_panel/"),recursive = T,full.names = T)
+paths_all_flowType_results_Bcells<-list.files(paste0(project_dir, "/flowType_results/Bcell_panel/"),recursive = T,full.names = T, pattern=".csv")
+paths_all_flowType_results_myeloid<-list.files(paste0(project_dir, "/flowType_results/Myeloid_panel/"),recursive = T,full.names = T, pattern=".csv")
 # NOTE: I combine the results of each plate in one df,but I performed a filtering of the samples considering the samples with an LOQ greater than 2.5
 # The LOQ is the limit of quantification related to the quality of measurement of the antibody concentration that I need to create the groups in the server.
 # So,in summary, not all samples I have been used,only 86  subjects out of 711.

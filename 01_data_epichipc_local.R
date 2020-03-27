@@ -23,32 +23,7 @@ bucketlist() #*** buckets are a large folder, we are interested in the epichipc-
 
 
 
-# -------------- get flowtype results paths -----
-#*** only save data in this folder; don't touch Rdata/integration; can't delete files on the server, must email sofia
-#*** this function lists all the paths in a folder
-paths_all_temp <- get_bucket_df(
-    "epichipc-main", #list bucket name
-    # prefix = "Flow_Cytometry/Rdata", #list the name of the specific folder
-    # prefix = "Flow_Cytometry/Rdata/FlowAnalysis/FlowType_results", # all flowtype results
-    prefix = "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data", #list the name of the specific folder
-    max = Inf #this allows an infinite number of objects (default is  1000)
-)
-paths_all_temp <- paths_all_temp$Key
-# [1] "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data/"
-# [2] "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data/flowType_results_response_Bcells.csv"
-# [3] "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data/rchyoptimyx_df_Bcells_full_data_cells_ul_blood.csv"
-
-# PREPROSSED flowtype data for all samples (0s removed)
-# class: vaccine_response
-## there is a BCELL and a MYELOID panel
-## only samples with above 2.50ml antibody concentration is kept
-path_data <- paths_all_temp[grepl("flowType_results_response_Bcells", paths_all_temp)]
-df_flowType_results_Bcells_final <- aws.s3::s3read_using(
-    FUN = read.csv,
-    colClasses="character",
-    object = sprintf("s3://epichipc-main/%s", path_data)
-)
-# columns: X       samples_name phenotype_names cell_counts Pheno_codes vaccine_response randomization_group_vec sex_vec cells_ul_blood cell_frequencies
+# phenotype names decoding
 
 
 ## convert flowType values into matrix

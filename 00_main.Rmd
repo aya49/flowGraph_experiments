@@ -235,6 +235,27 @@ time_output(start, "data_bodenmiller")
 
 ```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input directories
+ft_dir <- "/mnt/f/FCS data/Tobias Kollmann/flowType_results/"
+
+## load flowtype files
+ft_paths <- list.files(ft_dir, recursive=TRUE, full.names=TRUE, pattern=".csv")
+mcl <- unlist(purrr::map(ft_paths, function(x) {
+    a <- read.csv(gsub("//","/",x))
+    ua <- unique(a$samples_name)
+    b <- purrr::map(ua, function(y)
+        a$cell_counts[a$sample_name==y])
+    names(b) <- ua
+    b
+}),
+retursive=FALSE)
+mc <- do.call(rbind, mcl)
+rownames(mc) <- names(mcl)
+phenocode <- stringr::str_pad(
+    read.csv(gsub("//","/",ft_paths[1]))$Pheno_codes,
+    width=nchar(as.character(max(a$Pheno_codes))), side="left", pad="0")
+colnames(mc) <- phenotype <- read.csv(gsub("//","/",ft_paths[1]))$phenotype_names
+
+
 ```
 
 
