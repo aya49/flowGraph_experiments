@@ -79,7 +79,7 @@ fg_dir <- "Flow_Cytometry/Rdata/FlowAnalysis/Alice_Yue_data/fg.rds"
 
 fg@summary_desc$node[,1:2]
 
-indices <- c(25,45,27,47,26,46,28,48)
+indices <- c(27,47,28,48)
 
 ```
 
@@ -119,13 +119,12 @@ for (i in indices)
 
 ```
 
-
 ```{r}
 ## box plots
 # top 10 significant wilcox/t-test BH adjusted p-values
-i=indices[4]    
+i=indices[2]    
 # print(fg@summary_desc$node[i,1:2])
-headp <- sort(fg@summary$node[[i]]$values)[fg_get_summary(fg, index=55)$values==0]
+headp <- sort(fg@summary$node[[i]]$values)
 # print(headp)
 for (j in names(headp)[1:8])
     plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
@@ -134,10 +133,62 @@ for (j in names(headp)[1:8])
 ```{r}
 ## box plots
 # top 10 significant wilcox/t-test BH adjusted p-values
-i=indices[8]    
+i=indices[2]    
 # print(fg@summary_desc$node[i,1:2])
-headp <- sort(fg@summary$node[[i]]$values[fg_get_summary(fg, index=56)$values==0])
+headp <- sort(fg@summary$node[[i]]$values)[fg_get_summary(fg, index=55)$values<.5]
 # print(headp)
 for (j in names(headp)[1:8])
     plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
+```
+
+```{r}
+## box plots
+# top 10 significant wilcox/t-test BH adjusted p-values
+i=indices[4]    
+# print(fg@summary_desc$node[i,1:2])
+headp <- sort(fg@summary$node[[i]]$values)
+# print(headp)
+for (j in names(headp)[1:8])
+    plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
+```
+
+```{r}
+## box plots
+# top 10 significant wilcox/t-test BH adjusted p-values
+i=indices[4]    
+# print(fg@summary_desc$node[i,1:2])
+headp <- sort(fg@summary$node[[i]]$values[fg_get_summary(fg, index=56)$values<.5])
+# print(headp)
+for (j in names(headp)[1:8])
+    plot(fg_plot_box(fg, index=i, cpop=j, paired=FALSE, dotplot=FALSE))
+```
+
+```{r}
+p_thres <- .1
+
+i=indices[1] # cells_ul_blood
+j=indices[3] # SpecEnr_cells_ul_blood
+
+ip <- fg@summary$node[[i]]$values<p_thres
+jp <- fg@summary$node[[j]]$values<p_thres
+
+sum(ip)
+sum(jp)
+
+sum(ip & !jp)
+sum(!ip & jp)
+
+iip <- fg@summary$node[[i]]$values<p_thres & fg_get_summary(fg, index=55)$values<.5
+jjp <- fg@summary$node[[j]]$values<p_thres & fg_get_summary(fg, index=56)$values<.5
+
+sum(iip)
+sum(jjp)
+
+sum(iip & !jjp)
+sum(!iip & jjp)
+
+inotj <- sort(fg@summary$node[[i]]$values[!iip & jjp])
+head(inotj)
+tail(inotj)
+
 ```

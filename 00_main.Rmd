@@ -236,25 +236,178 @@ time_output(start, "data_bodenmiller")
 ```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input directories
 ft_dir <- "/mnt/f/FCS data/Tobias Kollmann/flowType_results/"
+meta_dir <- "/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/epichipc_20200318"
 
-## load flowtype files
+## get meta data
+process_file <- function(file_path) {
+    txt <- NULL
+    con = file(file_path, "r")
+    while (TRUE) {
+        line = readLines(con, n=1)
+        if (length(line)==0) break
+        txt <- append(txt, line)
+    }
+    close(con)
+    txt
+}
+meta_id <- process_file(paste0(meta_dir, "/meta_id.txt"))
+meta_id <- gsub("[ \"]","",meta_id)
+meta_id <- unlist(purrr::map(stringr::str_split(meta_id,"FCT"), function(x) 
+    paste0("FCT",x[-1]) ))
+
+meta_class <- process_file(paste0(meta_dir, "/meta_vaccine_response.txt"))
+meta_class <- unlist(purrr::map(meta_class, stringr::str_extract_all, "negative|positive"))
+
+meta_cb <- process_file(paste0(meta_dir, "/meta_cells_ul_blood.txt"))
+meta_cb <- unlist(purrr::map(meta_cb, stringr::str_extract_all, "[0-9]+[.][0-9]+"))
+meta_cb <- as.numeric(meta_cb)
+
+## load flowtype files and prepare count matrix (BCell panel only)
 ft_paths <- list.files(ft_dir, recursive=TRUE, full.names=TRUE, pattern=".csv")
+ft_paths <- ft_paths[grepl("Bcell",ft_paths)]
 mcl <- unlist(purrr::map(ft_paths, function(x) {
     a <- read.csv(gsub("//","/",x))
-    ua <- unique(a$samples_name)
-    b <- purrr::map(ua, function(y)
-        a$cell_counts[a$sample_name==y])
+    am <- as.character(a$samples_name)
+    ua <- unique(am)
+    b <- purrr::map(ua, function(y) a$cell_counts[am==y])
     names(b) <- ua
     b
-}),
-retursive=FALSE)
+}), recursive=FALSE)
 mc <- do.call(rbind, mcl)
 rownames(mc) <- names(mcl)
-phenocode <- stringr::str_pad(
-    read.csv(gsub("//","/",ft_paths[1]))$Pheno_codes,
-    width=nchar(as.character(max(a$Pheno_codes))), side="left", pad="0")
-colnames(mc) <- phenotype <- read.csv(gsub("//","/",ft_paths[1]))$phenotype_names
 
+temp <- read.csv(gsub("//","/",ft_paths[1]))
+inds <- temp[,1]==temp[1,1]
+phenocode <- stringr::str_pad(
+    temp$Pheno_codes[inds],
+    width=nchar(as.character(max(temp$Pheno_codes[inds]))), 
+    side="left", pad="0")
+phenotype <- as.character(temp$phenotype_names[inds])
+phenotype[1] <- ""
+phenotype <- gsub("NotSSCACD19", "SSCACD19-", phenotype)
+phenotype <- gsub("NotSSCACD34", "SSCACD34-", phenotype)
+phenotype <- gsub("NotCD38CD10", "CD38CD10-", phenotype)
+phenotype <- gsub("SSCACD19[_]", "SSCACD19+", phenotype)
+phenotype <- gsub("SSCACD34[_]", "SSCACD34+", phenotype)
+phenotype <- gsub("CD38CD10[_]", "CD38CD10+", phenotype)
+phenotype <- gsub("_","",phenotype)
+colnames(mc) <- phenotype
+
+# prepare flowGraph & add cells_ul_blood features
+options(future.globals.maxSize=30000000000) #
+fg <- flowGraph(mc, cls=meta_class, no_cores=no_cores, calculate_summary=FALSE)
+fg <- fg_add_feature(fg, type="node", feature="cells_ul_blood", m=meta_cb*fg@feat$node$prop)
+fg <- fg_add_feature(
+    fg, type="node", feature="expect_cells_ul_blood", overwrite=FALSE,
+    m=meta_cb*fg@feat$node$expect_prop)
+SE_cb <- log(fg@feat$node$cells_ul_blood/fg@feat$node$expect_cells_ul_blood)
+e0 <- as.matrix(fg@feat$node$expect_cells_ul_blood)==0
+SE_cb[is.nan(as.matrix(SE_cb))] <- 0
+SE_cb[e0] <- log(as.matrix(fg@feat$node$cells_ul_blood)[e0])
+SE_cb[fg@feat$node$cells_ul_blood==0] <- 0
+fg <- fg_add_feature(fg, type="node", feature="SpecEnr_cells_ul_blood",
+                     m=SE_cb, overwrite=TRUE)
+
+# calculate summary statistics
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox",
+                 adjust_custom="none",
+                 diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox_diminish",
+                 adjust_custom="none",
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox_byLayer",
+                 cls="vaccine_response",
+                 diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores,
+                 cls="vaccine_response",
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox_BH",
+                 adjust_custom="BH",
+                 diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox_BH_diminish",
+                 adjust_custom="BH",
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+
+st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, error=function(e) 0)
+test_custom <- function(x,y) {
+    if (st(x)>0.05 & st(y)>0.05)
+        return(tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
+    return(tryCatch(stats::wilcox.test(x,y)$p.value, error=function(e) 1))
+}
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt",, adjust_custom="none",
+                 diminish=FALSE, test_custom=test_custom,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_diminish",, adjust_custom="none",
+                 test_custom=test_custom,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer",
+                 test_custom=test_custom,
+                 diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
+                 test_custom=test_custom,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH",
+                 test_custom=test_custom,
+                 diminish=FALSE, adjust_custom="BH",
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH_diminish",
+                 test_custom=test_custom,
+                 adjust_custom="BH",
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+mt <- function(x,y) tryCatch(stats::mood.test(x,y)$p.value, error=function(e) 1)
+fg <- fg_summary(fg, no_cores=no_cores, test_name="mood",
+                 test_custom=mt,
+                 adjust_custom="none", diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+qt <- function(x,y)
+    min( sum(x<.1 & x>-.1)/length(x), sum(y<.1 & y>-.1)/length(y))
+fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
+                 test_custom=qt,
+                 adjust_custom="none", diminish=FALSE,
+                 node_features=c("prop","SpecEnr", "cells_ul_blood",
+                                 "SpecEnr_cells_ul_blood"),
+                 overwrite=FALSE)
+
+# save
+dir.create(paste0(root,"/result/epichipc_bcell"))
+save(fg, file=paste0(root,"/result/epichipc_bcell/fg.Rdata"))
 
 ```
 
@@ -914,14 +1067,29 @@ for (result_dir in result_dirs) {
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
         
     }
+    
+    qt <- function(x,y)
+    min( sum(x<.1 & x>-.1)/length(x), sum(y<.1 & y>-.1)/length(y))
+    fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
+                 test_custom=qt,
+                 adjust_custom="none", diminish=FALSE,
+                 node_features=c("prop","SpecEnr"),
+                 overwrite=FALSE)
+
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
 }
+```
 
+
+# Distance matrices comparison between features
+```{r}
+# see if different features create good distance matrices
+no_cores = detectCores()-1
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
-        save_fg_plots(fg, paste0(result_dir,"/plots"))
         # distance plots, not yet added so will do separately
         a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
                          edge_features="NONE",
@@ -930,7 +1098,6 @@ for (result_dir in result_dirs) {
                          plot_path=paste0(result_dir,"/plots/distance.png"))
         
     } else {
-        save_fg_plots(fg, paste0(result_dir,"/plots"), paired=TRUE)
         a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
                          edge_features="NONE",
                          cls="class",
@@ -945,7 +1112,18 @@ for (result_dir in result_dirs) {
 
 # Plots
 
-
+```{r}
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs) {
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    if (!grepl("pregnancy|bodenmiller", result_dir)) {
+        save_fg_plots(fg, paste0(result_dir,"/plots"))
+    } else {
+        save_fg_plots(fg, paste0(result_dir,"/plots"), paired=TRUE)
+    }
+}
+```
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 
@@ -1027,9 +1205,10 @@ for (result_dir in result_dirs) {
 time_output(start1)
 ```
 
-### Rchy plots -- experimental
+### Rchy plots (experimental)
 ```{r}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+result_dirs = result_dirs[grepl("pos",result_dirs)]
 for (result_dir in result_dirs) {
     # if (!grepl("genentech",result_dir)) next
     print(result_dir)
@@ -1040,7 +1219,7 @@ for (result_dir in result_dirs) {
         for (index in seq_len(length(fg@summary$node))) {
             pdf(paste0(result_dir,"/plots/node_",
                        paste0(unlist(fg@summary_desc$node[index,]),collapse="_"),"/rchy.pdf"))
-            fg_plot_rchy(fg, index=index, phen_start_n=3, pathCount=5)
+            fg_plot_rchy(fg, index=index, phen_start=fg@graph$v$phenotype[fg@graph$v$phenolayer==4], pathCount=5)
             dev.off()
         }
     })
@@ -1092,7 +1271,7 @@ for (result_dir in result_dirs) {
 
 
 
-## Cell hierarchy: summary statistics
+## Cell hierarchy plots (experimental)
 
 ```{r plots_feature, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 start1 = Sys.time()
