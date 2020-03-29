@@ -4,6 +4,9 @@
 
 # IMPC/IMPC-Results/3i/Panel_BM-cell/semisupervised/. Input folders are flowType and ParentPopulation. plus Settingup_argument.RData I mentioned.
 
+# runApp('/mnt/f/Brinkman group/current/Alice/flowGraph/flowType3/shiny')
+setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/flowType3/shiny")
+
 library(shiny)
 library(shinydashboard)
 library(flowTypeFilter)
@@ -17,9 +20,7 @@ library(visNetwork)
 library(ggiraph)
 library(ggplot2)
 library(flowCore)
-tmp <- load("~/data/semisupervised/flowType/BM 01092015_L000096981_001.labelled.fcs_FT.Rdata")
-ft <- get(tmp)
-rm(tmp)
+ft <- get(load("/mnt/f/FCS data/IMPC/IMPC-Results/3i/Panel_BM-cell/semisupervised/flowType/BM 01092015_L000096981_001.labelled.fcs_FT.Rdata"))
 max.p <- max(unlist(lapply(ft@PhenoCodes, function(x) length(which(as.numeric(unlist(strsplit(x,split = "")))!=0)))))
 ui <- dashboardPage(
   dashboardHeader(),

@@ -2,9 +2,10 @@
 #Written by Mehrnoush Malek (MM)
 #Revise: March 2020, MM
 
-setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric")
-source('src/flowType3/shiny/3i-Helper.R')
-source('src/flowType3/shiny/slidingRchy-Helper.R')
+# runApp('/mnt/f/Brinkman group/current/Alice/flowGraph/flowType3/shiny')
+setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/flowType3/shiny")
+source('3i-Helper.R')
+source('slidingRchy-Helper.R')
 
 library(flowType)
 library(flowCore)
