@@ -59,12 +59,15 @@ server <- function(input, output, session) {
     # })
     
     fg <<- get(load(fg_dir))
+    print(show(fg))
     
     # get table
     sdt <- fg@summary_desc$node
+    print(nrow(sdt))
     indices <- which(purrr::map_int(seq_len(nrow(sdt)), function(x) 
         sum(fg@summary$node[[x]]$values<p_thres)) >1)
     sdt <- sdt[indices,]
+    print(nrow(sdt))
     
     # print table
     output$table_summary = DT::renderDataTable(    
@@ -84,20 +87,22 @@ server <- function(input, output, session) {
     
     # row index of selected row
     index <- indices[input$table_summary_rows_selected]
+    print(index)
     
-    # load example flowtype file
-    ft <- get(load(ft_paths[1]))
-    
-    # phenotypes
-    phenotype <- sapply(
-        ft@PhenoCodes, flowTypeFilter::decodePhenotype, 
-        marker.names=fg@markers, 
-        partitions.per.marker=ft@PartitionsPerMarker, 
-        purrr::map_int(ft@Thresholds, length)==1)
-    print(paste("sample phenotypes:", head(phenotype)))
+    # # load example flowtype file
+    # ft <- get(load(ft_paths[1]))
+    # 
+    # # phenotypes
+    # phenotype <- sapply(
+    #     ft@PhenoCodes, flowTypeFilter::decodePhenotype, 
+    #     marker.names=fg@markers, 
+    #     partitions.per.marker=ft@PartitionsPerMarker, 
+    #     purrr::map_int(ft@Thresholds, length)==1)
+    # print(paste("sample phenotypes:", head(phenotype)))
     
     # load fcs.Rdata or matrix m
-    m <- fg@feat$node[[fg@summary_desc$feat[[index]]]]
+    m <- fg@feat$node[[fg@summary_desc$node$feat[[index]]]]
+    print(dim(m))
     
     # plot cell hierarchy
     gr <- fg_plot(fg, index=index, p_thres=p_thres, show_bgedges=FALSE, label_max=max_nodes)
@@ -123,6 +128,7 @@ server <- function(input, output, session) {
     
     output$plot_box <- renderGirafe({
         cpop <- selected_cpop()
+        print(cpop)
         if (!base::is.null(cpop)) {
             gg_box <- fg_plot_box(fg, cpop=cpop, paired=paired, shiny_plot=TRUE)
             gp <- ggiraph::girafe(
@@ -143,10 +149,10 @@ server <- function(input, output, session) {
     output$plot_dens <- renderPlot({
         cpop <- selected_cpop()
         label <- selected_label()
+        print(cpop)
+        print(label)
         
         if (!base::is.null(cpop) & !base::is.null(label)) {
-            print(cpop)
-            print(label)
             
             label_ind <- which(fg@meta[[fg@summary_desc$node$class[index]]]==label)
             f_ind <- label_ind[which.min(abs(m[label_ind,cpop]-median))]
@@ -171,7 +177,6 @@ server <- function(input, output, session) {
             gs <- CytoML::GatingSet(as(fcs,"flowSet"))
             sampleNames(gs) <- f_id
             
-            fs <- fcs@exprs
             gates <- ft@Thresholds
             scat.chans <- unlist(sapply (c("SSC-A","FSC-A"), function(x) 
                 grep(x, colnames(fs), value=T)))[1]
@@ -211,14 +216,14 @@ server <- function(input, output, session) {
                 poly <- list(polygonGate(filterId=filter_id, .gate=fdens@filter))
                 names(poly) <- sampleNames(gs)
                 
-                nodeID <- add(
+                nodeID <- flowWorkspace::gs_pop_add(
                     gs, poly, 
                     parent=tail(flowWorkspace::gs_get_pop_paths(gs),1))
                 recompute(gs)
             }
             print(class(gs))
             
-            autoplot(gs[[1]])
+            return(plotGate(gs[[1]], xbin=70, gpar=list(ncol=4)))
         }
     })
     

@@ -29,22 +29,35 @@ library(flowCore)
 #     length(which(as.numeric(unlist(strsplit(x,split="")))!=0)))))
 
 
-ui <- shinydashboard::dashboardPage(
-    shinydashboard::dashboardHeader(),
-    titlePanel("something nice", title="tab name"),
-    shinydashboard::dashboardSidebar( 
-        # shinyFiles::shinyDirButton("ft_folder", label="folder with flowType files (.Rdata)", "Select"),
-        # shinyFiles::shinyDirButton("fcs_folder", label="folder with processed fcs files (.Rdata/.fcs)", "Select"),
-        # shinyFiles::shinyDirButton("fg_folder", label="folder where flowGraph object is saved", "Select"),
-        # textInput("root_name", label="name of root node", value ="Live"),
-        # shiny::actionButton("go", "Start the analysis")
+ui <- dashboardPage(
+    dashboardHeader(title="testing!"),
+    dashboardSidebar(
+        sidebarMenu(
+            shinydashboard::dashboardSidebar( 
+                shinyFiles::shinyDirButton("ft_dir", label="flowType folder", "Select"),
+                shinyFiles::shinyDirButton("fcs_dir", label="fcs sample folder", "Select"),
+                shinyFiles::shinyDirButton("fg_dir", label="flowGraph folder", "Select")
+                # shiny::radioButtons(inputId="random", label="Plot random samples?",
+                #                     choices=c("YES","NO (select a sample)"), selected="YES"),
+                # shinyFiles::shinyFilesButton("fcs", multiple=F, label="Choose a sample ", "Upload"),
+                # shiny::radioButtons(inputId="calc", label="Load cell counts?",
+                #                     choices=c("YES","NO"), selected="YES"),
+                # shiny::radioButtons(inputId="method1", label="Statistical test",
+                #                     choices=c("p-value","Wilcoxon"), selected="p-value"),
+                # shiny::radioButtons(inputId="method2", label="P-value correction method",
+                #                     choices=c("BH","Bonferroni","fdr","NULL"), selected="BH"),
+                # shiny::sliderInput("slider1", "Cell count", min=2, max=1000, step=100, value=30),
+                # shiny::sliderInput("slider2", "Max layer", min=2, max=max.p, step=1, value=min(max.p, 6)),
+                # shiny::actionButton("go", "Start the analysis")
+            )
+        )
     ),
-    shinydashboard::dashboardBody(
-        shiny::fluidRow(
+    dashboardBody(
+        fluidRow(
             column(3, DT::dataTableOutput("table_summary")),
             column(9, ggiraph::girafeOutput("plot_hierarchy"))
         ),
-        shiny::fluidRow(
+        fluidRow(
             column(3, ggiraph::girafeOutput('plot_box',height=800)),
             column(9, plotOutput('plot_dens',width=1000,height=900)))
     )

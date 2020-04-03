@@ -225,6 +225,11 @@ fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, cls="class",
                          error=function(e) 1),
                path=paste0(result_dir,"/fg"))
 # fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
+
+fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
+                         node_features=c("prop","SpecEnr"), edge_features="NONE")
+
+
 save(fg, file=paste0(result_dir,"/fg.Rdata"))
 
 time_output(start, "data_bodenmiller")
@@ -548,6 +553,7 @@ for (tube in 2:4) {
     }
     
     fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file,
+                   label1="control",
                    path=paste0(result_dir0, "_", tube, "/fg"))
 
 
@@ -602,12 +608,15 @@ meta_file0 = meta_file0[,-4]
 ## feat/file-cell-count: load and compile flowtype count files
 #  The total size of the 5 globals that need to be exported for the future expression (???.f()???) is 746.88 MiB. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are ‘ep??? (579.19 MiB of class ‘numeric???), ‘mp??? (102.64 MiB of class ‘numeric???) and ‘pparen??? (55.13 MiB of class ‘list???).
 options(future.globals.maxSize=3000000000)
-fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores,
+fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores, label1="control",
                norm_path=paste0(result_dir0,"/count_norm"),
                test_custom=function(x,y)
                 tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
                          error=function(e) 1),
                path=paste0(result_dir0,"/fg"))
+
+fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
+                         node_features=c("prop","SpecEnr"), edge_features="NONE")
 
 save(fg, file=paste0(result_dir0,"/fg.Rdata"))
 
@@ -998,7 +1007,7 @@ time_output(start)
 no_cores =  1
 
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs) {
+for (result_dir in result_dirs) {try({
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     
@@ -1020,6 +1029,23 @@ for (result_dir in result_dirs) {
                         diminish=TRUE, test_custom="t",
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
     } else {
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_BH_diminish", adjust_custom="BH",
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
+                        diminish=TRUE,
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+                        overwrite=FALSE, test_custom="t",
+                        test_name="t_BH_diminish", adjust_custom="BH",
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+                        overwrite=FALSE, test_name="t_byLayer_diminish",
+                        diminish=TRUE, test_custom="t",
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        
         fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
@@ -1098,7 +1124,7 @@ for (result_dir in result_dirs) {
             overwrite=TRUE, p=list(values=pv))
     }
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
-}
+})}
 ```
 
 
@@ -1107,7 +1133,7 @@ for (result_dir in result_dirs) {
 # see if different features create good distance matrices
 no_cores = detectCores()-1
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs) {
+for (result_dir in result_dirs) { 
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
@@ -1135,7 +1161,7 @@ for (result_dir in result_dirs) {
 
 ```{r}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-for (result_dir in result_dirs) {
+for (result_dir in result_dirs) { try({
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
@@ -1143,7 +1169,7 @@ for (result_dir in result_dirs) {
     } else {
         fg_save(fg, paste0(result_dir,"/fg"), paired=TRUE)
     }
-}
+})}
 ```
 
 ```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
@@ -1151,7 +1177,7 @@ for (result_dir in result_dirs) {
 start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 # result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
-for (result_dir in result_dirs) {
+for (result_dir in result_dirs) { try({
     # if (!grepl("genentech",result_dir)) next
     start1 = Sys.time()
     print(result_dir)
@@ -1222,7 +1248,7 @@ for (result_dir in result_dirs) {
             })
         }
     }
-}
+})}
 time_output(start1)
 ```
 
