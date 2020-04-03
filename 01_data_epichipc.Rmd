@@ -104,8 +104,46 @@ for (i in indices) {
 
 ```{r}
 ## p vs difference plots
-for (i in indices) 
+## p vs difference plots
+pv <- fg@summary$node[[48]]$values
+pv[fg_get_summary(fg, index=56)$values<.5] <- 1
+fg <- fg_add_summary(
+    fg, type="node", summary_meta=unlist(list(feat="SpecEnr_cells_ul_blood",
+                                              test_name="wilt_BH_diminish_adjust0",
+                                              class="vaccine_response",
+                                              class_labels="positive_negative")),
+    overwrite=TRUE, p=list(values=pv, id1=fg@summary$node[[1]]$id1, id2=fg@summary$node[[1]]$id2))
+
+pv <- fg@summary$node[[28]]$values
+pv[fg_get_summary(fg, index=56)$values<.5] <- 1
+fg <- fg_add_summary(
+    fg, type="node", summary_meta=unlist(list(feat="SpecEnr_cells_ul_blood",
+                                              test_name="wilt_adjust0",
+                                              class="vaccine_response",
+                                              class_labels="positive_negative")),
+    overwrite=TRUE, p=list(values=pv, id1=fg@summary$node[[1]]$id1, id2=fg@summary$node[[1]]$id2))
+
+pv <- fg@summary$node[[47]]$values
+pv[fg_get_summary(fg, index=55)$values<.5] <- 1
+fg <- fg_add_summary(
+    fg, type="node", summary_meta=unlist(list(feat="cells_ul_blood",
+                                              test_name="wilt_BH_diminish_adjust0",
+                                              class="vaccine_response",
+                                              class_labels="positive_negative")),
+    overwrite=TRUE, p=list(values=pv, id1=fg@summary$node[[1]]$id1, id2=fg@summary$node[[1]]$id2))
+
+pv <- fg@summary$node[[27]]$values
+pv[fg_get_summary(fg, index=55)$values<.5] <- 1
+fg <- fg_add_summary(
+    fg, type="node", summary_meta=unlist(list(feat="cells_ul_blood",
+                                              test_name="wilt_adjust0",
+                                              class="vaccine_response",
+                                              class_labels="positive_negative")),
+    overwrite=TRUE, p=list(values=pv, id1=fg@summary$node[[1]]$id1, id2=fg@summary$node[[1]]$id2))
+
+for (i in append(indices,c(57:60))) {
     plot(fg_plot_pVSdiff(fg, index=i))
+}
 
 ```
 

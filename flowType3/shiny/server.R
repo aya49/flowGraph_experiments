@@ -1,11 +1,21 @@
-#Shiny APP for flowType/Rchy visulaization and checking outliers
-#Written by Mehrnoush Malek (MM)
-#Revise: March 2020, MM
+# Shiny APP for flowGraph visulaization
+# Written by: Mehrnoush Malek (MM), Alice Yue (AY)
+# Revision: March 2020, AY
 
 # runApp('/mnt/f/Brinkman group/current/Alice/flowGraph/flowType3/shiny')
 setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/flowType3/shiny")
 source('3i-Helper.R')
 source('slidingRchy-Helper.R')
+
+# data_dir <- "/mnt/f/FCS data/Tobias Kollmann"
+ft_dir <<- "/mnt/f/FCS data/Tobias Kollmann/flowType_results/Bcell_panel"
+fcs_dir <<- "/mnt/f/FCS data/Tobias Kollmann/flowType_data/Bcell_panel"
+fg_dir <<- "/mnt/f/Brinkman group/current/Alice/flowtype_metric/result/epichipc_bcell/fg.Rdata"
+p_thres <<- .01
+# root name
+root_name <<- "live" # renderText({ input$root_name })
+max_nodes <<- 100
+paired <<- FALSE
 
 library(flowType)
 library(flowCore)
@@ -20,232 +30,197 @@ library(visNetwork)
 library(ggiraph)
 library(ggplot2)
 library(flowWorkspace)
+library(DT)
 
 
-server<- function(input, output,session) {
-  volumes = c(wd="~/data/semisupervised/")
-  shinyDirChoose(input, "result", roots = volumes, session = session)
-  shinyDirChoose(input, "files", roots = volumes, session = session)
-  shinyFileChoose(input, "fcs",roots = volumes)
-  observeEvent(input$go, {
-    dir.path <<- paste0(parseDirPath(volumes,input$result),"")
-    print(dir.path)
-    ft.path<- list.files(dir.path,full.names = T, pattern = ".Rdata")
-    files.path <<- paste0(parseDirPath(volumes,input$files),"")
-    fs.path<- list.files(files.path,full.names = T, pattern = ".Rdata")
-    tmp <- load(ft.path[1])
-    ft <- get(tmp)
-    rm(tmp)
-    load(paste0(dirname(dir.path),"/Settingup_argument.RData"))
-    print(dirname(dir.path))
-    print(names(arguments))
-    print(head(ft@CellFreqs))
-    pop.names<-sapply(ft@PhenoCodes, flowTypeFilter::decodePhenotype, marker.names =arguments$names , partitions.per.marker=arguments$part.v,arguments$filt.v)
-    print(head(pop.names))
-    withProgress(message = 'Analyzing:--->', value = 0, {
-      incProgress(.3, detail = "Calculating proportions")
-      if (input$calc=="NO")
-      {
-        ft.counts<-c()
-        cnt<-1
-        n <- 200
-        for ( ftp in ft.path[1:n])
-        {
-          print(cnt)
-          tmp <- load(ftp)
-          ft <- get(tmp)
-          rm(tmp)
-          ft.counts <-rbind( ft.counts, ft@CellFreqs)
-          cnt <- cnt+1
-        }
-        colnames( ft.counts)<- as.vector(pop.names)
-        rownames(ft.counts) <- gsub(basename(ft.path)[1:n],pattern = "_FT.Rdata",replacement = "")
-       
-        
-      }else{
-        print("here")
-        tmp <- load(paste0(dirname(dir.path),"/Allcounts_flowType.RData"))
-        ft.counts <- get(tmp)
-        rm(tmp)
-      }
-      incProgress(.5, detail = "Calculating p-values and plotting.")
-    })
-
-    output$plotgraph <- renderVisNetwork({
-      rchy.graph<- make.sliding.graph (arguments = arguments,ft = ft, counts = ft.counts,
-                                       method1=input$method1,method2 = input$method2,parent="CD45+",
-                                       count.lim = input$slider1,p.level = input$slider2)
-      
-      nodes <- rchy.graph$nodes
-      print(nodes)
-      nodes.id <<-nodes$id
-      nodes.lbl <<-nodes$label
-      edges <- rchy.graph$edges
-      edges.to <<- edges$to
-      edges.from <<- edges$from
-      visNetwork(nodes, edges) %>%
-        visNodes(shape = "ellipse", size=55, label=nodes$label) %>%
-        visEdges(arrows = "to")%>%
-        visOptions(highlightNearest=TRUE, 
-                   nodesIdSelection = TRUE) %>%
-        visInteraction(hover = TRUE,multiselect = TRUE) %>%
-        visLayout(hierarchical = TRUE) %>%
-        visHierarchicalLayout(parentCentralization=TRUE) %>%
-        visEvents(select="function(nodes) {
-                  Shiny.onInputChange('current_node_selection', nodes.nodes);
-                  ;}")
-      
+server <- function(input, output, session) {
+    
+    # # choose files
+    # volumes <- c(data=data_dir) # directory from where users start choosing files
+    # shinyFiles::shinyDirChoose(input, "ft_folder", roots=volumes, session=session) # flowType
+    # shinyFiles::shinyDirChoose(input, "fcs_folder", roots=volumes, session=session) # fcs
+    # shinyFiles::shinyDirChoose(input, "fg_folder", roots=volumes, session=session) # fcs
+    
+    # # start analysis = go
+    # shiny::observeEvent(input$go, {
+    # get directories
+    # ft_dir <<- paste0(shinyFiles::parseDirPath(volumes, input$ft_folder), "")
+    print(paste("flowType folder:", ft_dir))
+    ft_paths <<- list.files(ft_dir, full.names=T, pattern=".Rdata", recursive=TRUE)
+    
+    # fcs_dir <<- paste0(shinyFiles::parseDirPath(volumes, input$fcs_folder), "")
+    print(paste("fcs folder:", fcs_dir))
+    fcs_paths <<- list.files(fcs_dir, full.names=T, pattern=".fcs", recursive=TRUE)
+    
+    # fg <<- reactive({
+    #     fg_dir <<- paste0(shinyFiles::parseDirPath(volumes, input$fg_folder), "")
+    #     print("flowGraph folder:", fg_dir)
+    #     flowGraph::fg_load(fg_dir)
+    # })
+    
+    fg <<- get(load(fg_dir))
+    
+    # get table
+    sdt <- fg@summary_desc$node
+    indices <- which(purrr::map_int(seq_len(nrow(sdt)), function(x) 
+        sum(fg@summary$node[[x]]$values<p_thres)) >1)
+    sdt <- sdt[indices,]
+    
+    # print table
+    output$table_summary = DT::renderDataTable(    
+        DT::datatable(
+            sdt,
+            selection="none",
+            # select only one row
+            callback="function(table) {
+      table.on('click.dt', 'tr', function() {
+                table.$('tr.selected').removeClass('selected');
+                $(this).toggleClass('selected');            
+                Shiny.onInputChange('rows',
+                table.rows('.selected').data()[0][0]);
+});
+                }"
+        ), server=TRUE)
+    
+    # row index of selected row
+    index <- indices[input$table_summary_rows_selected]
+    
+    # load example flowtype file
+    ft <- get(load(ft_paths[1]))
+    
+    # phenotypes
+    phenotype <- sapply(
+        ft@PhenoCodes, flowTypeFilter::decodePhenotype, 
+        marker.names=fg@markers, 
+        partitions.per.marker=ft@PartitionsPerMarker, 
+        purrr::map_int(ft@Thresholds, length)==1)
+    print(paste("sample phenotypes:", head(phenotype)))
+    
+    # load fcs.Rdata or matrix m
+    m <- fg@feat$node[[fg@summary_desc$feat[[index]]]]
+    
+    # plot cell hierarchy
+    gr <- fg_plot(fg, index=index, p_thres=p_thres, show_bgedges=FALSE, label_max=max_nodes)
+    gr$v$v_ind <- gr$v$label_ind
+    gr$e$e_ind <- gr$e$from%in%gr$v$phenotype[gr$v$v_ind] &
+        gr$e$to%in%gr$v$phenotype[gr$v$v_ind]
+    gg_hier <- plot_gr(gr, shiny_plot=TRUE)
+    
+    selected_cpop <- reactive({ input$plot_hierarchy_selected })
+    
+    output$plot_hierarchy <- renderGirafe({
+        ggiraph::girafe(
+            code=print(gg_hier), width_svg=9, height_svg=5,
+            options=list(
+                opts_selection(
+                    type = "single", css = "fill:#FF3333;stroke:black;"),
+                opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;")
+            ))
     })
     
-    selected_sample <- reactive({
-      input$plot_selected
-    })
-
-    myNode <- reactiveValues(selected = '',pops='')
-    observeEvent(input$current_node_selection, {
-      myNode$selected <<- as.vector(input$current_node_selection)
-      myNode$pops <<-as.vector(nodes.lbl)[match(unlist(myNode$selected),as.vector(nodes.id) )]
-      print(paste0("populations selected: ",paste(myNode$pops,collapse=" ,")))
-      ft.props <- ft.counts/ft.counts[,1]
-      ft.props <- ft.props*100
-      lbls <-sample (x = 0:1,size =nrow(ft.counts) ,replace = T)
-    print(dim(ft.props))
-      pop.prop <-data.frame(props=c(ft.props[which(lbls==0), myNode$pops],
-                                    ft.props[which(lbls==1), myNode$pops]), 
-                            groups=c(rep(times=length(which(lbls==0)),"Group1"),rep(times=length(which(lbls==1)),"Group2")),
-                            files=c(rownames(ft.props)[which(lbls==0)],rownames(ft.props)[which(lbls==1)]))
-      sample.props <- rbind(pop.prop[which(pop.prop$groups=="Group1")[which.min(pop.prop$props[which(pop.prop$groups=="Group1")])],],
-                            pop.prop[which(pop.prop$groups=="Group1")[which.min(abs(pop.prop$props[which(pop.prop$groups=="Group1")]-
-                           median(pop.prop$props[which(pop.prop$groups=="Group1")])))],],
-                         pop.prop[which(pop.prop$groups=="Group1")[which.max(pop.prop$props[which(pop.prop$groups=="Group1")])],],
-                         pop.prop[which(pop.prop$groups=="Group2")[which.min(pop.prop$props[which(pop.prop$groups=="Group2")])],],
-                       pop.prop[which(pop.prop$groups=="Group2")[which.min(abs(pop.prop$props[which(pop.prop$groups=="Group2")]-
-                           median(pop.prop$props[which(pop.prop$groups=="Group2")])))],],
-                         pop.prop[which(pop.prop$groups=="Group2")[which.max(pop.prop$props[which(pop.prop$groups=="Group2")])],])
-      sample.props$files <- paste(sample.props$files,sample.props$groups,sep="_g_")
-      #You need to create 
-      if (input$random=="YES" | is.null(input$fcs))
-      {
-        print("Random samples")
-      output$boxplot <-renderggiraph({x<-ggiraph(code=print(plot_results(cell.proportion = pop.prop,outliers = sample.props)))
-      x <- girafe_options(x, opts_selection(
-        type = "multiple", css = "fill:#FF3333;stroke:black;"),
-        opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-      x
-      })
-      }else{
-        print("selected sample")
-        fcs.file <-paste0(parseFilePaths(roots = volumes,input$fcs),"")
-        print(parseFilePaths(roots = volumes,input$fcs)$datapath)
-        print(fcs.file)
-       
-        fcs.samples <- as.character(parseFilePaths(roots = volumes,input$fcs)$name)
-        samp.ind <-which(gsub(dirname(ft.path),pattern = "_FT.Rdata",replacement = "")==unlist(strsplit(fcs.samples,split = ".Rdata"))[1])
-
-          tmp <- load(ft.path[samp.ind])
-          ft <- get(tmp)
-          samp.count<- ft@CellFreqs
-          names(samp.count)<-colnames(ft.counts)
-         
-          sample.gr <- "Group1"
-        sample.data <- as.data.frame(props=samp.count[myNode$pops]*100/samp.count[1],files=unlist(strsplit(fcs.samples,split = ".Rdata"))[1],groups=sample.gr)
-        output$boxplot <-renderggiraph({x<-ggiraph(code=print(plot_results(cell.proportion = pop.prop,showsample = T,samplestoplotdata = sample.data,
-                                                                        outliers = sample.props)))
-        x <- girafe_options(x, opts_selection(
-          type = "multiple", css = "fill:#FF3333;stroke:black;"),
-          opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;"))
-        x
-        })
-        
-        
-      }
-      
-      st <-which(edges.to==unlist(myNode$selected))[1]
-      print(st)
-      selected.node <- unlist(myNode$selected)
-      print(selected.node)
-      start.path <- c(selected.node,as.vector(edges.from[st]))
-      load(paste0(dirname(dir.path),"/Settingup_argument.RData"))
-      nxt<- tail(start.path,1)
-      pop.path <- start.path
-      while(nxt!=as.vector(edges.from[1]))
-      {
-        prnt <- which(edges.to==nxt)[1]
-        nxt<- as.vector(edges.from[prnt])
-        pop.path <-c( pop.path ,as.vector(nodes.id[which(nodes.id==nxt)]))
-      }
-      parent.names <- rev(nodes.lbl[match(pop.path,nodes.id)])
-      parent.names <- parent.names[-length(parent.names)]
-      pop.path <- rev(pop.path)[-1]
-  
-     
-        fcs.file <-paste0(parseFilePaths(roots = volumes,input$fcs),"")
-        print(parseFilePaths(roots = volumes,input$fcs)$datapath)
-        print(fcs.file)
-
-        fcs.samples <- as.character(parseFilePaths(roots = volumes,input$fcs)$name)
-        samp.ind <- which(names(arguments$threshold)==unlist(strsplit(fcs.samples,split = ".Rdata"))[1])
-        gates <-  arguments$threshold[[samp.ind]]
-        temp <- load(parseFilePaths(roots = volumes,input$fcs)$datapath)
-        frame <- get(temp)
-        rm(temp)
-        # 
-      
-        click.input <- selected_sample()
-        click.gr <- unlist(lapply(click.input, function(cl) unlist(strsplit(cl,"_g_"))[2]))
-        click.id <- unlist(lapply(click.input, function(cl) unlist(strsplit(cl,"_g_"))[1]))
-        
-       
-        if (input$random=="YES"){
-        output$plotdens <- renderPlot({
-          click.input <- input$boxplot_selected
-          print(click.input)
-          
-          if(!is.null(click.input))
-          {
-            click.gr <- unlist(lapply(click.input, function(cl) unlist(strsplit(cl,"_g_"))[2]))
-            click.id <- unlist(lapply(click.input, function(cl) unlist(strsplit(cl,"_g_"))[1]))
-            print(paste("click is:",length(click.input)))
-            print(click.id)
-            print(click.gr)
-            tmp <- load(ft.path[2])
-            ft <- get(tmp)
-            load(paste0(dirname(dir.path),"/Settingup_argument.RData"))
-            gs <- make.gs(ft = ft, ids = tail(click.id,2),arguments = arguments,pop.path = pop.path)
-            print(class(gs))
-            vec <- c(1:(ceiling(sqrt(length(pop.path)))*2))
-            vec[which(vec>=length(gs_get_pop_paths(gs)))] <-0
-            mat <-matrix(vec,nrow =ceiling(sqrt(length(pop.path))) ,byrow = T)
-            vec2 <- vec + max(vec,na.rm = T)
-            vec2[which(vec2==max(vec))]<-0
-            mat2 <-cbind(mat,matrix(vec2,nrow =ceiling(sqrt(length(pop.path))) ,byrow = T))
-            source("~/code/plot.gate.R")
-            if (length(gs)==2)
-            {
-              print("OK")
-              print(mat2)
-              plot.gates (gs,popstoplot=NULL,upto=NULL,plot.layout=mat2,show.stats=TRUE,contour.pops=NULL,density.overlay.pops=NULL,
-                                     flowCut.channels=c("Time","BV510-A"),legend.cex=1.5,cell.size=c(1,2.5,3),show.palette=TRUE,offset=.5)
-              title(paste(click.gr,sep=" ",collapse = "      -        "), outer = TRUE, line = 2)
-
-              
-              }else{
-              print("Fine")
-                print(mat)
-             plot.gates (gs,popstoplot=NULL,upto=NULL,plot.layout=mat,show.stats=TRUE,contour.pops=NULL,density.overlay.pops=NULL,
-                                     flowCut.channels=c("Time","BV510-A"),legend.cex=1.5,cell.size=c(1,2.5,3),show.palette=TRUE,offset=.5)
-             title(paste(click.gr,sep="  ",collapse = "  -   "), outer = TRUE, line = 2)
-
-             
-             }
-            
-            
-            
-          }
-        })
+    # plot boxplot
+    selected_label <- reactive({ input$plot_box_selected })
+    
+    output$plot_box <- renderGirafe({
+        cpop <- selected_cpop()
+        if (!base::is.null(cpop)) {
+            gg_box <- fg_plot_box(fg, cpop=cpop, paired=paired, shiny_plot=TRUE)
+            gp <- ggiraph::girafe(
+                code=print(gg_box), width_svg=3, height_svg=3,
+                options=list(
+                    opts_selection(
+                        type = "single", css = "fill:#FF3333;stroke:black;"),
+                    opts_hover(css = "fill:#FF3333;stroke:black;cursor:pointer;")
+                ))
+            return(gp)
         }
-        
     })
-  })
-  
+    
+    # plot scatterplots
+    
+    
+    
+    output$plot_dens <- renderPlot({
+        cpop <- selected_cpop()
+        label <- selected_label()
+        
+        if (!base::is.null(cpop) & !base::is.null(label)) {
+            print(cpop)
+            print(label)
+            
+            label_ind <- which(fg@meta[[fg@summary_desc$node$class[index]]]==label)
+            f_ind <- label_ind[which.min(abs(m[label_ind,cpop]-median))]
+            f_id <- fg@meta$id[f_ind]
+            
+            # load flowtype and fcs files
+            ft <- get(load(ft_paths[grepl(f_id, ft_paths)]))
+            fcs <- flowCore::read.FCS(fcs_paths[grepl(f_id, fcs_paths)])
+            
+            # find best path
+            pp <- fg@summary$node[[index]]
+            rchy <- RchyOptimyx::RchyOptimyx(
+                pheno.codes=fg@graph$v$phenocode, phenotypeScores=-log(pp$values),
+                startPhenotype=fg@graph$v$phenocode[fg@graph$v$phenotype==cpop],
+                pathCount=1, trimPaths=FALSE)
+            gating_path_phenocode <- rchy@nodes[1,-1]
+            
+            # make gating set
+            gating_path_phenocode_ <- lapply(gating_path_phenocode, function(p) 
+                unlist(strsplit(p,"")))
+            
+            gs <- CytoML::GatingSet(as(fcs,"flowSet"))
+            sampleNames(gs) <- f_id
+            
+            fs <- fcs@exprs
+            gates <- ft@Thresholds
+            scat.chans <- unlist(sapply (c("SSC-A","FSC-A"), function(x) 
+                grep(x, colnames(fs), value=T)))[1]
+            for (i1 in 1:length(gating_path_phenocode_)) {
+                cpop_vec <- gating_path_phenocode_[[i1]]
+                ind_m <- which(cpop_vec!="0")
+                if (names(ft@Thresholds)[ind_m]!="gate") {
+                    fdens <- flowDensity(
+                        fcs, 
+                        channels=c(names(ft@Thresholds)[ind_m], scat.chans[1]), 
+                        position=c(cpop_vec[ind_m]!="1",NA),
+                        gates=c(gates[[ind_m]],NA))
+                    filter_id <- 
+                        paste0(fg@markers[ind_m], 
+                               ifelse(cpop_vec[ind_m]!="1", "+", "-"))
+                } else {
+                    if (cpop_vec[ind_m]=="1") {
+                        fdens_fun <- flowDensity::notSubFrame
+                    } else {
+                        fdens_fun <- flowDensity::flowDensity
+                    }
+                    fdens <- fdens_fun(
+                        fcs, 
+                        channels=colnames(gates[[ind_m]]),
+                        position=c(T,T),
+                        filter=as.matrix(gates[[ind_m]]))
+                    filter_id <- paste0(ifelse(cpop_vec[ind_m]=="1", "Not ", ""),
+                                        fg@markers[ind_m])
+                }
+                
+                # mark off this marker for future gates
+                if (i1<length(gating_path_phenocode_))
+                    for (k1 in (i1+1):length(gating_path_phenocode_))
+                        gating_path_phenocode_[[k1]][ind_m] <- "0"
+                
+                # apply to gating set
+                poly <- list(polygonGate(filterId=filter_id, .gate=fdens@filter))
+                names(poly) <- sampleNames(gs)
+                
+                nodeID <- add(
+                    gs, poly, 
+                    parent=tail(flowWorkspace::gs_get_pop_paths(gs),1))
+                recompute(gs)
+            }
+            print(class(gs))
+            
+            autoplot(gs[[1]])
+        }
+    })
+    
 }
+
