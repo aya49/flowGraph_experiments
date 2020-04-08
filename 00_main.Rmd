@@ -217,14 +217,14 @@ for (uc in unique(meta_file$class)) {
 }
 
 ## save files
-fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, cls="class",
+fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, class="class",
                label1="control", 
                norm_path=paste0(result_dir,"/count_norm"),
                test_custom=function(x,y)
                 tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
                          error=function(e) 1),
                path=paste0(result_dir,"/fg"))
-# fg = fg_feat_mean_cls(fg, cls="subject", no_cores=no_cores)
+# fg = fg_feat_mean_cls(fg, class="subject", no_cores=no_cores)
 
 fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
                          node_features=c("prop","SpecEnr"), edge_features="NONE")
@@ -262,6 +262,7 @@ meta_id <- unlist(purrr::map(stringr::str_split(meta_id,"FCT"), function(x)
 
 meta_class <- process_file(paste0(meta_dir, "/meta_vaccine_response.txt"))
 meta_class <- unlist(purrr::map(meta_class, stringr::str_extract_all, "negative|positive"))
+meta_class[meta_class=="negative"] <- "control"
 
 meta_cb <- process_file(paste0(meta_dir, "/meta_cells_ul_blood.txt"))
 meta_cb <- unlist(purrr::map(meta_cb, stringr::str_extract_all, "[0-9]+[.][0-9]+"))
@@ -318,12 +319,12 @@ fg <- fg_feat_node_specenr(fg, feature="cells_ul_blood")
 #                  overwrite=FALSE)
 # 
 # fg <- fg_summary(fg, no_cores=no_cores, test_name="wilcox_byLayer",
-#                  cls="vaccine_response",
+#                  class="vaccine_response",
 #                  diminish=FALSE,
 #                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
 #                  overwrite=FALSE)
 # fg <- fg_summary(fg, no_cores=no_cores,
-#                  cls="vaccine_response",
+#                  class="vaccine_response",
 #                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
 #                  overwrite=FALSE)
 # 
@@ -337,13 +338,12 @@ fg <- fg_feat_node_specenr(fg, feature="cells_ul_blood")
 #                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
 #                  overwrite=FALSE)
 
-
-st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, error=function(e) 0)
-test_custom <- function(x,y) {
-    if (st(x)>0.05 & st(y)>0.05)
-        return(tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
-    return(tryCatch(stats::wilcox.test(x,y)$p.value, error=function(e) 1))
-}
+# st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, error=function(e) 0)
+# test_custom <- function(x,y) {
+#     if (st(x)>0.05 & st(y)>0.05)
+#         return(tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
+#     return(tryCatch(stats::wilcox.test(x,y)$p.value, error=function(e) 1))
+# }
 
 # fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt", adjust_custom="none",
 #                  diminish=FALSE, test_custom=test_custom,
@@ -360,10 +360,11 @@ test_custom <- function(x,y) {
 #                  diminish=FALSE,
 #                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
 #                  overwrite=FALSE)
-fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
-                 test_custom=test_custom,
-                 node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
-                 overwrite=FALSE)
+
+# fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
+#                  test_custom=test_custom,
+#                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
+#                  overwrite=FALSE)
 
 # fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH",
 #                  test_custom=test_custom,
@@ -384,13 +385,13 @@ fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
 #                                  "SpecEnr_cells_ul_blood"),
 #                  overwrite=FALSE)
 
-qt <- function(x,y)
-    min( sum(x<.1 & x>-.1)/length(x), sum(y<.1 & y>-.1)/length(y))
-fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
-                 test_custom=qt,
-                 adjust_custom="none", diminish=FALSE,
-                 node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
-                 overwrite=FALSE)
+# qt <- function(x,y)
+#     min( sum(x<.1 & x>-.1)/length(x), sum(y<.1 & y>-.1)/length(y))
+# fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
+#                  test_custom=qt,
+#                  adjust_custom="none", diminish=FALSE,
+#                  node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
+#                  overwrite=FALSE)
 
 # save
 dir.create(paste0(root,"/result/epichipc_bcell"))
@@ -498,7 +499,7 @@ for (tube in unique(meta_file0$tube)) {
     )
     fg1 = fg
     fg = fg_merge_samples(fg1, fg2)
-    fg <- fg_summary(fg, no_cores=no_cores, cls="class",
+    fg <- fg_summary(fg, no_cores=no_cores, class="class",
                      label1="control",
                      node_features="SpecEnr",
                      edge_features="prop",
@@ -678,7 +679,7 @@ p50 = quantile(cvd, .5)
 p60 = quantile(cvd, .6)
 p75 = quantile(cvd, .75)
 p25 = quantile(cvd, .25)
-thress0 = future_map(markers, function(x) p50); names(thress0) = markers
+thress0 = map(markers, function(x) p50); names(thress0) = markers
 # thress1 = thress2 = thress4 =
 thress5 = thress0
 # thress1[[markers[1]]] = thress2[markers[1:2]] = p25
@@ -1000,7 +1001,7 @@ time_output(start)
 ```
 
 
-# Calculate summary statistics (don't need to run, unless don't have)
+# Calculate summary statistics
 
 ```{r p_values, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## cores
@@ -1010,64 +1011,94 @@ result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {try({
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    # fg <- fg_clear_summary(fg)
+    fg <- fg_rm_feature(fg, type="edge", feature="prop")
+    
+    # no_cores <- ifelse (grepl("pregnancy|epic|genentech", result_dir), 15, 1)
     
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="wilcox_byLayer_diminish",
                         diminish=TRUE,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_custom="t",
                         test_name="t_BH_diminish", adjust_custom="BH",
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="t_byLayer_diminish",
                         diminish=TRUE, test_custom="t",
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
+    } else if (grepl("epic",result_dir)) {
+        st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, 
+                                   error=function(e) 0)
+        test_custom <- function(x,y) {
+            if (st(x)>0.05 & st(y)>0.05)
+                return(tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
+            return(tryCatch(stats::wilcox.test(x,y)$p.value, error=function(e) 1))
+        }
+        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
+                         test_custom=test_custom,
+                         label1="control",
+                         node_features=c("cells_ul_blood",
+                                         "SpecEnr_cells_ul_blood"),
+                         overwrite=FALSE)
+        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH_diminish",
+                         test_custom=test_custom, adjust_custom="BH",
+                          label1="control",
+                         node_features=c("cells_ul_blood",
+                                         "SpecEnr_cells_ul_blood"),
+                         overwrite=FALSE)
+        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt",
+                         test_custom=test_custom, adjust_custom="none",
+                         diminish=FALSE, label1="control",
+                         node_features=c("cells_ul_blood",
+                                         "SpecEnr_cells_ul_blood"),
+                         overwrite=FALSE)
     } else {
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
                         node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="wilcox_byLayer_diminish",
                         diminish=TRUE,
                         node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_custom="t",
                         test_name="t_BH_diminish", adjust_custom="BH",
                         node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="t_byLayer_diminish",
                         diminish=TRUE, test_custom="t",
                         node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
         
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
                         test_custom=function(x,y)
                             tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
                                      error=function(e) 1),
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="wilcox_byLayer_diminish",
                         test_custom=function(x,y)
                             tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
                                      error=function(e) 1),
                         diminish=TRUE,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="t_BH_diminish", adjust_custom="BH",
                         test_custom=function(x,y)
                             tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
                                      error=function(e) 1),
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="t_byLayer_diminish",
                         test_custom=function(x,y)
                             tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
@@ -1077,14 +1108,14 @@ for (result_dir in result_dirs) {try({
         
     }
     
-    if (ncol(fg@summary_desc$node)==4) {
-        dt <- fg@summary_desc$node
-        dtcl <- str_split(dt$class_labels,"_")
-        dt$label1 <- unlist(sapply(dtcl, tail, 1))
-        dt$label2 <- unlist(sapply(dtcl, head, 1))
-        dt$class_labels <- NULL
-        fg@summary_desc$node <- dt
-    }
+    # if (ncol(fg@summary_desc$node)==4) {
+    #     dt <- fg@summary_desc$node
+    #     dtcl <- str_split(dt$class_labels,"_")
+    #     dt$label1 <- unlist(sapply(dtcl, tail, 1))
+    #     dt$label2 <- unlist(sapply(dtcl, head, 1))
+    #     dt$class_labels <- NULL
+    #     fg@summary_desc$node <- dt
+    # }
     
     feat_orig <- ifelse("cells_ul_blood"%in%names(fg@feat$node), 
                         "cells_ul_blood", "prop")
@@ -1094,18 +1125,22 @@ for (result_dir in result_dirs) {try({
     
     for (feat in c(feat_orig, paste0("SpecEnr_",feat_orig))) {
         if (feat=="SpecEnr_prop") feat <- "SpecEnr"
-            fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
-                 test_custom=qt,
-                 adjust_custom="none", diminish=FALSE,
-                 node_features=feat, edge_features="NONE",
-                 overwrite=FALSE)
-
-            test_name <- paste0(ifelse("wilt"%in%fg@summary_desc$node$test_name, 
+        label2 <- unlist(tail(fg@summary_desc$node$label2,1))
+        if (label2=="mix") label2 <- "aml"
+        
+        fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
+                         test_custom=qt, class="class", 
+                         label1="control", label2=label2,
+                         adjust_custom="none", diminish=FALSE,
+                         node_features=feat, edge_features="NONE",
+                         overwrite=FALSE)
+        
+        test_name <- paste0(ifelse("wilt"%in%fg@summary_desc$node$test_name, 
                                    "wilt", "wilcox"), "_byLayer_diminish")
         summary_meta0 <- c(feature=feat, test_name=test_name, 
-                               class=tail(fg@summary_desc$node$class,1),
-                               label1=tail(fg@summary_desc$node$label1,1),
-                               label2=tail(fg@summary_desc$node$label2,1))
+                           class=unlist(tail(fg@summary_desc$node$class,1)),
+                           label1=unlist(tail(fg@summary_desc$node$label1,1)),
+                               label2=label2)
         index0 <- flowGraph::fg_get_summary_index(fg, type="node", summary_meta=summary_meta0)
         pv <- fg_get_summary(fg, index=index0)$values
         
@@ -1124,6 +1159,13 @@ for (result_dir in result_dirs) {try({
             overwrite=TRUE, p=list(values=pv))
     }
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
+    rm(fg); gc()
+})}
+
+for (result_dir in result_dirs) {try({
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    print(fg@summary_desc$node)
 })}
 ```
 
@@ -1140,14 +1182,14 @@ for (result_dir in result_dirs) {
         # distance plots, not yet added so will do separately
         a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
                          edge_features="NONE",
-                         cls="class",
+                         class="class",
                          dist_method="euclidean", get_means=NULL,
                          plot_path=paste0(result_dir,"/plots/distance.png"))
         
     } else {
         a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
                          edge_features="NONE",
-                         cls="class",
+                         class="class",
                          dist_method="euclidean", get_means="subject",
                          plot_path=paste0(result_dir,"/plots/distance.png")) 
     }
@@ -1187,7 +1229,7 @@ for (result_dir in result_dirs) { try({
     
     # create directories
 
-    # fg <- fg_summary(fg, no_cores=no_cores, cls="class", label1="control",
+    # fg <- fg_summary(fg, no_cores=no_cores, class="class", label1="control",
     #                  overwrite=FALSE, test_name="t_byLayer", diminish=FALSE,
     #                  node_features="prop", edge_features="NONE")
     
@@ -1286,7 +1328,7 @@ for (result_dir in result_dirs) {
 # sig_inds = phen_==""
 # qvals = fg_get_summary(fg, type="node", summary_meta=list(
 #     feature="SpecEnr", test_name="t_byLayer",
-#     cls="class", cls_labels="control_exp"))$values
+#     class="class", cls_labels="control_exp"))$values
 # 
 # # plot for all q values
 # plotly::plot_ly(x=~c(1:length(qvals)), y=~sort(qvals), mode="markers",
@@ -1350,7 +1392,7 @@ for (result_dir in result_dirs) {
             mpp_ = mpp_m-mpp_c
             
             p = fg_get_summary(fg, type="node", summary_meta=list(
-                feature="SpecEnr", test_name="t_byLayer_diminish", cls="class",
+                feature="SpecEnr", test_name="t_byLayer_diminish", class="class",
                 cls_labels=paste0("control_",cls)))$values
             p[mpp_<.001] = 1
             p_ = p<0.01
@@ -1556,7 +1598,7 @@ for (result_dir in result_dirs) {
 
             # gr = fg_plot(
             #     fg, sum_plot=TRUE,
-            #     cls="class", test_name="t_byLayer",
+            #     class="class", test_name="t_byLayer",
             #     cls_label1="control", cls_label2=cls,
             #     node_feature="SpecEnr", edge_feature="prop",
             #     label1=NULL, label2=NULL, # node only
