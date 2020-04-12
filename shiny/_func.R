@@ -13,19 +13,20 @@ make_gs <- function(gs, gates, markers=NULL, gating_path_phenocode, scat_chans) 
         ind_m <- which(cpop_vec!="0")
         if (names(gates[[1]])[ind_m]!="gate") {
             gatenum <- as.numeric(cpop_vec[ind_m])
-            fdens <- flowCore::fsApply(fs, function(fcs) {
-                fcs_id <- flowCore::identifier(fcs)
+            fdens <- purrr::map(names(fs@frames), function(fcs_id) {
+                fcs <- fs@frames[[fcs_id]]
+                gatei <- gates[[fcs_id]]
                 fden <- flowDensity::flowDensity(
                     fcs,
-                    channels=c(names(gates)[ind_m], alt_gate),
+                    channels=c(names(gatei)[ind_m], alt_gate),
                     position=c(gatenum>1,NA),
-                    gates=c(gates[[fcs_id]][[ind_m]][max(1,gatenum-1)],NA))
-                if (gatenum>1 & length(gates[[ind_m]])>(gatenum-1))
+                    gates=c(gatei[[ind_m]][max(1,gatenum-1)],NA))
+                if (gatenum>1 & length(gatei[[ind_m]])>(gatenum-1))
                     fden <- flowDensity::flowDensity(
                         fden@flow.frame,
-                        channels=c(names(gates)[ind_m], alt_gate),
+                        channels=c(names(gatei)[ind_m], alt_gate),
                         position=c(FALSE, NA),
-                        gates=c(gates[[fcs_id]][[ind_m]][gatenum],NA))
+                        gates=c(gatei[[ind_m]][gatenum],NA))
                 return(fden)
             })
             filter_id <-
@@ -38,13 +39,14 @@ make_gs <- function(gs, gates, markers=NULL, gating_path_phenocode, scat_chans) 
             } else {
                 fdens_fun <- flowDensity::flowDensity
             }
-            fdens <- flowCore::fsApply(fs, function(fcs) {
-                fcs_id <- flowCore::identifier(fcs)
+            fdens <- purrr::map(names(fs@frames), function(fcs_id) {
+                fcs <- fs@frames[[fcs_id]]
+                gatei <- gates[[fcs_id]]
                 fdens_fun(
                     fcs,
-                    channels=colnames(gates[[fcs_id]][[ind_m]]),
+                    channels=colnames(gatei[[ind_m]]),
                     position=c(TRUE, TRUE),
-                    filter=as.matrix(gates[[fcs_id]][[ind_m]]))
+                    filter=as.matrix(gatei[[ind_m]]))
             })
             filter_id <- paste0(
                 ifelse(cpop_vec[ind_m]=="1", "Not ", ""),
@@ -56,11 +58,11 @@ make_gs <- function(gs, gates, markers=NULL, gating_path_phenocode, scat_chans) 
             for (k1 in (i1+1):length(gating_path_phenocode_))
                 gating_path_phenocode_[[k1]][ind_m] <- "0"
 
-        alt_gate <- names(gates)[ind_m]
+        alt_gate <- names(gates[[1]])[ind_m]
 
         # apply to gating set
         poly <- lapply(fdens, function(fden)
-            flowCore::polygonGate(filterId=filter_id,.gate=fden@filter))
+            flowCore::polygonGate(filterId=filter_id, .gate=fden@filter))
         names(poly) <- flowWorkspace::sampleNames(gs)
 
         nodeID <- flowWorkspace::gs_pop_add(

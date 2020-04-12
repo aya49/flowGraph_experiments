@@ -5,7 +5,7 @@
 # IMPC/IMPC-Results/3i/Panel_BM-cell/semisupervised/. Input folders are flowType and ParentPopulation. plus Settingup_argument.RData I mentioned.
 
 # runApp('/mnt/f/Brinkman group/current/Alice/flowGraph/flowType3/shiny')
-setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/flowType3/shiny")
+setwd("/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/shiny")
 
 library(shiny)
 library(shinydashboard)
@@ -15,7 +15,7 @@ library(DT)
 # library(shinyWidgets)
 library(ggiraph)
 
-options(shiny.maxRequestSize=10000*1024^2) # file upload size limit 10gb
+options(shiny.maxRequestSize=100000*1024^2) # file upload size limit 10gb
 
 ui <- dashboardPage(
     dashboardHeader(title="testing!"),
@@ -29,8 +29,10 @@ ui <- dashboardPage(
                     buttonLabel="browse", multiple=FALSE,
                     accept = c("Rdata/RDS", "Rdata/RDS", "*")),
 
-                shinyFiles::shinyDirButton("ft_dir", label="flowType folder", "select"),
-                shinyFiles::shinyDirButton("fcs_dir", label="fcs sample folder", "select"),
+                shinyFiles::shinyDirButton(
+                    id="fcs_dir", "select folder: FCS (.fcs)", "select"),
+                shinyFiles::shinyDirButton(
+                    id="ft_dir", "select folder: flowType (.Rdata)", "select"),
                 # shinyFiles::shinyDirButton("fg_dir", label="flowGraph folder", "Select"),
 
                 # Horizontal line ----
@@ -64,15 +66,21 @@ ui <- dashboardPage(
     ),
     dashboardBody(
         fluidRow(
+            column(12, shiny::verbatimTextOutput("fcs_dir_out"))
+        ),
+        fluidRow(
+            column(12, shiny::verbatimTextOutput("ft_dir_out"))
+        ),
+        fluidRow(
             column(9, DT::dataTableOutput("table_summary")),
             column(3, shiny::verbatimTextOutput('table_row'))
         ),
         fluidRow(
-            column(9, ggiraph::girafeOutput("plot_hierarchy")),
-            column(3, ggiraph::girafeOutput('plot_box',height=800))
+            column(9, ggiraph::girafeOutput("plot_hierarchy"), height=1000),
+            column(3, ggiraph::girafeOutput('plot_box', height=1000))
         ),
         fluidRow(
-            column(12, shiny::plotOutput('plot_dens',width=1000,height=900))
+            column(12, shiny::plotOutput('plot_dens', width=1000))
         )
     )
 )

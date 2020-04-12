@@ -20,49 +20,32 @@ registerDoMC(no_cores)
 start = Sys.time()
 
 
-l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",paste0("ctrl",0),paste0("pos",1:16),"pregnancy"), function(data) {
+l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genentech_4_comp","pregnancy",paste0("ctrl",0)), function(data) {
 #for (data in c(paste0("pos",1:11))) {
   try({
     start1 = Sys.time()
     print(data)
-    
+    load(paste0(root, "/result/",data,"/fg.Rdata"))
+    sm0 <- sm <- fg@meta
+    markers <- fg@markers
+
     ## load processed fcs
-    if (grepl("flowcap6",data)) {
+    if (grepl("flowcap_6",data)) {
       # flowcap-ii
       if (!exists("fcfcss")) {
-        fcs_dirs = list.files("/mnt/f/Brinkman group/current/Alice/flowCAP-II/data/FCS", full.names=T, pattern=".FCS")
-        sm = get(load(paste0(root, "/result/","flowcap6","/meta/file.Rdata")))
-        fcsid = as.numeric(gsub(".Rdata","",fileNames(fcs_dirs)))
-        fcs_dirs = fcs_dirs[match(sm$id, fcsid)] # only get tube 6
+        fcs_dirs0 = list.files("/mnt/f/Brinkman group/current/Alice/flowCAP-II/data/FCS", full.names=T, pattern=".FCS")
+        fcsid = gsub(".FCS","",sapply(strsplit(fcs_dirs0,"[/]"), tail, 1))
+        sm <- sm0[sm0$class!="mix",]
+        fcs_dirs = fcs_dirs0[match(as.numeric(sm$id), as.numeric(fcsid))] # only get tube 6
         fcfcss = llply(fcs_dirs, read.FCS)
         names(fcfcss) = sm$id
-      } 
-      fcss = fcfcss
-      sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
-      markers = str_extract(fcss[[1]]@parameters@data[,2],"[A-Za-z0-9]+")
-      if (grepl("flowcap6_pos",data)) {
-        new_ids = sm0$id[sm0$class=="mix"]
-        # match samples for mixing
-        normali = as.character(sm0$id[sm0$class=="control"])
-        amli = as.character(sm0$id[sm0$class=="aml"])
-        for (i in new_ids) {
-          normind = sample(normali, 5)
-          amlind = sample(amli, 5)
-          f = fcss[[sample(1:length(fcss),1)]]
-          inn = nrow(f@exprs)/10
-          f@exprs = Reduce(rbind,llply(append(normind, amlind), function(x) 
-            fcss[[x]]@exprs[sample(1:nrow(fcss[[x]]@exprs),inn),] ))
-          fcss[[as.character(i)]] = f
-        }
-      } else if (grepl("flowcap6_ctrl",data)) {
-        fcss = fcss[as.character(sm0$id)]
       }
-      
-    } 
+      fcss = fcfcss
+
+    }
     else if (grepl("pregnancy",data)) {
       # pregnancy
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/gs")
-      sm0 = get(load("/mnt/f/Brinkman group/current/Alice/flowtype_metric/result/pregnancy/meta/file.Rdata"))
       fcss = as(gs_pop_get_data(gs),Class="list")
       fcss = llply(fcss, function(f) {
         f@exprs = f@exprs[,c(23,50,40,45,20,11,18,51,14,16,21,35,27)]
@@ -72,21 +55,20 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
       names(fcss) = gsub("BL","4",names(fcss))
       names(fcss) = str_extract(names(fcss),"PTLG[0-9]+_[0-9]")
       fcss = fcss[sm0$id]
-      markers = c(# "CD11b", "CD11c", 
-        "CD123", "CD14", "CD16", 
-        # "CD19", 
+      markers = c(# "CD11b", "CD11c",
+        "CD123", "CD14", "CD16",
+        # "CD19",
         # "CD25",
-        "CD3", "CD4","CD45", "CD45RA", "CD56", 
-        "CD66", 
-        "CD7", "CD8", 
-        # "FoxP3", 
-        # "HLADR", 
+        "CD3", "CD4","CD45", "CD45RA", "CD56",
+        "CD66",
+        "CD7", "CD8",
+        # "FoxP3",
+        # "HLADR",
         "Tbet", "TCRgd")
-      
-    } 
+
+    }
     else if (data=="bodenmiller") {
       fcs_dirs = list.files("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs", full.names=T, pattern=".fcs")
-      sm0 = get(load(paste0(root, "/result/bodenmiller/meta/file.Rdata")))
       fcss = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs.Rdata"))
       fcss = llply(fcss, function(f) {
         f@exprs = f@exprs[,c(3,9, 11, 12, 21, 29, 33)]
@@ -94,13 +76,12 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
       })
       fcss = fcss[sm0$id]
       markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
-      
-    } 
+
+    }
     else if (data=="genentech") {
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/Tube_003gs")
       fcss = as(gs_pop_get_data(gs, "Myeloid"),Class="list")
       names(fcss) = gsub("%|.fcs","",names(fcss))
-      sm0 = get(load(paste0(root, "/result/genentech/meta/file.Rdata")))
       fcss = fcss[sm0$id]
       markers = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/flowType/Tube_003/MarkerNames_myeloid.Rdata"))
       fcss = llply(fcss, function(f) {
@@ -108,31 +89,29 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
         f@exprs = f@exprs[,mi]
         f
       })
-      
-    } 
+
+    }
     else { # ctrl/pos
-      sm0 = get(load(paste0(root, "/result/",data,"/meta/file.Rdata")))
-      sm0 = sm0[c(1:5,251:255,501:505,751:755),]
+      sm0$id = paste0("a", c(1:5,251:255,501:505,751:755))
       fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)
       names(fcss) = sm0$id
-      markers = colnames(fcss[[1]])
     }
-    
-    
+
+
     for (uc in unique(sm0$class)) {
       if (uc=="control") next()
       sm = sm0[sm0$class%in%c(uc,"control"),]
       fcs = fcss[as.character(sm$id)]
-      
+
       c_dir = paste0(root,"/result/",data,"/cytodx/",uc)
       dir.create(c_dir,showWarnings=F,recursive=T)
-      
+
       ## collate fcs data
-      train_data = Reduce(rbind,llply(loopInd(as.character(sm$id[sm$train]),no_cores), function(ii) {
+      train_data = Reduce(rbind,llply(loop_ind_f(as.character(sm$id[sm$train]),no_cores), function(ii) {
         Reduce(rbind,llply(ii, function(x) {
           if (typeof(fcs[[x]])=="S4") { a = fcs[[x]]@exprs
           } else { a = fcs[[x]] }
-          a        
+          a
         }))
       }, .parallel=T))
       train_data_ = ldply(as.character(sm$id[sm$train]), function(x) {
@@ -142,7 +121,7 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
           ay = rep(sm$class[as.character(sm$id)==x],nrow(a))
           cbind(as,ay)
       })
-      test_data = Reduce(rbind,llply(loopInd(as.character(sm$id[!sm$train]),no_cores), function(ii) {
+      test_data = Reduce(rbind,llply(loop_ind_f(as.character(sm$id[!sm$train]),no_cores), function(ii) {
         Reduce(rbind,llply(ii, function(x) {
         if (typeof(fcs[[x]])=="S4") {
           a = fcs[[x]]@exprs
@@ -164,11 +143,11 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
       }))
       colnames(train_data) = colnames(test_data) = markers
       colnames(train_data_) = colnames(test_data_) = c("xSample","y")
-      
+
       train_data[is.na(train_data)] = 0
       test_data[is.na(test_data)] = 0
-      
-      
+
+
       ## build models
       start1 = Sys.time()
       fit1 = CytoDx.fit(x=train_data,
@@ -176,31 +155,31 @@ l_ply(c("bodenmiller","flowcap6","flowcap6_ctrl","flowcap6_pos","genentech",past
                         xSample = train_data_[,1],
                         reg=F, family="binomial", parallelCore=no_cores)
       save(fit1,file=paste0(c_dir,"/fit1.Rdata"))
-      
+
       # Use decision tree to find the cell subsets that are associated; uses anova to compare means
       png(paste0(c_dir,"/tree1.png"), width=1000, height=800)
       tg1 = treeGate(P=fit1$train.Data.cell$y.Pred.s0, x=train_data[,markers])
       graphics.off()
       save(tg1,file=paste0(c_dir,"/tree1.Rdata"))
-      
+
       start1 = Sys.time()
       fit1 = CytoDx.fit(x=test_data,
                         y=test_data_[,2],
                         xSample = test_data_[,1],
                         reg=F, family="binomial", parallelCore=no_cores)
       save(fit1,file=paste0(c_dir,"/fit2.Rdata"))
-      
+
       # Use decision tree to find the cell subsets that are associated; uses anova to compare means
       png(paste0(c_dir,"/tree2.png"), width=1000, height=800)
       tg1 = treeGate(P=fit1$train.Data.cell$y.Pred.s0, x=test_data[,markers])
       graphics.off()
       save(tg1,file=paste0(c_dir,"/tree2.Rdata"))
     }
-    
+
     rm(list=c("tg1","fit1","test_data","train_data")); gc()
-    
+
     time_output(start1)
-  }) 
+  })
 #}
 })
 time_output(start)

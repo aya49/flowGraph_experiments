@@ -28,6 +28,7 @@ results are saved in the root `flowtype_metric` folder.
 ```{r start_flowGraph, message=FALSE, include=FALSE, echo=FALSE}
 ## load flowGraph package
 rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
+# install.packages("/mnt/f/Brinkman group/current/Alice/flowGraph",repos=NULL, type="source")
 library(flowGraph)
 
 ## root directory; to put results in
@@ -42,14 +43,15 @@ source(paste0(root,"/src/elbow.R"))
 libr(c("flowCore", "flowType", "RchyOptimyx",
        "doParallel", "foreach",
        "stringr", "furrr", "purrr",
-       "plotly", "htmlwidgets", "ggpubr"))
+       "plotly", "htmlwidgets", "ggpubr", "effsize"))
+
+
+## options
+options(stringsAsFactors=FALSE)
 
 ## cores
 no_cores = detectCores()-1
 future::plan(future::multiprocess)
-
-## options
-options(stringsAsFactors=FALSE)
 
 ```
 
@@ -64,35 +66,35 @@ when running this document. Input data in this section can be found in the
 Briefly, the data sets are
 
 - impc (ON-HOLD)
-  - class: gene (wildtype wt control gene & various knockout ko genes), gender; 
+- class: gene (wildtype wt control gene & various knockout ko genes), gender; 
 samples should be normalized based on ko genes
 
 - flowcap-II aml [@aghaeepour2013critical]
-  - class: 43 aml (acute myeloid leukemia), 316 healthy subjects bone marrow or blood x 7 panels 
+- class: 43 aml (acute myeloid leukemia), 316 healthy subjects bone marrow or blood x 7 panels 
 (1st panel is a control).
-  - we use the 6th panel with markers $SS$, $FS$, $HLA-DR$, $CD117$, $CD45$, $CD34$, and $CD38$.
-  - each sample has ~ 60,000 cells.
-  - $CD34+$ increases in aml subjects.
+- we use the 6th panel with markers $SS$, $FS$, $HLA-DR$, $CD117$, $CD45$, $CD34$, and $CD38$.
+- each sample has ~ 60,000 cells.
+- $CD34+$ increases in aml subjects.
 
 - genentech
-  - class: bone marrow and whole blood mixed and pure
-  - 2019-11-19 results based on a single random donor D
-    - singlets tube4: CD13+CD11c-
-    - singlets tube4 (suggested experimentally by GNE): CD13+CD16-
-  - earlier results based on 3 donors (1 is an outlier) greatest mean separation:
-    - my tube3: CD34+CD117+CD56-
-    - blasts tube4: CD13+CD16-cd11c-
+- class: bone marrow and whole blood mixed and pure
+- 2019-11-19 results based on a single random donor D
+- singlets tube4: CD13+CD11c-
+- singlets tube4 (suggested experimentally by GNE): CD13+CD16-
+- earlier results based on 3 donors (1 is an outlier) greatest mean separation:
+- my tube3: CD34+CD117+CD56-
+- blasts tube4: CD13+CD16-cd11c-
 
 - pregnancy [@aghaeepour2017immune]
-  - class: 4 time points of pregnancy, early, mid, late, 6 weeks postpartum x 18 and 10 women of the training and validation cohort
-  - analyzed on 13 markers ($CD123$, $CD14$, $CD16$, $CD3$, $CD4$, $CD45$, $CD45RA$, $CD56$, $CD66$, $CD7$, $CD8$, $Tbet$, $TCRgd$)
-  - each sample has ~ 300,000 cells
-  - Since discrepancies between subjects is a major batch effect, we further normalize for subject. For each subject, we take the calculated feature values of all of her samples and extract the difference between them and their mean.
+- class: 4 time points of pregnancy, early, mid, late, 6 weeks postpartum x 18 and 10 women of the training and validation cohort
+- analyzed on 13 markers ($CD123$, $CD14$, $CD16$, $CD3$, $CD4$, $CD45$, $CD45RA$, $CD56$, $CD66$, $CD7$, $CD8$, $Tbet$, $TCRgd$)
+- each sample has ~ 300,000 cells
+- Since discrepancies between subjects is a major batch effect, we further normalize for subject. For each subject, we take the calculated feature values of all of her samples and extract the difference between them and their mean.
 
 - bodenmiller CyTOF [@bodenmiller2012multiplexed]
-  - human peripheral blood from 8 x 2 BCR-XL 
+- human peripheral blood from 8 x 2 BCR-XL 
 (b cell receptor / Fc receptor cross linker) un/stimulated healthy subjects
-  - 10 markers
+- 10 markers
 
 
 ## bodenmiller
@@ -104,57 +106,57 @@ Remember to transform values; for cytof, usually use asinh with cofactor=5
 (cofactor=150 for flow cytometry). Below describes other data sets inside the package. Proceeding it, the code to preprocess the bodenmiller data set.
 
 - Data sets to test clustering:
-  - Levine_32dim:
-    * cytof "Data-driven phenotypic dissection of AMLreveals progenitor-like 
-      cells that correlate with prognosis" 2015;
-    * human bone marrow cells from 2 healthy subjects H1, H2;
-    * (265627 (104184 manually gated, 161443 ungated) x cytof 32 surface markers)
-    * manually gated 14 cell populations
-  - Levine_13dim:
-    * cytof
-    * human bone marrow cells from 1 healthy subject
-    * (167044 (81747 manually gated, 85297 ungated) x 13 surface markers)
-    * manually gated 24 cell populations
-  - Samusik_01:
-    * (86864 (53173 manually gated, 33691 ungated) x 39 + ungated surface markers)
-  - Samusik_all:
-    * cytof "Automated mapping of phenotype space with single-cell data" 2016;
-    * mouse bone marrow from 10 C57BL/6J mice clones
-    * (841644 (514386 manually gated, 327258 ungated) x 39 surface markers)
-    * manually gated 24 + ungated cell populations
-  - Nilsson_rare:
-    * flow "Frequency determination of rare populations by flow cytometry: 
+- Levine_32dim:
+* cytof "Data-driven phenotypic dissection of AMLreveals progenitor-like 
+cells that correlate with prognosis" 2015;
+* human bone marrow cells from 2 healthy subjects H1, H2;
+* (265627 (104184 manually gated, 161443 ungated) x cytof 32 surface markers)
+* manually gated 14 cell populations
+- Levine_13dim:
+* cytof
+* human bone marrow cells from 1 healthy subject
+* (167044 (81747 manually gated, 85297 ungated) x 13 surface markers)
+* manually gated 24 cell populations
+- Samusik_01:
+* (86864 (53173 manually gated, 33691 ungated) x 39 + ungated surface markers)
+- Samusik_all:
+* cytof "Automated mapping of phenotype space with single-cell data" 2016;
+* mouse bone marrow from 10 C57BL/6J mice clones
+* (841644 (514386 manually gated, 327258 ungated) x 39 surface markers)
+* manually gated 24 + ungated cell populations
+- Nilsson_rare:
+* flow "Frequency determination of rare populations by flow cytometry: 
 A hematopoietic stem cell perspective" 2013;
-    * human bone marrow cells from 1 healthy subject
-    * (44140 (358 manually gated hematopoietic stem cells) x 13 surface markers)
-  - Mosmann_rare:
-    * flow "SWIFT - Scalable clustering for automated identification of rare 
-      cell populations in large, high-dimensional flow cytometry datasets, 
-      Part 2: Biological evaluation" 2014
-    * human peripheral blood cells exposed to influenza agents from 1 healthy subject
-    * (296460 (109 manually gated rare activated cytokine producing 
-      memory CD4 T cells) x 14 (7 surface + 7 signalling) markers)
+* human bone marrow cells from 1 healthy subject
+* (44140 (358 manually gated hematopoietic stem cells) x 13 surface markers)
+- Mosmann_rare:
+* flow "SWIFT - Scalable clustering for automated identification of rare 
+cell populations in large, high-dimensional flow cytometry datasets, 
+Part 2: Biological evaluation" 2014
+* human peripheral blood cells exposed to influenza agents from 1 healthy subject
+* (296460 (109 manually gated rare activated cytokine producing 
+memory CD4 T cells) x 14 (7 surface + 7 signalling) markers)
 
 - Data sets to test differential analysis:
-  - Krieg_Anti_PD_1: strong batch effect, 2 different days ('batch23' and 'batch29')
-    * cytof "High-dimensional single-cell analysispredicts response to 
-      anti-PD-1 immunotherapy" 2018
-    * human peripheral blood from 20 melanoma skin cancer patients treated 
-      with anti-PD-1 immunotherapy x 2 days pre/post treatment (9/11 non/responders)
-    * CD14+CD16-HLA-DRhi monocytes (a small subpopulation of
-      CD14+CD33+HLA-DRhiICAM-1+CD64+CD141+CD86+CD11c+CD38+PD-L1+CD11b+ monocytes) 
-      prior to treatment is strong predictor of survival status following 
-      immunotherapy treatment.
-    * (85715 cells x 24 cell type markers (exclude CD45 b/c all cells show high so CD45=none)) 
-  - Bodenmiller_BCR_XL
-    * cytof "Multiplexed masscytometry profiling of cellular states perturbed 
-      by small-molecule regulators" 2012
-    * human peripheral blood from 8 x 2 BCR-XL 
-      (b cell receptor / Fc receptor cross linker) un/stimulated healthy subjects;
-    * differentially expressed signalling markers in many cell populations 
-      e.g. phosphorylated S6 (pS6) in B cells
-    * (172791 x 10 surface markers (cell type) + 14 
-      intracellular signalling functional markers (cell state))
+- Krieg_Anti_PD_1: strong batch effect, 2 different days ('batch23' and 'batch29')
+* cytof "High-dimensional single-cell analysispredicts response to 
+anti-PD-1 immunotherapy" 2018
+* human peripheral blood from 20 melanoma skin cancer patients treated 
+with anti-PD-1 immunotherapy x 2 days pre/post treatment (9/11 non/responders)
+* CD14+CD16-HLA-DRhi monocytes (a small subpopulation of
+CD14+CD33+HLA-DRhiICAM-1+CD64+CD141+CD86+CD11c+CD38+PD-L1+CD11b+ monocytes) 
+prior to treatment is strong predictor of survival status following 
+immunotherapy treatment.
+* (85715 cells x 24 cell type markers (exclude CD45 b/c all cells show high so CD45=none)) 
+- Bodenmiller_BCR_XL
+* cytof "Multiplexed masscytometry profiling of cellular states perturbed 
+by small-molecule regulators" 2012
+* human peripheral blood from 8 x 2 BCR-XL 
+(b cell receptor / Fc receptor cross linker) un/stimulated healthy subjects;
+* differentially expressed signalling markers in many cell populations 
+e.g. phosphorylated S6 (pS6) in B cells
+* (172791 x 10 surface markers (cell type) + 14 
+intracellular signalling functional markers (cell state))
 
 ```{r bodenmiller, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input: gates + fcm files,  meta data paths
@@ -221,8 +223,8 @@ fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, class="class",
                label1="control", 
                norm_path=paste0(result_dir,"/count_norm"),
                test_custom=function(x,y)
-                tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                         error=function(e) 1),
+                   tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                            error=function(e) 1),
                path=paste0(result_dir,"/fg"))
 # fg = fg_feat_mean_cls(fg, class="subject", no_cores=no_cores)
 
@@ -396,7 +398,7 @@ fg <- fg_feat_node_specenr(fg, feature="cells_ul_blood")
 # save
 dir.create(paste0(root,"/result/epichipc_bcell"))
 save(fg, file=paste0(root,"/result/epichipc_bcell/fg.Rdata"))
-save_fg(fg, paste0(root,"/result/epichipc_bcell/fg"))
+# save_fg(fg, paste0(root,"/result/epichipc_bcell/fg"))
 
 ```
 
@@ -502,13 +504,13 @@ for (tube in unique(meta_file0$tube)) {
     fg <- fg_summary(fg, no_cores=no_cores, class="class",
                      label1="control",
                      node_features="SpecEnr",
-                     edge_features="prop",
+                     edge_features="NONE",
                      overwrite=FALSE,
                      test_name=paste0("wilcox_byLayer_diminish"),
                      diminish=TRUE)
-
+    
     dir.create(paste0(result_dir0, "_", tube), showWarnings=FALSE)
-    save_fg(fg, paste0(result_dir0, "_", tube, "/fg"))
+    # save_fg(fg, paste0(result_dir0, "_", tube, "/fg"))
     save(fg, file=paste0(result_dir0, "_", tube, "/fg.Rdata"))
 }
 
@@ -529,39 +531,39 @@ input_dir0 = "/mnt/f/Brinkman group/current/Alice/gating_projects/genentech"
 
 start = Sys.time()
 
-for (tube in 2:4) {
+for (tube in 4){#2:4) {
     for (dtype in c("man","comp")) {
-    input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/",dtype,"_mix")
-    
-    ## ouput directories
-    result_dir = paste0(root, "/result/genentech_",tube,"_",dtype); dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
-    
-    start = Sys.time()
-    
-    ## prepare flowtype directories
-    # ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
-    ftl = get(load(paste0(input_dir,"/flowType_sing.Rdata")))
-    names(ftl) = gsub("[%]","",names(ftl))
-    markers = get(load(paste0(input_dir,"/MarkerNames_sing.Rdata")))
-    
-    ## prepare meta
-    temp_ = str_extract(names(ftl),"[0-9]+BM")
-    temp_[is.na(temp_)] = "control"
-    meta_file = data.frame(id=names(ftl), class=temp_)
-    for (uc in unique(meta_file$class)) {
-        uci = meta_file$class==uc
-        meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
+        input_dir = paste0(input_dir0,"/Tube_", str_pad(tube,3,"left",0),"/",dtype,"_mix")
+        
+        ## ouput directories
+        result_dir = paste0(root, "/result/genentech_",tube,"_",dtype); dir.create(result_dir, showWarnings=FALSE, recursive=TRUE)
+        
+        start = Sys.time()
+        
+        ## prepare flowtype directories
+        # ftl = get(load(paste0(input_dir,"/flowType_myeloid.Rdata")))
+        ftl = get(load(paste0(input_dir,"/flowType_sing.Rdata")))
+        names(ftl) = gsub("[%]","",names(ftl))
+        markers = get(load(paste0(input_dir,"/MarkerNames_sing.Rdata")))
+        
+        ## prepare meta
+        temp_ = str_extract(names(ftl),"[0-9]+BM")
+        temp_[is.na(temp_)] = "control"
+        meta_file = data.frame(id=names(ftl), class=temp_)
+        for (uc in unique(meta_file$class)) {
+            uci = meta_file$class==uc
+            meta_file$train[uci] = which(uci)%in%sample(which(uci),sum(uci)/2)
+        }
+        
+        fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file,
+                       label1="control",
+                       path=paste0(result_dir, "/fg"))
+        
+        
+        save(fg, file=paste0(result_dir,"/fg.Rdata"))
+        
     }
     
-    fg = flowGraph(ftl, markers=markers, no_cores=no_cores, meta=meta_file,
-                   label1="control",
-                   path=paste0(result_dir0, "_", tube, "/fg"))
-
-
-    save(fg, file=paste0(result_dir,"/fg.Rdata"))
-            
-    }
-
 }
 
 time_output(start, "data_genetech")
@@ -612,8 +614,8 @@ options(future.globals.maxSize=3000000000)
 fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores, label1="control",
                norm_path=paste0(result_dir0,"/count_norm"),
                test_custom=function(x,y)
-                tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                         error=function(e) 1),
+                   tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                            error=function(e) 1),
                path=paste0(result_dir0,"/fg"))
 
 fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
@@ -689,7 +691,7 @@ thress5[[markers[2]]] = c(p25,p50,p60)
 
 #paste0("ctrl",c(0:9)),
 #paste0("pos",c(1:30))
-for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
+for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
     start2 = Sys.time()
     
     # ouput directories
@@ -732,10 +734,17 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                 #   ftv0 = ftv0_ = ft@CellFreqs
                 #   ftv0 = round(ftv0/ftv0[1],3)
                 # }
-                dp = f@exprs[,4]>thress[[4]]
-                ap = f@exprs[,1]>thress[[1]]
-                bp = f@exprs[,2]>thress[[2]]
-                cp = f@exprs[,3]>thress[[3]]
+                if (ds%in%paste0("pos", c(31:40))) {
+                    ap = f@exprs[,1]<thress[[1]]
+                    bp = f@exprs[,2]<thress[[2]]
+                    cp = f@exprs[,3]<thress[[3]]
+                    dp = f@exprs[,4]<thress[[4]]
+                } else {
+                    dp = f@exprs[,4]>thress[[4]]
+                    ap = f@exprs[,1]>thress[[1]]
+                    bp = f@exprs[,2]>thress[[2]]
+                    cp = f@exprs[,3]>thress[[3]]
+                }
                 # ep = f@exprs[,5]>thress[[5]]
                 double = ap & bp
                 triple = ap & bp & cp
@@ -805,34 +814,34 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                     tripleind = which(cp & dp & bp)
                     f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
                 }
-                else if (ds=="pos11") { #1.5x A+
+                else if (ds=="pos11" | ds=="pos31") { #1.5x A+
                     tm = sum(double)
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
                 }
-                else if (ds=="pos12") { #1.5x A+, B+
+                else if (ds=="pos12" | ds=="pos32") { #1.5x A+, B+
                     tm = sum(double)
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(bp),tm),])
                 }
-                else if (ds=="pos13") { #1.5x A+B+
+                else if (ds=="pos13" | ds=="pos33") { #1.5x A+B+
                     tm = sum(double)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
                 }
-                else if (ds=="pos14") { #1.5x A+B+, C+D+
+                else if (ds=="pos14" | ds=="pos34") { #1.5x A+B+, C+D+
                     tm = sum(double)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(dp & cp),tm),])
                 }
-                else if (ds=="pos15") { #1.5x A+B+C+
+                else if (ds=="pos15" | ds=="pos35") { #1.5x A+B+C+
                     tm = sum(triple)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
                 }
-                else if (ds=="pos16") { #1.5x A+B+C+, B+C+D+
+                else if (ds=="pos16" | ds=="pos36") { #1.5x A+B+C+, B+C+D+
                     tm = sum(triple)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp & bp),tm),])
                 }
-                else if (ds=="pos17") { #1.5x A+B+, A+B+C+
+                else if (ds=="pos17" | ds=="pos37") { #1.5x A+B+, A+B+C+
                     tm = sum(triple)/2
                     tm2 = sum(double)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
@@ -844,7 +853,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                 #               sample(which(ap & !bp),tm/3) ,
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
-                else if (ds=="pos18") { #1.5x A+B+C+, C+D+, like above
+                else if (ds=="pos18" | ds=="pos38") { #1.5x A+B+C+, C+D+, like above
                     tm = sum(triple)/2
                     tm2 = sum(double)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
@@ -856,7 +865,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                 #               sample(which(ap & !bp),tm/3) ,
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
-                else if (ds=="pos19") { #1.5x A+, A+B+C+
+                else if (ds=="pos19" | ds=="pos39") { #1.5x A+, A+B+C+
                     tm = sum(triple)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
                     tm = sum(ap)*1.5-sum(ap)
@@ -896,11 +905,17 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                     tm = sum(triple)/2
                     f@exprs = f@exprs[-sample(which(ap & bp & cp),tm),]
                 }
-                else if (ds=="pos26") { #1.5x
+                else if (ds=="pos26") { #1.5x A+B+ D+
+                    tm = sum(dp)/2
+                    tripleind = which(dp)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
                     tm = sum(double)/2
-                    tind = sample(which(bp & cp),tm)
-                    tind2 = sample(which(ap & bp),tm)
-                    f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
+                    tripleind = which(ap & bp)
+                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    # tm = sum(double)/2
+                    # tind = sample(which(bp & cp),tm)
+                    # tind2 = sample(which(ap & bp),tm)
+                    # f@exprs = f@exprs[-c(unique(c(tind,tind2))),]
                 }
                 else if (ds=="pos27") { #1.5x A+B+C+, B+C+D+
                     tm = sum(triple)/2
@@ -920,7 +935,7 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
                     tripleind = which(cp & dp & bp)
                     f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
                 }
-                else if (ds=="pos30") { #same as 25; A+B+C+ + 50%
+                else if (ds=="pos30") { #A+B+ & D+ + 50%
                     tm = sum(triple)/2
                     tripleind = which(ap & bp & cp)
                     f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
@@ -987,10 +1002,10 @@ for (ds in c(paste0("pos",c(1:30)),paste0("ctrl",c(0:9)))) {
         
     } else {
         fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file,
-                       path=paste0(result_dir,"/fg"))
+                       path=paste0(result_dir,"/fg"), label1="control")
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
     }
-
+    
     time_output(start2, ds)
     cat("\n")
     rm(list=c("ftl","fg")); gc()
@@ -1017,6 +1032,14 @@ for (result_dir in result_dirs) {try({
     # no_cores <- ifelse (grepl("pregnancy|epic|genentech", result_dir), 15, 1)
     
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_diminish", adjust_custom="none",
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, test_custom="t",
+                        test_name="t_diminish", adjust_custom="none",
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
@@ -1049,7 +1072,7 @@ for (result_dir in result_dirs) {try({
                          overwrite=FALSE)
         fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH_diminish",
                          test_custom=test_custom, adjust_custom="BH",
-                          label1="control",
+                         label1="control",
                          node_features=c("cells_ul_blood",
                                          "SpecEnr_cells_ul_blood"),
                          overwrite=FALSE)
@@ -1060,6 +1083,28 @@ for (result_dir in result_dirs) {try({
                                          "SpecEnr_cells_ul_blood"),
                          overwrite=FALSE)
     } else {
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_diminish", adjust_custom="none",
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, test_custom="t",
+                        test_name="t_diminish", adjust_custom="none",
+                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, 
+                        test_name="wilcox_diminish", adjust_custom="none",
+                        test_custom=function(x,y)
+                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, 
+                        test_name="t_diminish", adjust_custom="none",
+                        test_custom=function(x,y)
+                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1),
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
@@ -1140,7 +1185,7 @@ for (result_dir in result_dirs) {try({
         summary_meta0 <- c(feature=feat, test_name=test_name, 
                            class=unlist(tail(fg@summary_desc$node$class,1)),
                            label1=unlist(tail(fg@summary_desc$node$label1,1)),
-                               label2=label2)
+                           label2=label2)
         index0 <- flowGraph::fg_get_summary_index(fg, type="node", summary_meta=summary_meta0)
         pv <- fg_get_summary(fg, index=index0)$values
         
@@ -1162,10 +1207,16 @@ for (result_dir in result_dirs) {try({
     rm(fg); gc()
 })}
 
+# calculate efect sizes
 for (result_dir in result_dirs) {try({
+    start <- Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     print(fg@summary_desc$node)
+    for (i in seq_len(length(fg@summary$node)))
+        pp <- fg_get_summary(fg, index=i)
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+    flowGraph:::time_output(start)
 })}
 ```
 
@@ -1204,94 +1255,101 @@ for (result_dir in result_dirs) {
 ```{r}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) { try({
+    start1 <- Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     if (!grepl("pregnancy|bodenmiller", result_dir)) {
-        fg_save(fg, paste0(result_dir,"/fg"))
+        fg_save_plots(fg, paste0(result_dir,"/fg/plots"))
     } else {
-        fg_save(fg, paste0(result_dir,"/fg"), paired=TRUE)
+        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), paired=TRUE)
     }
-})}
-```
+    
+    # + logged qq plots + interactive pVSdiff plot
+    type <- "node"
+    for (index in seq_len(length(fg@summary[[type]]))) {
+        summary_meta <- fg@summary_desc[[type]][index,]
+        plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
+                             paste0(unlist(summary_meta), collapse="_"))
+        dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
 
-```{r plots_summary, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
-# cell hierarchy plots without number labels
-start1 = Sys.time()
-result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-# result_dirs_inds <- c(1,12,13,18,19,21:30,32:36,50)
-for (result_dir in result_dirs) { try({
-    # if (!grepl("genentech",result_dir)) next
-    start1 = Sys.time()
-    print(result_dir)
-    
-    # load flowGraph
-    fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    
-    # create directories
-
-    # fg <- fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-    #                  overwrite=FALSE, test_name="t_byLayer", diminish=FALSE,
-    #                  node_features="prop", edge_features="NONE")
-    
-    for (type in c("node", "edge")) {
-        if (base::is.null(fg@summary[[type]])) next
-        for (index in seq_len(length(fg@summary[[type]]))) {
-            summary_meta <- fg@summary_desc[[type]][index,]
-            plot_path_ <- paste0(result_dir,"/plots/", type, "_",
-                                 paste0(summary_meta, collapse="_"))
+        fg_plot_qq(fg, type="node", index=index, logged=TRUE,
+                   path=paste0(plot_path_,"/qq_logged.png"))
+        fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
+                        path=paste0(plot_path_,"/pVSdifference.html"))
+        
+        # cell hierarchy plots without number labels
+        try ({
+            ## cell hierarchy plot
+            p <- fg_get_summary(fg, type=type, index=index)$values
+            nlabels <- c("prop", "expect_prop")
+            if (grepl("epichipc",result_dir)) 
+                nlabels <- c("cells_ul_blood", "expect_cells_ul_blood")
+            gr <- fg_plot(
+                fg, type=type, p_thres=.01, index=index,
+                show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                path=paste0(plot_path_,"/cell_hierarchy"), interactive=TRUE,
+                node_labels=nlabels)
+            if (is.null(gr)) next
             
-            try ({
-                ## cell hierarchy plot
-                p <- fg_get_summary(fg, type=type, index=index)$values
-                path <- paste0(plot_path_,"/cell_hierarchy_")
-                gr <- fg_plot(
-                    fg, type="node", p_thres=.01, index=index,
-                    show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE),
-                    path=path, label_max=9,
-                    node_labels="NONE")
-                if (is.null(gr)) next
-                
-                # plot only one group and their ancestors (cell pops with same markers)
-                pparen <- fg@edge_list$parent
-                v_ind <- which(gr$v$v_ind)
-                show_phen <- gr$v$phenotype[gr$v$v_ind]
-                show_phen_ <- gsub("[+-]","_",show_phen)
-                show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
-                if (length(show_phen_u) < length(show_phen)) {
-                    dir.create(path, showWarnings=FALSE)
-                    for (phen in show_phen_u) {
-                        gr_ <- gr
-                        leaves <- v_ind[show_phen_==phen]
-                        v_ind_ <- rep(FALSE, nrow(gr$v))
-                        v_ind_[leaves] <- TRUE
-                        layer <- gr$v$phenolayer[leaves[1]]
-                        curr <- gr$v$phenotype[leaves]
-                        if (layer > 0)
-                            while (length(curr)>0) {
-                                par_phen <- unlist(pparen[curr])
-                                par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
-                                v_ind_[par_ind] <- TRUE
-                                curr <- gr$v$phenotype[par_ind]
-                            }
-                        gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
-                        gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
-                            gr$e$to%in%gr$v$phenotype[v_ind_]
-                        gp <- plot_gr(gr_)
-                        ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"), 
-                               plot=gp, scale=1, width=9, height=9,
-                               units="in", dpi=500, limitsize=TRUE)
-                    }
-                }
-                
-                if (sum(p<.01)>30)
-                    gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
-                                  index=index, label_max=20,
-                                  show_bgedges=TRUE, path=paste0(path,"_top25"))
-            })
-        }
+            gr <- fg_plot(
+                fg, type="node", p_thres=.01, index=index,
+                show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE),
+                label_max=15,
+                node_labels="NONE")
+            if (is.null(gr)) next
+
+            # don't label if colour too light, ie too close to 0
+            l_ind <- which(gr$v$label_ind)
+            colmax <- max(abs(gr$v$colour))
+            l_ind_not <- l_ind[abs(gr$v$colour[l_ind]) < colmax*.3]
+            gr$v$label_ind[l_ind_not] <- FALSE
+            
+            gp <- plot_gr(gr, bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE))
+            ggsave(plot=gp, filename=paste0(plot_path_,"/cell_hierarchy_.png"))
+            
+            # # plot only one group and their ancestors (cell pops with same markers)
+            # pparen <- fg@edge_list$parent
+            # v_ind <- which(gr$v$v_ind)
+            # show_phen <- gr$v$phenotype[gr$v$v_ind]
+            # show_phen_ <- gsub("[+-]","_",show_phen)
+            # show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
+            # if (length(show_phen_u) < length(show_phen)) {
+            #     dir.create(path, showWarnings=FALSE)
+            #     for (phen in show_phen_u) {
+            #         gr_ <- gr
+            #         leaves <- v_ind[show_phen_==phen]
+            #         v_ind_ <- rep(FALSE, nrow(gr$v))
+            #         v_ind_[leaves] <- TRUE
+            #         layer <- gr$v$phenolayer[leaves[1]]
+            #         curr <- gr$v$phenotype[leaves]
+            #         if (layer > 0)
+            #             while (length(curr)>0) {
+            #                 par_phen <- unlist(pparen[curr])
+            #                 par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
+            #                 v_ind_[par_ind] <- TRUE
+            #                 curr <- gr$v$phenotype[par_ind]
+            #             }
+            #         gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
+            #         gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
+            #             gr$e$to%in%gr$v$phenotype[v_ind_]
+            #         gp <- plot_gr(gr_)
+            #         ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"), 
+            #                plot=gp, scale=1, width=9, height=9,
+            #                units="in", dpi=500, limitsize=TRUE)
+            #     }
+            # }
+            
+            if (sum(p<.01)>30)
+                gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
+                              index=index, label_max=20,
+                              show_bgedges=TRUE, path=paste0(path,"_top25"))
+        })
+
     }
+
+    flowGraph:::time_output(start1)
 })}
-time_output(start1)
+
 ```
 
 ### Rchy plots (experimental)
@@ -1398,21 +1456,21 @@ for (result_dir in result_dirs) {
             p_ = p<0.01
             pparen = fg@edge_list$parent
             pchild = fg@edge_list$child
-
+            
             
             gr$v$label = sapply(seq_len(length(mse_m)), function(j)
                 gsub("[:]",paste0(": ",round(mse_c[j],3),"/",
                                   round(mse_m[j],3)),gr$v$label[j]))
             
             gr$v$colour = gr$v$size = mse_
-
+            
             gp = gggraph(gr)
             ggplot2::ggsave(paste0(path_,"/SpecEnr.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
-
-                        
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
+            
+            
             # difference between its most similar sibling pops with same markers
             sediff = rep(0,length(mse_))
             names(sediff) = names(mse_)
@@ -1461,7 +1519,7 @@ for (result_dir in result_dirs) {
                     sediff__[levi_0[mrki_1]] = 0
             }
             scdiff = spdiff = sediff
-
+            
             # plot_ly(data.frame(y=sort(sediff)), 
             #         x=seq_len(length(sediff)), y=~y,
             #         text=names(sediff)[order(sediff)], label=text)
@@ -1470,31 +1528,31 @@ for (result_dir in result_dirs) {
             gr$v$label_ind = gr$v$v_ind = sediff > sediffthres# & smdiff < .01
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             gr$v$size = sediff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = sediff_ > sediffthres# & smdiff < .01
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) of nodes with same markers WITH NO DUPLICATES.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             gr$v$size = sediff__ #abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = sediff__ > sediffthres# & smdiff < .01
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating prop (exp-0) of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrkprop.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
             
             gr$v$size = sediff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = sediff > sediffthres & # & smdiff < .01
                 sediff__ > sediffthres
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) AND prop of nodes with same markers.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrkORprop.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             
             # parent must not repeat
             ppind = gr$v$phenotype%in%names(pparen)
@@ -1503,7 +1561,7 @@ for (result_dir in result_dirs) {
                                     lyrsl[[as.character(lev+1)]] & ppind)
                 levi_0 = which(p_ & sediff > sediffthres & 
                                    lyrsl[[as.character(lev)]] & ppind)
-                    if ((lev>0 & length(levi_0)==0) | length(levi_0_)==0) next
+                if ((lev>0 & length(levi_0)==0) | length(levi_0_)==0) next
                 for (chld in names(levi_0_)) {
                     prnt_1 = which(names(levi_0)%in%pparen[[chld]])
                     if (length(prnt_1)==1) {
@@ -1520,11 +1578,11 @@ for (result_dir in result_dirs) {
                     }
                 }
             }
-
+            
             # plot_ly(data.frame(y=sort(spdiff)), 
             #         x=seq_len(length(spdiff)), y=~y,
             #         text=names(spdiff)[order(spdiff)], label=text)
-
+            
             # parent must not repeat
             pcind = gr$v$phenotype%in%names(pchild)
             for (lev in sort(unique(gr$v$phenolayer), decreasing=FALSE)[-1]) {
@@ -1549,11 +1607,11 @@ for (result_dir in result_dirs) {
                     }
                 }
             }
-
+            
             # plot_ly(data.frame(y=sort(scdiff)), 
             #         x=seq_len(length(scdiff)), y=~y,
             #         text=names(scdiff)[order(scdiff)], label=text)
-
+            
             # cpop="A+B+"; c(mep_m[cpop],
             #                sum(max(mep_m[pchild[[cpop]]]),
             #                    min(mep_m[pchild[[cpop]]])),
@@ -1565,37 +1623,37 @@ for (result_dir in result_dirs) {
             #                mse_[pchild[[cpop]]]) # same for nonsigs
             # cpop="A+B+C+"; c(mse_[cpop],
             #                mse_[pparen[[cpop]]])
-
+            
             gr$v$size = spdiff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = spdiff > sediffthres# & smdiff < .01
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) of nodes with same markers and of nodes who are parent(s) of a single node.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_par.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             
             gr$v$size = scdiff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = scdiff > sediffthres# & smdiff < .01
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) of nodes with same markers and of nodes who are child(s) of a single node.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_chld.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             gr$v$size = scdiff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = scdiff > sediffthres & spdiff > sediffthres &
                 sediff > sediffthres & sediff__ > sediffthres
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr (exp-0) of nodes with same markers and of nodes who are child(s) (& parent(s)) of a single node.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_chldANDpar_prop.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             gr$v$size = scdiff#abs(exp_m-exp_c)
             gr$v$label_ind = gr$v$v_ind = scdiff > sediffthres & spdiff > sediffthres
             gp = gggraph(gr, main="Feature: SpecEnr\nClass: class - control_exp\nsummary statistic: t_byLayer (threshold: 0)\nNode colour: SpecEnr difference between control and experiment\nNode size: non-repeating SpecEnr & prop (exp-0) of nodes with same markers and nodes with same child(s) (& parent(s)) of a single node.\nLabel(s): SpecEnr (exp-0), node, expect_prop (prop)")
             ggplot2::ggsave(paste0(path_,"/SpecEnr_mrk_chldANDpar.png"),
-                        plot=gp, scale=1, width=10, height=9,
-                        units="in", dpi=500, limitsize=TRUE)
-
+                            plot=gp, scale=1, width=10, height=9,
+                            units="in", dpi=500, limitsize=TRUE)
+            
             # gr = fg_plot(
             #     fg, sum_plot=TRUE,
             #     class="class", test_name="t_byLayer",
@@ -1604,7 +1662,7 @@ for (result_dir in result_dirs) {
             #     label1=NULL, label2=NULL, # node only
             #     p_thres=.05, show_bgedges=TRUE,
             #     path=paste0(path_,"/SpecEnr_t_byLayer_SpecEnr.png"))
-
+            
         })
     }
     
