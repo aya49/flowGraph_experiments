@@ -166,7 +166,7 @@ body <- shinydashboard::dashboardBody(
                                 type=6, size=.5, proxy.height="250px")
                     )
                 ),
-                style="border-right: solid silver 1px"
+                style="border-right: solid silver 1px; border-top: solid silver 1px"
             ),
 
             # center column
@@ -188,8 +188,8 @@ body <- shinydashboard::dashboardBody(
                                     type=6, size=.5, proxy.height="250px"),
                             style="margin-top: 10px"
                         )
-                    )
-
+                    ),
+                    style="border-top: solid silver 1px"
                 )
             ),
 
@@ -239,7 +239,7 @@ body <- shinydashboard::dashboardBody(
                     #     style="padding-top: 5px; padding-bottom: 5px; text-align: center; border-bottom: solid silver 1px"
                     # )
                 ),
-                style="border-left: solid silver 1px"
+                style="border-left: solid silver 1px; border-top: solid silver 1px"
             )
         )
     )
