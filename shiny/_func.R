@@ -58,7 +58,8 @@ make_gs <- function(gs, gates, markers=NULL, gating_path_phenocode, scat_chans) 
             for (k1 in (i1+1):length(gating_path_phenocode_))
                 gating_path_phenocode_[[k1]][ind_m] <- "0"
 
-        alt_gate <- names(gates[[1]])[ind_m]
+        if (!names(gates[[1]])[ind_m]=="gate")
+            alt_gate <- names(gates[[1]])[ind_m]
 
         # apply to gating set
         poly <- lapply(fdens, function(fden)

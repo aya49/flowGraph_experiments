@@ -20,17 +20,18 @@ registerDoMC(no_cores)
 start = Sys.time()
 
 
-l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genentech_4_comp","pregnancy",paste0("ctrl",0)), function(data) {
-#for (data in c(paste0("pos",1:11))) {
+# l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genentech_4_comp","pregnancy",paste0("ctrl",0)), function(ds) {
+l_ply(paste0("pos",11:26), function(ds) {
+#for (ds in c(paste0("pos",1:11))) {
   try({
     start1 = Sys.time()
-    print(data)
-    load(paste0(root, "/result/",data,"/fg.Rdata"))
+    print(ds)
+    load(paste0(root, "/result/",ds,"/fg.Rdata"))
     sm0 <- sm <- fg@meta
     markers <- fg@markers
 
     ## load processed fcs
-    if (grepl("flowcap_6",data)) {
+    if (ds=="flowcap_6") {
       # flowcap-ii
       if (!exists("fcfcss")) {
         fcs_dirs0 = list.files("/mnt/f/Brinkman group/current/Alice/flowCAP-II/data/FCS", full.names=T, pattern=".FCS")
@@ -43,7 +44,7 @@ l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genente
       fcss = fcfcss
 
     }
-    else if (grepl("pregnancy",data)) {
+    else if (ds=="pregnancy") {
       # pregnancy
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/pregnancy/gs")
       fcss = as(gs_pop_get_data(gs),Class="list")
@@ -67,7 +68,7 @@ l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genente
         "Tbet", "TCRgd")
 
     }
-    else if (data=="bodenmiller") {
+    else if (ds=="bodenmiller") {
       fcs_dirs = list.files("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs", full.names=T, pattern=".fcs")
       fcss = get(load("/mnt/f/Brinkman group/current/Alice/gating_projects/HDCytoData_Bodenmiller/fcs.Rdata"))
       fcss = llply(fcss, function(f) {
@@ -78,7 +79,7 @@ l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genente
       markers = c("CD3","CD4","CD20","CD33","CD14","IgM","CD7") # HLA-DR
 
     }
-    else if (data=="genentech") {
+    else if (ds=="genentech") {
       gs = load_gs("/mnt/f/Brinkman group/current/Alice/gating_projects/genetch/Tube_003gs")
       fcss = as(gs_pop_get_data(gs, "Myeloid"),Class="list")
       names(fcss) = gsub("%|.fcs","",names(fcss))
@@ -92,8 +93,8 @@ l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genente
 
     }
     else { # ctrl/pos
-      sm0$id = paste0("a", c(1:5,251:255,501:505,751:755))
-      fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",data,"/fcs/",x,".Rdata"))),.parallel=T)
+      # sm0$id = paste0("a", c(1:5,251:255,501:505,751:755))
+      fcss = llply(sm0$id, function(x) get(load(paste0(root, "/result/",ds,"/fcs/",x,".Rdata"))),.parallel=T)
       names(fcss) = sm0$id
     }
 
@@ -103,7 +104,7 @@ l_ply(c(paste0("pos",11:16), "bodenmiller","flowcap_6_ctrl","flowcap_6","genente
       sm = sm0[sm0$class%in%c(uc,"control"),]
       fcs = fcss[as.character(sm$id)]
 
-      c_dir = paste0(root,"/result/",data,"/cytodx/",uc)
+      c_dir = paste0(root,"/result/",ds,"/cytodx/",uc)
       dir.create(c_dir,showWarnings=F,recursive=T)
 
       ## collate fcs data

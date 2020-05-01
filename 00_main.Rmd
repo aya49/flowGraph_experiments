@@ -43,15 +43,15 @@ source(paste0(root,"/src/elbow.R"))
 libr(c("flowCore", "flowType", "RchyOptimyx",
        "doParallel", "foreach",
        "stringr", "furrr", "purrr",
-       "plotly", "htmlwidgets", "ggpubr", "effsize"))
+       "plotly", "htmlwidgets", "ggpubr", "effsize", "visNetwork"))
 
 
 ## options
 options(stringsAsFactors=FALSE)
 
 ## cores
-no_cores = detectCores()-1
-future::plan(future::multiprocess)
+no_cores = 1#detectCores()-1
+# future::plan(future::multiprocess)
 
 ```
 
@@ -228,8 +228,8 @@ fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, class="class",
                path=paste0(result_dir,"/fg"))
 # fg = fg_feat_mean_cls(fg, class="subject", no_cores=no_cores)
 
-fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
-                         node_features=c("prop","SpecEnr"), edge_features="NONE")
+# fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
+#                          node_features=c("prop","SpecEnr"), edge_features="NONE")
 
 
 save(fg, file=paste0(result_dir,"/fg.Rdata"))
@@ -240,7 +240,7 @@ time_output(start, "data_bodenmiller")
 
 ## EPIC HIPC
 
-```{r flowcap, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
+```{r epic, eval=FALSE, message=FALSE, include=FALSE, echo=FALSE}
 ## input directories
 ft_dir <- "/mnt/f/FCS data/Tobias Kollmann/flowType_results/"
 meta_dir <- "/mnt/f/Brinkman group/current/Alice/flowtype_metric/src/epichipc_20200318"
@@ -281,7 +281,7 @@ mcl <- unlist(purrr::map(ft_paths, function(x) {
     names(b) <- ua
     b
 }), recursive=FALSE)
-inds <- grepl(paste0(meta_id,collapse="|"), names(mcl))
+inds <- match(meta_id, names(mcl))
 mc <- do.call(rbind, mcl[inds])
 rownames(mc) <- names(mcl)[inds]
 
@@ -304,7 +304,7 @@ colnames(mc) <- phenotype
 
 # prepare flowGraph & add cells_ul_blood features
 options(future.globals.maxSize=30000000000) #
-fg <- flowGraph(mc, cls=meta_class, no_cores=no_cores, calculate_summary=FALSE)
+fg <- flowGraph(mc, class=meta_class, no_cores=no_cores, calculate_summary=FALSE)
 fg <- fg_add_feature(fg, type="node", feature="cells_ul_blood", m=meta_cb*fg@feat$node$prop)
 fg <- fg_feat_node_specenr(fg, feature="cells_ul_blood")
 
@@ -612,14 +612,9 @@ meta_file0 = meta_file0[,-4]
 #  The total size of the 5 globals that need to be exported for the future expression (???.f()???) is 746.88 MiB. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are ‘ep??? (579.19 MiB of class ‘numeric???), ‘mp??? (102.64 MiB of class ‘numeric???) and ‘pparen??? (55.13 MiB of class ‘list???).
 options(future.globals.maxSize=3000000000)
 fg = flowGraph(ft_dirs, meta=meta_file0, no_cores=no_cores, label1="control",
-               norm_path=paste0(result_dir0,"/count_norm"),
-               test_custom=function(x,y)
-                   tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                            error=function(e) 1),
-               path=paste0(result_dir0,"/fg"))
-
-fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
-                         node_features=c("prop","SpecEnr"), edge_features="NONE")
+               norm_path=paste0(result_dir0,"/count_norm"),calculate_summary=FALSE)
+# fg <- fg_feat_mean_class(fg, class="subject", no_cores=1, 
+#                          node_features=c("prop","SpecEnr"), edge_features="NONE")
 
 save(fg, file=paste0(result_dir0,"/fg.Rdata"))
 
@@ -681,7 +676,7 @@ p50 = quantile(cvd, .5)
 p60 = quantile(cvd, .6)
 p75 = quantile(cvd, .75)
 p25 = quantile(cvd, .25)
-thress0 = map(markers, function(x) p50); names(thress0) = markers
+thress0 = purrr::map(markers, function(x) p50); names(thress0) = markers
 # thress1 = thress2 = thress4 =
 thress5 = thress0
 # thress1[[markers[1]]] = thress2[markers[1:2]] = p25
@@ -691,7 +686,7 @@ thress5[[markers[2]]] = c(p25,p50,p60)
 
 #paste0("ctrl",c(0:9)),
 #paste0("pos",c(1:30))
-for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
+for (ds in c(paste0("pos",c(26,17,12,14,16,18,19)))){#,paste0("ctrl",c(0:9)))) {
     start2 = Sys.time()
     
     # ouput directories
@@ -734,17 +729,10 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                 #   ftv0 = ftv0_ = ft@CellFreqs
                 #   ftv0 = round(ftv0/ftv0[1],3)
                 # }
-                if (ds%in%paste0("pos", c(31:40))) {
-                    ap = f@exprs[,1]<thress[[1]]
-                    bp = f@exprs[,2]<thress[[2]]
-                    cp = f@exprs[,3]<thress[[3]]
-                    dp = f@exprs[,4]<thress[[4]]
-                } else {
                     dp = f@exprs[,4]>thress[[4]]
                     ap = f@exprs[,1]>thress[[1]]
                     bp = f@exprs[,2]>thress[[2]]
                     cp = f@exprs[,3]>thress[[3]]
-                }
                 # ep = f@exprs[,5]>thress[[5]]
                 double = ap & bp
                 triple = ap & bp & cp
@@ -803,49 +791,48 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                     f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
                 }
                 else if (ds=="pos9") { # same as above but both
-                    f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
-                    f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[ap & bp & cp & dp,],
+                        f@exprs[!ap & !bp & !cp & !dp,])
                 }
                 else if (ds=="pos10") { #1.5x A+, B+C+D+
-                    tm = sum(ap)/2
-                    tripleind = which(ap)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-                    tm = sum(triple)/2
-                    tripleind = which(cp & dp & bp)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(ap),sum(ap)/2),],
+                        f@exprs[sample(which(cp & dp & bp),sum(triple)/2),])
                 }
-                else if (ds=="pos11" | ds=="pos31") { #1.5x A+
-                    tm = sum(double)
+                else if (ds=="pos11") { #1.5x A+
+                    tm = sum(ap)
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
                 }
-                else if (ds=="pos12" | ds=="pos32") { #1.5x A+, B+
-                    tm = sum(double)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(bp),tm),])
+                else if (ds=="pos12") { #1.5x A+, B+
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(ap),sum(ap)/2),],
+                        f@exprs[sample(which(bp),sum(bp)/2),])
                 }
-                else if (ds=="pos13" | ds=="pos33") { #1.5x A+B+
+                else if (ds=="pos13") { #1.5x A+B+
                     tm = sum(double)/2
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
                 }
-                else if (ds=="pos14" | ds=="pos34") { #1.5x A+B+, C+D+
+                else if (ds=="pos14") { #1.5x A+B+, C+D+
                     tm = sum(double)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm),])
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(dp & cp),tm),])
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(ap & bp),tm),],
+                        f@exprs[sample(which(cp & dp),tm),])
                 }
-                else if (ds=="pos15" | ds=="pos35") { #1.5x A+B+C+
+                else if (ds=="pos15") { #1.5x A+B+C+
                     tm = sum(triple)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
+                    f@exprs = rbind(f@exprs, f@exprs[sample(which(ap & bp & cp),tm),])
                 }
-                else if (ds=="pos16" | ds=="pos36") { #1.5x A+B+C+, B+C+D+
+                else if (ds=="pos16") { #1.5x A+B+C+, B+C+D+
                     tm = sum(triple)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp & bp),tm),])
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(ap & bp & cp),tm),],
+                        f@exprs[sample(which(bp & cp & dp),tm),])
                 }
-                else if (ds=="pos17" | ds=="pos37") { #1.5x A+B+, A+B+C+
-                    tm = sum(triple)/2
-                    tm2 = sum(double)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp),tm2),])
+                else if (ds=="pos17") { #1.5x D+, A+B+C+
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(dp), sum(dp)/2),],
+                        f@exprs[sample(which(ap & bp & cp), sum(triple)/2),])
                 }
                 # else if (ds=="pos17") { #1.5x A+B+; decrease other ones accordingly
                 #     tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
@@ -853,11 +840,10 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                 #               sample(which(ap & !bp),tm/3) ,
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
-                else if (ds=="pos18" | ds=="pos38") { #1.5x A+B+C+, C+D+, like above
-                    tm = sum(triple)/2
-                    tm2 = sum(double)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(cp & dp),tm2),])
+                else if (ds=="pos18") { #1.5x A+B+C+, C+D+
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(cp & dp), sum(double)/2),],
+                        f@exprs[sample(which(ap & bp & cp), sum(triple)/2),])
                 }
                 # else if (ds=="pos18") { #1.5x A+B+, C+D+, like above
                 #     tm = sum(double)/2
@@ -865,19 +851,19 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                 #               sample(which(ap & !bp),tm/3) ,
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
-                else if (ds=="pos19" | ds=="pos39") { #1.5x A+, A+B+C+
-                    tm = sum(triple)/2
-                    f@exprs = rbind(f@exprs,f@exprs[sample(which(ap & bp & cp),tm),])
-                    tm = sum(ap)*1.5-sum(ap)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(
-                        which(f@exprs[,1]>thress[[1]] & f@exprs[,2]>thress[[2]]), tm),])
+                else if (ds=="pos19") { #1.5x A+, A+B+C+
+                    f@exprs = rbind(
+                        f@exprs,
+                        f@exprs[sample(which(ap),sum(ap)/2),],
+                        f@exprs[sample(which(ap & bp & cp),sum(triple)/2),])
                 }
                 else if (ds=="pos20") { #1.5x A+, A+B+C+
-                    tm = sum(ap)/2
-                    tm2 = sum(triple)/2
-                    f@exprs = rbind(f@exprs,
-                                    f@exprs[sample(which(ap),tm),],
-                                    f@exprs[sample(which(cp & ap & bp),tm2),])
+                    tm = sum(triple)/2
+                    tm2 = sum(ap)/2
+                    f@exprs = rbind(
+                        f@exprs,
+                        f@exprs[sample(which(ap),tm2),],
+                        f@exprs[sample(which(ap & bp & cp),tm),])
                 }
                 else if (ds=="pos21") { # 1.5x A+B+ - A-B-
                     tm = sum(double)/2
@@ -906,12 +892,15 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                     f@exprs = f@exprs[-sample(which(ap & bp & cp),tm),]
                 }
                 else if (ds=="pos26") { #1.5x A+B+ D+
-                    tm = sum(dp)/2
-                    tripleind = which(dp)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-                    tm = sum(double)/2
-                    tripleind = which(ap & bp)
-                    f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    # tm = sum(dp)/2
+                    # tripleind = which(dp)
+                    # f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    # tm = sum(double)/2
+                    # tripleind = which(ap & bp)
+                    # f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
+                    f@exprs = rbind(
+                        f@exprs, f@exprs[sample(which(dp),sum(dp)/2),],
+                        f@exprs[sample(which(ap & bp),sum(double)/2),])
                     # tm = sum(double)/2
                     # tind = sample(which(bp & cp),tm)
                     # tind2 = sample(which(ap & bp),tm)
@@ -940,7 +929,34 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
                     tripleind = which(ap & bp & cp)
                     f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
                 }
-                
+                else if (ds=="pos31") { #1.5x A+
+                    tm = sum(double)
+                    f@exprs = f@exprs[-sample(which(ap),tm),]
+                }
+                else if (ds=="pos32") { #1.5x A+, B+
+                    tm = sum(double)
+                    f@exprs = f@exprs[-unique(append(sample(which(ap),tm),
+                                                     sample(which(bp),tm))),]
+                }
+                else if (ds=="pos33") { #1.5x A+B+
+                    tm = sum(double)/2
+                    f@exprs = f@exprs[-sample(which(ap & bp),tm),]
+                }
+                else if (ds=="pos34") { #1.5x A+B+, C+D+
+                    tm = sum(double)/2
+                    f@exprs = f@exprs[-unique(append(sample(which(ap & bp),tm),
+                                                     sample(which(dp & cp),tm))),]
+                }
+                else if (ds=="pos35") { #1.5x A+B+C+
+                    tm = sum(triple)/2
+                    f@exprs = f@exprs[-sample(which(ap & bp & cp),tm),]
+                }
+                else if (ds=="pos36") { #1.5x A+B+ D+
+                    tm = sum(double)
+                    f@exprs = f@exprs[-unique(append(sample(which(dp),tm),
+                                                     sample(which(ap & bp),tm/2))),]
+                }
+
                 # if (i == nsample*nctrl+1 & grepl("pos",ds)) {
                 #
                 #   ft = flowType(Frame=f, PropMarkers=ci, MarkerNames=markers,
@@ -958,7 +974,7 @@ for (ds in c(paste0("pos",c(1:39)))){#,paste0("ctrl",c(0:9)))) {
             fe = f@exprs
             colnames(fe) = LETTERS[1:ncol(fe)]
             # if (i%in%c(1:5,251:255,501:505,751:755) & grepl("pos",ds))
-            #     save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
+                save(fe,file=paste0(fcs_dir,"/a",i,".Rdata"))
             if (ds%in%c("pos30")) {
                 thress = thress5
                 ppm = rep(2,markern)
@@ -1026,37 +1042,61 @@ result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) {try({
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    # fg <- fg_clear_summary(fg)
-    fg <- fg_rm_feature(fg, type="edge", feature="prop")
+    fg <- fg_clear_summary(fg)
+    if ("pchild"%in%names(fg@edge_list)) 
+        names(fg@edge_list)[names(fg@edge_list)=="pchild"] <- "child"
+    if ("pparen"%in%names(fg@edge_list)) 
+        names(fg@edge_list)[names(fg@edge_list)=="pparen"] <- "parent"
+
+    # fnames <- names(fg@feat$node)[grep("MEAN",names(fg@feat$node))]
+    # if (length(fnames)>0)
+    #     for (fname in fnames)
+    #         fg <- fg_rm_feature(fg, feature=fname)
+
+    # fg <- fg_rm_feature(fg, type="edge", feature="prop")
     
     # no_cores <- ifelse (grepl("pregnancy|epic|genentech", result_dir), 15, 1)
     
-    if (!grepl("pregnancy|bodenmiller", result_dir)) {
+    if (grepl("pregnancy|bodenmiller", result_dir)) {
+                qt <- function(x,y)
+                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1)
+        qw <- function(x,y) tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
+                                     error=function(e) 1)
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_diminish", adjust_custom="none",
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_custom="t",
-                        test_name="t_diminish", adjust_custom="none",
+                        test_custom=qw,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
+                        test_custom=qw,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="wilcox_byLayer_diminish",
+                        test_custom=qw,
                         diminish=TRUE,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
+        
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_custom="t",
+                        overwrite=FALSE, 
+                        test_name="t_diminish", adjust_custom="none",
+                        test_custom=qt,
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+                        overwrite=FALSE, 
                         test_name="t_BH_diminish", adjust_custom="BH",
+                        test_custom=qt,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="t_byLayer_diminish",
-                        diminish=TRUE, test_custom="t",
+                        test_custom=qt,
+                        diminish=TRUE,
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-    } else if (grepl("epic",result_dir)) {
+
+    } 
+    else if (grepl("epic",result_dir)) {
         st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, 
                                    error=function(e) 0)
         test_custom <- function(x,y) {
@@ -1082,75 +1122,33 @@ for (result_dir in result_dirs) {try({
                          node_features=c("cells_ul_blood",
                                          "SpecEnr_cells_ul_blood"),
                          overwrite=FALSE)
-    } else {
+    } 
+    else {
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_diminish", adjust_custom="none",
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_custom="t",
                         test_name="t_diminish", adjust_custom="none",
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="wilcox_diminish", adjust_custom="none",
-                        test_custom=function(x,y)
-                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="t_diminish", adjust_custom="none",
-                        test_custom=function(x,y)
-                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
                         test_name="wilcox_BH_diminish", adjust_custom="BH",
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="wilcox_byLayer_diminish",
                         diminish=TRUE,
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_custom="t",
                         test_name="t_BH_diminish", adjust_custom="BH",
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
+                        node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, test_name="t_byLayer_diminish",
                         diminish=TRUE, test_custom="t",
-                        node_features=c("prop_MEAN_subject","SpecEnr_MEAN_subject"), edge_features="NONE")
-        
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="wilcox_BH_diminish", adjust_custom="BH",
-                        test_custom=function(x,y)
-                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
                         node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
-                        test_custom=function(x,y)
-                            tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
-                        diminish=TRUE,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="t_BH_diminish", adjust_custom="BH",
-                        test_custom=function(x,y)
-                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="t_byLayer_diminish",
-                        test_custom=function(x,y)
-                            tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
-                                     error=function(e) 1),
-                        diminish=TRUE,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        
+
     }
     
     # if (ncol(fg@summary_desc$node)==4) {
@@ -1162,62 +1160,77 @@ for (result_dir in result_dirs) {try({
     #     fg@summary_desc$node <- dt
     # }
     
-    feat_orig <- ifelse("cells_ul_blood"%in%names(fg@feat$node), 
-                        "cells_ul_blood", "prop")
     
-    qt <- function(x,y)
-        min( sum(x<.1 & x>-.1)/length(x), sum(y<.1 & y>-.1)/length(y))
+    for (i in seq_len(length(fg@summary$node)))
+        fg@summary$node[[i]] <- list(values=fg@summary$node[[i]]$values)
     
-    for (feat in c(feat_orig, paste0("SpecEnr_",feat_orig))) {
-        if (feat=="SpecEnr_prop") feat <- "SpecEnr"
-        label2 <- unlist(tail(fg@summary_desc$node$label2,1))
-        if (label2=="mix") label2 <- "aml"
-        
-        fg <- fg_summary(fg, no_cores=no_cores, test_name="test0",
-                         test_custom=qt, class="class", 
-                         label1="control", label2=label2,
-                         adjust_custom="none", diminish=FALSE,
-                         node_features=feat, edge_features="NONE",
-                         overwrite=FALSE)
-        
-        test_name <- paste0(ifelse("wilt"%in%fg@summary_desc$node$test_name, 
-                                   "wilt", "wilcox"), "_byLayer_diminish")
-        summary_meta0 <- c(feature=feat, test_name=test_name, 
-                           class=unlist(tail(fg@summary_desc$node$class,1)),
-                           label1=unlist(tail(fg@summary_desc$node$label1,1)),
-                           label2=label2)
-        index0 <- flowGraph::fg_get_summary_index(fg, type="node", summary_meta=summary_meta0)
-        pv <- fg_get_summary(fg, index=index0)$values
-        
-        summary_meta1 <- summary_meta0
-        summary_meta1[2] <- "test0"
-        index1 <- flowGraph::fg_get_summary_index(fg, summary_meta=summary_meta1)
-        pv[fg_get_summary(fg, index=index1)$values<.5] <- 1
-        
-        summary_meta2 <- summary_meta0
-        summary_meta2[2] <- paste0(summary_meta2[2],"_adjust0")
-        fg <- fg_add_summary(
-            fg, type="node", summary_meta=unlist(list(
-                feat=summary_meta2[1], test_name=summary_meta2[2], 
-                class=summary_meta2[3], label1=summary_meta2[4],
-                label2=summary_meta2[5])),
-            overwrite=TRUE, p=list(values=pv))
-    }
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
     rm(fg); gc()
 })}
 
-# calculate efect sizes
+# # legacy: calculate edge proportion
+# for (result_dir in result_dirs) {try({
+#     start <- Sys.time()
+#     cat(result_dir,"\n")
+#     fg = get(load(paste0(result_dir,"/fg.Rdata")))
+#     
+#     if (! length(fg@feat$edge))
+#         fg <- fg_feat_edge_prop(fg, no_cores=1)
+#     
+#     save(fg, file=paste0(result_dir,"/fg.Rdata"))
+#     flowGraph:::time_output(start)
+# })}
+
+# legacy: calculate efect sizes and adjust0
 for (result_dir in result_dirs) {try({
     start <- Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    print(fg@summary_desc$node)
+    # fg@etc$effect_size <- NULL
+    
+    # indices <- sort(union(grep("MEAN",fg@summary_desc$node$feat),
+    #                  grep("test0|adjust",fg@summary_desc$node$test_name)),
+    #                 decreasing=TRUE)
+    # if (length(indices)>0)
+    #     for (index in indices)
+    #         fg <- fg_rm_summary(fg, index=index)
+    # fnames <- names(fg@feat$node)[grep("MEAN",names(fg@feat$node))]
+    # if (length(fnames)>0)
+    #     for (fname in fnames)
+    #         fg <- fg_rm_feature(fg, feature=fname)
+
     for (i in seq_len(length(fg@summary$node)))
         pp <- fg_get_summary(fg, index=i)
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
+    print(fg@summary_desc$node)
     flowGraph:::time_output(start)
 })}
+
+# # legacy: add label to edge data frame
+# for (result_dir in result_dirs) {
+#     start <- Sys.time()
+#     cat(result_dir,"\n")
+#     fg = get(load(paste0(result_dir,"/fg.Rdata")))
+#     
+#     temp_se <- function(x)
+#         stringr::str_extract_all(x, "[a-zA-Z0-9]+[+-]+")
+#     from_ <- temp_se(fg@graph$e$from)
+#     to_ <- temp_se(fg@graph$e$to)
+#     fg@graph$e$marker <- purrr::map_chr(seq_len(length(from_)), function(x)
+#         setdiff(to_[[x]], from_[[x]]))
+#     
+#     save(fg, file=paste0(result_dir,"/fg.Rdata"))
+#     flowGraph:::time_output(start)
+# }
+
+# legacy: remove id's from summaries
+for (result_dir in result_dirs) {
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    for (i in seq_len(length(fg@summary$node)))
+        fg@summary$node[[i]] <- list(values=fg@summary$node[[i]]$values)
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+}
 ```
 
 
@@ -1229,20 +1242,28 @@ result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
 for (result_dir in result_dirs) { 
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    if (!grepl("pregnancy|bodenmiller", result_dir)) {
+    if (grepl("pregnancy|bodenmiller", result_dir)) {
         # distance plots, not yet added so will do separately
-        a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
+        a = flowGraph:::fg_plot_dist(fg, node_features=c("prop_MEAN_subject", "SpecEnr_MEAN_subject"),
                          edge_features="NONE",
                          class="class",
                          dist_method="euclidean", get_means=NULL,
-                         plot_path=paste0(result_dir,"/plots/distance.png"))
+                         plot_path=paste0(result_dir,"/fg/plots/distance.png"))
         
-    } else {
-        a = fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
+    } 
+    else if (grepl("epic", result_dir)) {
+        a = flowGraph:::fg_plot_dist(fg, node_features=c("cells_ul_blood", "SpecEnr_cells_ul_blood"),
                          edge_features="NONE",
                          class="class",
-                         dist_method="euclidean", get_means="subject",
-                         plot_path=paste0(result_dir,"/plots/distance.png")) 
+                         dist_method="euclidean", get_means=NULL,
+                         plot_path=paste0(result_dir,"/fg/plots/distance.png"))
+    }
+    else {
+        a = flowGraph:::fg_plot_dist(fg, node_features=c("count","prop", "SpecEnr"),
+                         edge_features="NONE",
+                         class="class",
+                         dist_method="euclidean", get_means=NULL,
+                         plot_path=paste0(result_dir,"/fg/plots/distance.png")) 
     }
 }
 
@@ -1254,28 +1275,47 @@ for (result_dir in result_dirs) {
 
 ```{r}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+p_thres <- .01
 for (result_dir in result_dirs) { try({
     start1 <- Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    if (!grepl("pregnancy|bodenmiller", result_dir)) {
-        fg_save_plots(fg, paste0(result_dir,"/fg/plots"))
+    if (grepl("pregnancy|bodenmiller", result_dir)) {
+        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=15, paired=TRUE)
     } else {
-        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), paired=TRUE)
+        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=15)
     }
+    
+    pparen <- fg@edge_list$parent
+    pchild <- fg@edge_list$child
+    start_phen <- fg@graph$v$phenotype[fg@graph$v$phenolayer==1]
+    
     
     # + logged qq plots + interactive pVSdiff plot
     type <- "node"
     for (index in seq_len(length(fg@summary[[type]]))) {
+        if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .1
         summary_meta <- fg@summary_desc[[type]][index,]
         plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
                              paste0(unlist(summary_meta), collapse="_"))
         dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
-
+        
+        # fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
+        #                 path=paste0(plot_path_,"/pVSdifference.html"))
+        
         fg_plot_qq(fg, type="node", index=index, logged=TRUE,
-                   path=paste0(plot_path_,"/qq_logged.png"))
-        fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
-                        path=paste0(plot_path_,"/pVSdifference.html"))
+           path=paste0(plot_path_,"/qq_logged.png"))
+        fg_plot_qq(fg, type="node", index=index, logged=F,
+           path=paste0(plot_path_,"/qq.png"))
+        fg_plot_qq(fg, type="node", index=index, logged=F,
+           path=paste0(plot_path_,"/qq_filtered.png"), filter_adjust0 = .4)
+        fg_plot_qq(fg, type="node", index=index, logged=T,
+           path=paste0(plot_path_,"/qq_logged_filtered.png"), filter_adjust0 = .4)
+
+        fg_plot_pVSdiff(fg, index=index, interactive=F,
+                path=paste0(plot_path_,"/pVSdifference.png"))
+        fg_plot_pVSdiff(fg, index=index, interactive=F,
+                path=paste0(plot_path_,"/pVSdifference_filtered.png"), filter_adjust0 = .4)
         
         # cell hierarchy plots without number labels
         try ({
@@ -1291,21 +1331,62 @@ for (result_dir in result_dirs) { try({
                 node_labels=nlabels)
             if (is.null(gr)) next
             
-            gr <- fg_plot(
-                fg, type="node", p_thres=.01, index=index,
-                show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE),
+            gr_ <- gr <- fg_plot(
+                fg, type="node", p_thres=p_thres, index=index,
+                show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
                 label_max=15,
                 node_labels="NONE")
             if (is.null(gr)) next
-
+            
+            # sigs <- sigs_allpar <- sig_allchd <- list()
+            # sig_allchd[[1]] <- sigs[[1]] <- sig_phen <- start_phen[p[start_phen]<p_thres]
+            # sigs_allpar[[1]] <- rep(TRUE, length(sigs[[1]]))
+            # while(TRUE) {
+            #     p_layer <- length(sigs)+1
+            #     chld <- unique(unlist(pchild[sig_phen]))
+            #     if (length(chld)==0) break
+            #     # p_parn <- p[sig_phen]
+            #     p_chld <- p[chld]
+            #     
+            #     sig_child <- chld[p_chld<p_thres]
+            #     if (length(sig_child)==0) break
+            #     sigs[[p_layer]] <- sig_child
+            #     
+            #     sigs_allpar[[p_layer]] <- 
+            #         purrr::map_lgl(sig_child, function(x)
+            #             all(pparen[[x]]%in%sig_phen))
+            #     
+            #     sig_allchd[[p_layer]] <-
+            #         unique(unlist(pparen[sig_child[sigs_allpar[[p_layer]]]]))
+            #     
+            #     sig_phen <- sig_child
+            # }
+            # sigs_ <- unlist(purrr::map(seq_len(length(sigs)), function(i)
+            #     sigs[[i]][sigs_allpar[[i]]]))
+            # sig_ind <- gr_$v$phenotype%in%sigs_
+            # 
+            # gr <- fg_plot(
+            #     fg, type=type, p_thres=.01, index=index, show_nodes_edges=sig_ind,
+            #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+            #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
+            #     node_labels=nlabels)
+            # 
+            # gr <- fg_plot(
+            #     fg, type=type, p_thres=.01, index=index, 
+            #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+            #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
+            #     node_labels=nlabels)
+            
             # don't label if colour too light, ie too close to 0
             l_ind <- which(gr$v$label_ind)
             colmax <- max(abs(gr$v$colour))
             l_ind_not <- l_ind[abs(gr$v$colour[l_ind]) < colmax*.3]
             gr$v$label_ind[l_ind_not] <- FALSE
             
-            gp <- plot_gr(gr, bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE))
-            ggsave(plot=gp, filename=paste0(plot_path_,"/cell_hierarchy_.png"))
+            gr$v$label <- gr$v$phenotype
+            gp <- plot_gr(gr, show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE))
+            ggsave(plot=gp, filename=paste0(plot_path_,"/cell_hierarchy_.png"),
+                   width=8, height=7)
             
             # # plot only one group and their ancestors (cell pops with same markers)
             # pparen <- fg@edge_list$parent
@@ -1314,6 +1395,7 @@ for (result_dir in result_dirs) { try({
             # show_phen_ <- gsub("[+-]","_",show_phen)
             # show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
             # if (length(show_phen_u) < length(show_phen)) {
+            #     path <- paste0(plot_path_,"/cell_hierarchy")
             #     dir.create(path, showWarnings=FALSE)
             #     for (phen in show_phen_u) {
             #         gr_ <- gr
@@ -1332,21 +1414,74 @@ for (result_dir in result_dirs) { try({
             #         gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
             #         gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
             #             gr$e$to%in%gr$v$phenotype[v_ind_]
-            #         gp <- plot_gr(gr_)
-            #         ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"), 
-            #                plot=gp, scale=1, width=9, height=9,
-            #                units="in", dpi=500, limitsize=TRUE)
+            #         gr_$v <- gr_$v[gr_$v$v_ind,]
+            #         gr_$e <- gr_$e[gr_$e$from%in%gr$v$phenotype &
+            #                            gr_$e$to%in%gr$v$phenotype,]
+            #         
+            #         gr_ <- set_layout_graph(gr_)
+            #         # gp <- plot_gr(gr_)
+            #         gp <- plot_gr(gr__, label_coloured=FALSE, interactive=TRUE)
+            #         # ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"),
+            #         #        plot=gp, scale=1, width=9, height=9,
+            #         #        units="in", dpi=500, limitsize=TRUE)
+            #         htmlwidgets::saveWidget(
+            #             gp, file=paste0(path,"/",phen,sum(v_ind_),".html"))
+            #         
             #     }
             # }
-            
-            if (sum(p<.01)>30)
-                gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
-                              index=index, label_max=20,
-                              show_bgedges=TRUE, path=paste0(path,"_top25"))
+            # 
+            # if (sum(p<.01)>30)s
+            #     gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
+            #                   index=index, label_max=20,
+            #                   show_bgedges=TRUE, path=paste0(plot_path_,"/cell_hierarchy_top25"))
         })
+        if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .01
 
     }
+    
+    flowGraph:::time_output(start1)
+})}
 
+```
+
+### trying stuff out
+
+```{r}
+p_thres <- .01
+
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs[c(1,13:53)]) { try({
+    start1 <- Sys.time()
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+
+    index # specenr
+    type <- "node"
+    
+    pp <- fg_get_summary(fg, index=index)
+    p <- pp$values
+    sigs <- sigs_allpar <- list()
+    sigs[[1]] <- sig_phen <- start_phen[p[start_phen]<p_thres]
+    sigs_allpar[[1]] <- rep(TRUE, length(sigs[[1]]))
+    while(TRUE) {
+        chld <- unique(unlist(pchild[sig_phen]))
+        if (length(chld)==0) break
+        # p_parn <- p[sig_phen]
+        p_chld <- p[chld]
+        
+        sig_child <- chld[p_chld<p_thres]
+        if (length(sig_child)==0) break
+        sigs[[length(sigs)+1]] <- sig_child
+        
+        sigs_allpar[[length(sigs_allpar)+1]] <- purrr::map_lgl(sig_child, function(x)
+            all(pparen[[x]]%in%sig_phen))
+        sig_phen <- sig_child
+    }
+    sigs_ <- unlist(purrr::map(seq_len(length(sigs)), function(i)
+        sigs[[i]][sigs_allpar[[i]]]))
+
+            
     flowGraph:::time_output(start1)
 })}
 
@@ -1355,7 +1490,7 @@ for (result_dir in result_dirs) { try({
 ### Rchy plots (experimental)
 ```{r}
 result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
-result_dirs = result_dirs[grepl("pos",result_dirs)]
+# result_dirs = result_dirs[grepl("pos",result_dirs)]
 for (result_dir in result_dirs) {
     # if (!grepl("genentech",result_dir)) next
     print(result_dir)
