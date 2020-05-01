@@ -1,150 +1,157 @@
-// Usage: codyhouse.co/license
-(function() {
-  var Drawer = function(element) {
-    this.element = element;
-    this.content = document.getElementsByClassName('js-drawer__body')[0];
-    this.triggers = document.querySelectorAll('[aria-controls="'+this.element.getAttribute('id')+'"]');
-    this.firstFocusable = null;
-    this.lastFocusable = null;
-    this.selectedTrigger = null;
-    this.isModal = Util.hasClass(this.element, 'js-drawer--modal');
-    this.showClass = "drawer--is-visible";
-    this.initDrawer();
-  };
+    /*!
+    * Based on articles on
+    * https://gomakethings.com
+    */
 
-  Drawer.prototype.initDrawer = function() {
-    var self = this;
-    //open drawer when clicking on trigger buttons
-    if ( this.triggers ) {
-      for(var i = 0; i < this.triggers.length; i++) {
-        this.triggers[i].addEventListener('click', function(event) {
+    var drawer = function () {
+
+      /**
+      * Element.closest() polyfill
+      * https://developer.mozilla.org/en-US/docs/Web/API/Element/closest#Polyfill
+      */
+      if (!Element.prototype.closest) {
+        if (!Element.prototype.matches) {
+          Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+        }
+        Element.prototype.closest = function (s) {
+          var el = this;
+          var ancestor = this;
+          if (!document.documentElement.contains(el)) return null;
+          do {
+            if (ancestor.matches(s)) return ancestor;
+            ancestor = ancestor.parentElement;
+          } while (ancestor !== null);
+          return null;
+        };
+      }
+
+
+      //
+      // Settings
+      //
+      var settings = {
+        speedOpen: 50,
+        speedClose: 350,
+        activeClass: 'is-active',
+        visibleClass: 'is-visible',
+        selectorTarget: '[data-drawer-target]',
+        selectorTrigger: '[data-drawer-trigger]',
+        selectorClose: '[data-drawer-close]',
+
+      };
+
+
+      //
+      // Methods
+      //
+
+      // Toggle accessibility
+      var toggleAccessibility = function (event) {
+        if (event.getAttribute('aria-expanded') === 'true') {
+          event.setAttribute('aria-expanded', false);
+        } else {
+          event.setAttribute('aria-expanded', true);
+        }   
+      };
+
+      // Open Drawer
+      var openDrawer = function (trigger) {
+
+        // Find target
+        var target = document.getElementById(trigger.getAttribute('aria-controls'));
+
+        // Make it active
+        target.classList.add(settings.activeClass);
+
+        // Make body overflow hidden so it's not scrollable
+        document.documentElement.style.overflow = 'hidden';
+
+        // Toggle accessibility
+        toggleAccessibility(trigger);
+
+        // Make it visible
+        setTimeout(function () {
+          target.classList.add(settings.visibleClass);
+        }, settings.speedOpen); 
+
+      };
+
+      // Close Drawer
+      var closeDrawer = function (event) {
+
+        // Find target
+        var closestParent = event.closest(settings.selectorTarget),
+          childrenTrigger = document.querySelector('[aria-controls="' + closestParent.id + '"');
+
+        // Make it not visible
+        closestParent.classList.remove(settings.visibleClass);
+
+        // Remove body overflow hidden
+        document.documentElement.style.overflow = '';
+
+        // Toggle accessibility
+        toggleAccessibility(childrenTrigger);
+
+        // Make it not active
+        setTimeout(function () {
+          closestParent.classList.remove(settings.activeClass);
+        }, settings.speedClose);             
+
+      };
+
+      // Click Handler
+      var clickHandler = function (event) {
+
+        // Find elements
+        var toggle = event.target,
+          open = toggle.closest(settings.selectorTrigger),
+          close = toggle.closest(settings.selectorClose);
+
+        // Open drawer when the open button is clicked
+        if (open) {
+          openDrawer(open);
+        }
+
+        // Close drawer when the close button (or overlay area) is clicked
+        if (close) {
+          closeDrawer(close);
+        }
+
+        // Prevent default link behavior
+        if (open || close) {
           event.preventDefault();
-          if(Util.hasClass(self.element, self.showClass)) {
-            self.closeDrawer();
-            return;
+        }
+
+      };
+
+      // Keydown Handler, handle Escape button
+      var keydownHandler = function (event) {
+
+        if (event.key === 'Escape' || event.keyCode === 27) {
+
+          // Find all possible drawers
+          var drawers = document.querySelectorAll(settings.selectorTarget),
+            i;
+
+          // Find active drawers and close them when escape is clicked
+          for (i = 0; i < drawers.length; ++i) {
+            if (drawers[i].classList.contains(settings.activeClass)) {
+              closeDrawer(drawers[i]);
+            }
           }
-          self.selectedTrigger = event.target;
-          self.showDrawer();
-          self.initDrawerEvents();
-        });
-      }
-    }
-  };
 
-  Drawer.prototype.showDrawer = function() {
-    var self = this;
-    this.content.scrollTop = 0;
-    Util.addClass(this.element, this.showClass);
-    this.getFocusableElements();
-    Util.moveFocus(this.element);
-    // wait for the end of transitions before moving focus
-    this.element.addEventListener("transitionend", function cb(event) {
-      Util.moveFocus(self.element);
-      self.element.removeEventListener("transitionend", cb);
-    });
-    this.emitDrawerEvents('drawerIsOpen');
-  };
+        }
 
-  Drawer.prototype.closeDrawer = function() {
-    Util.removeClass(this.element, this.showClass);
-    this.firstFocusable = null;
-    this.lastFocusable = null;
-    if(this.selectedTrigger) this.selectedTrigger.focus();
-    //remove listeners
-    this.cancelDrawerEvents();
-    this.emitDrawerEvents('drawerIsClose');
-  };
+      };
 
-  Drawer.prototype.initDrawerEvents = function() {
-    //add event listeners
-    this.element.addEventListener('keydown', this);
-    this.element.addEventListener('click', this);
-  };
 
-  Drawer.prototype.cancelDrawerEvents = function() {
-    //remove event listeners
-    this.element.removeEventListener('keydown', this);
-    this.element.removeEventListener('click', this);
-  };
+      //
+      // Inits & Event Listeners
+      //
+      document.addEventListener('click', clickHandler, false);
+      document.addEventListener('keydown', keydownHandler, false);
 
-  Drawer.prototype.handleEvent = function (event) {
-    switch(event.type) {
-      case 'click': {
-        this.initClick(event);
-      }
-      case 'keydown': {
-        this.initKeyDown(event);
-      }
-    }
-  };
 
-  Drawer.prototype.initKeyDown = function(event) {
-    if( event.keyCode && event.keyCode == 27 || event.key && event.key == 'Escape' ) {
-      //close drawer window on esc
-      this.closeDrawer();
-    } else if( this.isModal && (event.keyCode && event.keyCode == 9 || event.key && event.key == 'Tab' )) {
-      //trap focus inside drawer
-      this.trapFocus(event);
-    }
-  };
+    };
 
-  Drawer.prototype.initClick = function(event) {
-    //close drawer when clicking on close button or drawer bg layer
-    if( !event.target.closest('.js-drawer__close') && !Util.hasClass(event.target, 'js-drawer') ) return;
-    event.preventDefault();
-    this.closeDrawer();
-  };
-
-  Drawer.prototype.trapFocus = function(event) {
-    if( this.firstFocusable == document.activeElement && event.shiftKey) {
-      //on Shift+Tab -> focus last focusable element when focus moves out of drawer
-      event.preventDefault();
-      this.lastFocusable.focus();
-    }
-    if( this.lastFocusable == document.activeElement && !event.shiftKey) {
-      //on Tab -> focus first focusable element when focus moves out of drawer
-      event.preventDefault();
-      this.firstFocusable.focus();
-    }
-  }
-
-  Drawer.prototype.getFocusableElements = function() {
-    //get all focusable elements inside the drawer
-    var allFocusable = this.element.querySelectorAll('[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex]:not([tabindex="-1"]), [contenteditable], audio[controls], video[controls], summary');
-    this.getFirstVisible(allFocusable);
-    this.getLastVisible(allFocusable);
-  };
-
-  Drawer.prototype.getFirstVisible = function(elements) {
-    //get first visible focusable element inside the drawer
-    for(var i = 0; i < elements.length; i++) {
-      if( elements[i].offsetWidth || elements[i].offsetHeight || elements[i].getClientRects().length ) {
-        this.firstFocusable = elements[i];
-        return true;
-      }
-    }
-  };
-
-  Drawer.prototype.getLastVisible = function(elements) {
-    //get last visible focusable element inside the drawer
-    for(var i = elements.length - 1; i >= 0; i--) {
-      if( elements[i].offsetWidth || elements[i].offsetHeight || elements[i].getClientRects().length ) {
-        this.lastFocusable = elements[i];
-        return true;
-      }
-    }
-  };
-
-  Drawer.prototype.emitDrawerEvents = function(eventName) {
-    var event = new CustomEvent(eventName, {detail: this.selectedTrigger});
-    this.element.dispatchEvent(event);
-  };
-
-  //initialize the Drawer objects
-  var drawer = document.getElementsByClassName('js-drawer');
-  if( drawer.length > 0 ) {
-    for( var i = 0; i < drawer.length; i++) {
-      (function(i){new Drawer(drawer[i]);})(i);
-    }
-  }
-}());
+    drawer();

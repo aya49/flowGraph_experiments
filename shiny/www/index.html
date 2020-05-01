@@ -1,126 +1,133 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
     <meta name="author" content="alice">
     <meta name="description" content="">
     <meta name="keywords" content="HTML,CSS,XML,JavaScript">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <title>a nice webpage title</title>
 
     <!-- CSS & JS -->
     <link rel="stylesheet" href="css/drawer.css">
     <script src="js/drawer.js"></script>
-
-    <!-- codyhouse -->
-    <!-- The script is used in CSS to target that JavaScript is enabled and apply additional style accordingly. If you don't include the script, part of the style of the components won't be visible. -->
-    <script>document.getElementsByTagName("html")[0].className += " js";</script>
 </head>
-
-
 
 <body>
 
 
+    <h1>
+        A dependency-free Vanilla JS drawer
+        <a href="https://github.com/tomaszbujnowicz/vanilla-js-drawer">GitHub repo</a>
+    </h1>
 
-<!-- background visnetwork + absolute panel slider for max nodes -->
 
 
 
 
-<!-- drawer0 right -->
-<button class="btn btn--primary" aria-controls="drawer0" style="position:absolute; top: 20px; right: 20px; z-index:-1">0. about</button>
+    <!-- drawer0 right -->
+    <button class="btn" data-drawer-trigger aria-controls="drawer0" aria-expanded="false" style="position:absolute; top: 20px; right: 20px; z-index:-1">0. about</button>
 
-<div class="drawer js-drawer drawer--open-left" id="drawer0">
-  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle0">
 
-    <div class="text-component">
-        <h4 class="text-truncate" id="drawerTitle0">about</h4>
+    <section class="drawer" id="drawer0" data-drawer-target>
+        <div class="drawer__overlay" data-drawer-close tabindex="-1"></div>
+        <div class="drawer__wrapper">
 
-        <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
-            {{ dr_about }}
+            <div class="drawer__header">
+                <div class="drawer__title">
+                    <h3>about</h3>
+                </div>
+                <button class="drawer__close" data-drawer-close aria-label="Close Drawer"></button>
+            </div>
+
+            <div class="drawer__content">
+                {{ dr_about }}
+                <div style="padding: 100px 0;"></div>
+            </div>
+
         </div>
-    </div>
-
-    <button class="reset drawer__close-btn position-fixed js-drawer__close">
-      <svg class="icon" viewBox="0 0 16 16"><title>Close drawer panel</title><g stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><line x1="13.5" y1="2.5" x2="2.5" y2="13.5"></line><line x1="2.5" y1="2.5" x2="13.5" y2="13.5"></line></g></svg>
-    </button>
-
-  </div>
-</div>
+    </section>
 
 
 
+    <!-- drawer1 left -->
+    <button class="btn" data-drawer-trigger aria-controls="drawer1" aria-expanded="false" style="position:absolute; top: 20px; right: 20px; z-index:-1">1. load flowGraph data</button>
 
-<!-- drawer1 left -->
-<button class="btn btn--primary" aria-controls="drawer1" style="position:absolute; top: 20px; left: 20px; z-index:-1">1. load flowGraph data</button>
 
-<div class="drawer drawerbig js-drawer drawer--open-left" id="drawer1">
-  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle1">
+    <section class="drawer drawer--left" id="drawer1" data-drawer-target>
+        <div class="drawer__overlay" data-drawer-close tabindex="-1"></div>
+        <div class="drawer__wrapper">
 
-    <div class="text-component">
-        <h4 class="text-truncate" id="drawerTitle1">load data</h4>
+            <div class="drawer__header">
+                <div class="drawer__title">
+                    <h3>load data</h3>
+                </div>
+                <button class="drawer__close" data-drawer-close aria-label="Close Drawer"></button>
+            </div>
 
-        <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
-            {{ dr_load }}
+            <div class="drawer__content">
+                {{ dr_load }}
+                <div style="padding: 100px 0;"></div>
+            </div>
+
         </div>
-    </div>
-
-    <button class="reset drawer__close-btn position-fixed js-drawer__close">
-      <svg class="icon" viewBox="0 0 16 16"><title>Close drawer panel</title><g stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><line x1="13.5" y1="2.5" x2="2.5" y2="13.5"></line><line x1="2.5" y1="2.5" x2="13.5" y2="13.5"></line></g></svg>
-    </button>
-
-  </div>
-</div>
+    </section>
 
 
 
-<!-- drawer2 right -->
-<button class="btn btn--primary" aria-controls="drawer2" style="position:absolute; top: 60px; right: 20px; z-index:-1">2. summary statistics plots</button>
+    <!-- drawer2 right -->
+    <button class="btn" data-drawer-trigger aria-controls="drawer2" aria-expanded="false" style="position:absolute; top: 20px; right: 20px; z-index:-1">2. summary statistics plots</button>
 
-<div class="drawer js-drawer" id="drawer2">
-  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle2">
 
-    <div class="text-component">
-        <h4 class="text-truncate" id="drawerTitle2">summary statistics plots</h4>
+    <section class="drawer" id="drawer2" data-drawer-target>
+        <div class="drawer__overlay" data-drawer-close tabindex="-1"></div>
+        <div class="drawer__wrapper">
 
-        <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
-            {{ dr_sumplots }}
+            <div class="drawer__header">
+                <div class="drawer__title">
+                    <h3>summary statistics plots</h3>
+                </div>
+                <button class="drawer__close" data-drawer-close aria-label="Close Drawer"></button>
+            </div>
+
+            <div class="drawer__content">
+                {{ dr_sumplots }}
+                <div style="padding: 100px 0;"></div>
+            </div>
+
         </div>
-    </div>
-
-    <button class="reset drawer__close-btn position-fixed js-drawer__close">
-      <svg class="icon" viewBox="0 0 16 16"><title>Close drawer panel</title><g stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><line x1="13.5" y1="2.5" x2="2.5" y2="13.5"></line><line x1="2.5" y1="2.5" x2="13.5" y2="13.5"></line></g></svg>
-    </button>
-
-  </div>
-</div>
+    </section>
 
 
 
-<!-- drawer3 left -->
-<button class="btn btn--primary" aria-controls="drawer2" style="position:absolute; top: 60px; left: 20px; z-index:-1">3. cell population details</button>
+    <!-- drawer3 left -->
+    <button class="btn" data-drawer-trigger aria-controls="drawer3" aria-expanded="false" style="position:absolute; top: 20px; right: 20px; z-index:-1">3. cell population details</button>
 
-<div class="drawer js-drawer drawer--open-left" id="drawer3">
-  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle3">
 
-    <div class="text-component">
-        <h4 class="text-truncate" id="drawerTitle3">cell population details</h4>
+    <section class="drawer drawer--left" id="drawer3" data-drawer-target>
+        <div class="drawer__overlay" data-drawer-close tabindex="-1"></div>
+        <div class="drawer__wrapper">
 
-        <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
-            {{ dr_cpop }}
+            <div class="drawer__header">
+                <div class="drawer__title">
+                    <h3>cell population details</h3>
+                </div>
+                <button class="drawer__close" data-drawer-close aria-label="Close Drawer"></button>
+            </div>
+
+            <div class="drawer__content">
+                {{ dr_cpop }}
+                <div style="padding: 100px 0;"></div>
+            </div>
+
         </div>
-    </div>
+    </section>
 
-    <button class="reset drawer__close-btn position-fixed js-drawer__close">
-      <svg class="icon" viewBox="0 0 16 16"><title>Close drawer panel</title><g stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><line x1="13.5" y1="2.5" x2="2.5" y2="13.5"></line><line x1="2.5" y1="2.5" x2="13.5" y2="13.5"></line></g></svg>
-    </button>
 
-  </div>
-</div>
 
 
 
 </body>
+</html>
