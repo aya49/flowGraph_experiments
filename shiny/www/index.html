@@ -28,13 +28,13 @@
 
 
 <!-- drawer0 right -->
-<button class="btn btn--primary" aria-controls="drawer1">0. about</button>
+<button class="btn btn--primary" aria-controls="drawer0" style="position:absolute; top: 20; right: 20">0. about</button>
 
 <div class="drawer js-drawer drawer--open-left" id="drawer0">
-  <div class="drawer__content" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle0">
+  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle0">
 
     <div class="text-component">
-        <h4 id="drawerTitle0">about</h4>
+        <h4 class="text-truncate" id="drawerTitle0">about</h4>
 
         <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
             {{ dr_about }}
@@ -52,13 +52,13 @@
 
 
 <!-- drawer1 left -->
-<button class="btn btn--primary" aria-controls="drawer1">1. load flowGraph data</button>
+<button class="btn btn--primary" aria-controls="drawer1" style="position:absolute; top: 20; left: 20">1. load flowGraph data</button>
 
 <div class="drawer drawerbig js-drawer drawer--open-left" id="drawer1">
-  <div class="drawer__content" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle1">
+  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle1">
 
     <div class="text-component">
-        <h4 id="drawerTitle0">load data</h4>
+        <h4 class="text-truncate" id="drawerTitle1">load data</h4>
 
         <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
             {{ dr_load }}
@@ -75,13 +75,13 @@
 
 
 <!-- drawer2 right -->
-<button class="btn btn--primary" aria-controls="drawer2">2. summary statistics plots</button>
+<button class="btn btn--primary" aria-controls="drawer2" style="position:absolute; top: 60; right: 20">2. summary statistics plots</button>
 
 <div class="drawer js-drawer" id="drawer2">
-  <div class="drawer__content" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle2">
+  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle2">
 
     <div class="text-component">
-        <h4 id="drawerTitle0">summary statistics plots</h4>
+        <h4 class="text-truncate" id="drawerTitle2">summary statistics plots</h4>
 
         <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
             {{ dr_sumplots }}
@@ -98,13 +98,13 @@
 
 
 <!-- drawer3 left -->
-<button class="btn btn--primary" aria-controls="drawer2">3. cell population details</button>
+<button class="btn btn--primary" aria-controls="drawer2" style="position:absolute; top: 60; left: 20">3. cell population details</button>
 
 <div class="drawer js-drawer drawer--open-left" id="drawer3">
-  <div class="drawer__content" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle3">
+  <div class="drawer__content flex flex-column" role="alertdialog" tabindex="-1"  aria-labelledby="drawerTitle3">
 
     <div class="text-component">
-        <h4 id="drawerTitle0">cell population details</h4>
+        <h4 class="text-truncate" id="drawerTitle3">cell population details</h4>
 
         <div class="drawer__body padding-x-md padding-y-sm js-drawer__body">
             {{ dr_cpop }}
