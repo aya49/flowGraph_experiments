@@ -1,3 +1,12 @@
+material_card <- function(..., header=NULL, bgcolor="white") {
+    div(class="card", header,
+        div(class="card-content", ...,
+            style=sprintf("background-color: %s", bgcolor)
+        )
+    )
+}
+
+
 shiny::htmlTemplate(
     filename = "www/index.html",
 
@@ -26,7 +35,7 @@ shiny::htmlTemplate(
 
 
     # load flowGraph file, options, summary stats data frame
-    dr_load = shiny::div(
+    dr_load = material_card(
         # load fg file
         shiny::fluidRow(
             shiny::column(
@@ -105,7 +114,7 @@ shiny::htmlTemplate(
 
 
     # summary plots
-    dr_sumplots = shiny::div(
+    dr_sumplots = material_card(
         shiny::fluidRow(
             # shiny::column(
             #     width=12,
@@ -143,7 +152,7 @@ shiny::htmlTemplate(
 
 
     # cell pop info + plots
-    dr_cpop = shiny::div(
+    dr_cpop = material_card(
         shiny::fluidRow(
             shiny::column(
                 width=12,
