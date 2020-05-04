@@ -1549,6 +1549,128 @@ for (result_dir in result_dirs) {
 ```
 
 
+### plots looking at edge p-value difference between child-parent
+```{r}
+start1 = Sys.time()
+result_dirs = list.dirs(paste0(root,"/result"), recursive=FALSE)
+for (result_dir in result_dirs) {
+    start1 = Sys.time()
+    cat(result_dir,"\n")
+    
+    compare_feats <- c("SpecEnr", "prop")
+    if (grepl("epichipc",result_dir))
+        compare_feats <- c("SpecEnr_cells_ul_blood", "cells_ul_blood")
+    
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+    se_inds <- which(fg@summary_desc$node$feat==compare_feats[1])
+    if (length(se_inds)==0) next
+    
+    ifrom <- match(fg@graph$e$from, fg@graph$v$phenotype)
+    ito <- match(fg@graph$e$to, fg@graph$v$phenotype)
+
+    for (se_ind in se_inds) { try({
+        summary_meta <- fg@summary_desc[[type]][se_ind,]
+        plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
+                             paste0(unlist(summary_meta), collapse="_"))
+        dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
+        
+        pp1 <- fg_get_summary(fg, index=se_ind, filter_adjust0=.4)
+        pp1sig <- pp1$values<.4
+        pp2 <- fg_get_summary(fg, summary_meta=unlist(append(compare_feats[2], fg@summary_desc$node[se_ind,-1]))) # error if not found
+        pp2sig <- pp2$values<.05
+
+        df <- data.frame(
+            phenolayer=fg@graph$v$phenolayer[ito],
+            eprop_change=abs(colMeans(as.matrix(fg@feat$edge$prop[pp1$id1,])) - 
+                colMeans(as.matrix(fg@feat$edge$prop[pp1$id2,]))),
+            mean_count=colMeans(as.matrix(fg@feat$node$count))[ito]
+        )
+        
+        for (absolute in c(TRUE, FALSE)) {
+            for (logged in c(TRUE, FALSE)) {
+                dfa <- df
+                
+                if (logged) {
+                    dfa$x <- -log(pp1$values[ito]) + log(pp1$values[ifrom])
+                    dfa$y <- -log(pp2$values[ito]) + log(pp2$values[ifrom])
+                } else {
+                    dfa$x <- pp1$values[ito]-pp1$values[ifrom]
+                    dfa$y <- pp2$values[ito]-pp2$values[ifrom]
+                }
+                if (absolute) {
+                    dfa$x <- abs(dfa$x)
+                    dfa$y <- abs(dfa$y)
+                }
+                
+                for (layers in 7:1) {
+                    for (layers_ in layers:1) {
+                        f_inds <- dfa$phenolayer >= layers_ & dfa$phenolayer <= layers
+                        
+                        sigv <- c("all","insig","sig")
+                        paths_ <-  apply(expand.grid(c(0,1,2), c(0,1,2), c(0,1,2), c(0,1,2)), 1, function(sg) {
+                            sg <- unlist(sg)
+                            paste0(
+                                plot_path_,"/SpecEnrVSraw", 
+                                ifelse(absolute,"_abs",""), 
+                                ifelse(logged,"_ln",""), 
+                                "_fromLayer", layers,"-to-",layers_,
+                                "_SpecEnr-",sigv[sg[1]+1], "FROM-",sigv[sg[2]+1], 
+                                "TO_raw-", sigv[sg[3]+1], "FROM-",sigv[sg[4]+1], 
+                                "TO.png")
+                        })
+                        inds_ <- apply(expand.grid(c(0,1,2), c(0,1,2), c(0,1,2), c(0,1,2)), 1, function(sg) {
+                            # pp1 and pp2, from and to: 
+                            # 0 means any, 1 means insig, 2 means sig
+                            sg <- unlist(sg)
+                            if (sg[1]==1) f_inds <- !pp1sig[ifrom] & f_inds
+                            if (sg[1]==2) f_inds <- pp1sig[ifrom] & f_inds
+                            if (sg[2]==1) f_inds <- !pp1sig[ito] & f_inds
+                            if (sg[2]==2) f_inds <- pp1sig[ito] & f_inds
+                            if (sg[3]==1) f_inds <- !pp2sig[ifrom] & f_inds
+                            if (sg[3]==2) f_inds <- pp2sig[ifrom] & f_inds
+                            if (sg[4]==1) f_inds <- !pp2sig[ito] & f_inds
+                            if (sg[4]==2) f_inds <- pp2sig[ito] & f_inds
+                            return(f_inds)
+                        })
+                        inds_bad <- apply(inds_, 2, sum)==0
+                        inds_istr <- apply(inds_[,!inds_bad], 2, paste, collapse="")
+                        inds_i_ <- union(which(inds_bad),
+                                         which(!inds_bad)[duplicated(inds_istr)])
+                        # a <- sapply(paths_[inds_i_], file.remove)
+                        
+                        inds_good <- setdiff(seq_len(ncol(inds_)),inds_i_)
+                        
+                        if (length(inds_good)>0)
+                            a <- sapply(inds_good, function(i) {
+                                qp <- ggplot2::ggplot(dfa[inds_[,i],], ggplot2::aes(
+                                    x=x,y=y, colour=eprop_change,
+                                    size=mean_count, alpha=.3,stroke=1)) +
+                                    ggplot2::geom_abline(intercept=0, slope=1) +
+                                    ggplot2::ggtitle(paste0(ifelse(
+                                        absolute,"absolute ",""),
+                                        "difference between child and parent ",
+                                        ifelse(logged,"-ln ",""),"p-values")) +
+                                    ggplot2::labs(
+                                        x="SpecEnr p-value difference on edges",
+                                        y="cells_ul_blood/prop p-value difference on edges",
+                                        col="mean child/parent prop diff",
+                                        size="count mean (to)") +
+                                    ggplot2::geom_point(shape=1) +
+                                    ggplot2::scale_colour_gradientn(
+                                        colours=c('blue','cyan','yellow','red'))
+
+                                ggplot2::ggsave(
+                                    paths_[i], plot=qp, scale=1, width=5, height=5,
+                                    units="in", dpi=500, limitsize=TRUE)
+                            })
+                    }
+                }
+            }
+        }
+    }) }
+}
+```
 
 
 

@@ -12,7 +12,7 @@ server <- function(input, output, session) {
     #### about ####
     output$about_ui <- renderUI({
         tagList(
-            h1("flowGraph", style="align: center;"),
+            h2("flowGraph", style="align: center;"),
             p("flowGraph uses the SpecEnr feature to analyze differentially abundant cell populations across flow cytometry (FCM) samples of different phenotypic origins. SpecEnr negates the influence of overlapping cell populations on each other hence making independent analysis and finding of true differentially abundant cell populations possible via current statistical tests. See the flowGraph ", a(href="https://github.com/aya49/flowGraph", "package"), " and ", a(href="https://www.biorxiv.org/content/10.1101/837765v1", "paper"), " for more details.")
         )
     })
@@ -21,13 +21,12 @@ server <- function(input, output, session) {
 
     #### input fg ####
     fg_obj <- shiny::reactive({
+        shiny::req(input$fg)
+        if (grepl("[.]rds",input$fg$datapath,ignore.case=TRUE))
+            fg <- readRDS(input$fg$datapath)
+        if (grepl("[.]rdata",input$fg$datapath,ignore.case=TRUE))
+            fg <- get(load(input$fg$datapath))
         fg
-        # shiny::req(input$fg)
-        # if (grepl("[.]rds",input$fg$datapath,ignore.case=TRUE))
-        #     fg <- readRDS(input$fg$datapath)
-        # if (grepl("[.]rdata",input$fg$datapath,ignore.case=TRUE))
-        #     fg <- get(load(input$fg$datapath))
-        # fg
     })
 
     # fg description
@@ -74,7 +73,7 @@ server <- function(input, output, session) {
     })
 
     # summary statistics with >0 sig cell pops
-    dt_indices <- reactive({
+    dt_indices <- shiny::reactive({
         req(dt_signo())
         signo <- dt_signo()
 
@@ -96,6 +95,12 @@ server <- function(input, output, session) {
             options=list(pageLength=5, columnDefs=list(list(
                 searchable=FALSE, columns.orderable=FALSE))))
     }, server=TRUE)
+    output$dt_ui <- shiny::renderUI(
+        shiny::conditionalPanel(
+            condition=length(fg_obj())>0,
+            DT::dataTableOutput("table_summary")
+        )
+    )
 
 
 
@@ -209,6 +214,7 @@ server <- function(input, output, session) {
             fg, index=index, main="", label_max=0,
             filter_adjust0=filter_adjust0, filter_es=filter_es)) #shiny_plot=TRUE, nodes_max=Inf)
     })
+
 
 
 
@@ -404,7 +410,7 @@ server <- function(input, output, session) {
         print(paste("box: ", cpop, paired, dotplot, outlier))
         head(show(fg))
 
-        fg_plot_box(fg, type="node", index=index, node_edge=cpop, main="",
+        fg_plot_box(fg, type="node", index=index, node_edge=cpop,
                          paired=paired, outlier=outlier, dotplot=dotplot)
     })
 
@@ -421,7 +427,6 @@ server <- function(input, output, session) {
 
         fg_plot_box(
             fg, type="node", index=index, node_edge=cpop,
-            main=node_labels[1],
             paired=paired, outlier=outlier, dotplot=dotplot,
             feature=node_labels[1])
     })
@@ -439,20 +444,20 @@ server <- function(input, output, session) {
 
         fg_plot_box(
             fg, type="node", index=index, node_edge=cpop,
-            main=node_labels[2],
             paired=paired, outlier=outlier, dotplot=dotplot,
             feature=node_labels[2])
     })
 
     output$box_plots_ui <- shiny::renderUI({
-        shiny::div(
-            shiny::plotOutput(outputId="plot_box"),
-            shiny::conditionalPanel(
-                condition=show_boxes(),
-                shiny::plotOutput(outputId="plot_box1"),
-                shiny::plotOutput(outputId="plot_box2")
-            )
-        )
+        if (show_boxes()) {
+            car <- bsplus::bs_carousel(id="box_carosel", use_indicators=TRUE) %>%
+                bsplus::bs_append(shiny::plotOutput(outputId="plot_box")) %>%
+                bsplus::bs_append(shiny::plotOutput(outputId="plot_box1")) %>%
+                bsplus::bs_append(shiny::plotOutput(outputId="plot_box2"))
+            return(car)
+        } else {
+            return(shiny::plotOutput(outputId="plot_box"))
+        }
     })
     output$box_click_ui <- shiny::renderUI({
         shiny::req(show_boxes())

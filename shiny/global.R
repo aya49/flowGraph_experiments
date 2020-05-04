@@ -34,6 +34,7 @@ library(shinydashboard)
 library(shinyFiles)
 # library(shinyBS)
 library(shinyWidgets)
+library(bsplus)
 library(ggiraph)
 # library(ShinySky) #devtools::install_github("AnalytixWare/ShinySky") # search box
 library(shinycssloaders) # loading spinners
@@ -42,20 +43,4 @@ library(shinycssloaders) # loading spinners
 
 options(shiny.maxRequestSize=100000*1024^2) # file upload size limit 10gb
 
-button_enter <- '
-$(function() {
-var $els = $("[data-proxy-click]");
-$.each(
-$els,
-function(idx, el) {
-var $el = $(el);
-var $proxy = $("#" + $el.data("proxyClick"));
-$el.keydown(function (e) {
-if (e.keyCode == 13) {
-$proxy.click();
-}
-});
-}
-);
-});
-'
+

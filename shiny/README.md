@@ -6,6 +6,7 @@ to install the codyhouse framework:
 # first install npm
 
 sudo apt update
+sudo apt install npm
 sudo apt install nodejs
 nodejs --version # verify
 
@@ -17,8 +18,10 @@ sudo apt install build-essential
 ## Gulp configuration
 
 # install the modules the framework requires for compiling SCSS into CSS
-npm install
+npm install # requires git
 
 # launch your project on a development server
 npm run gulp watch
 ```
+
+to use codyframe components: https://codyhouse.co/ds/docs/framework#import-css-components
