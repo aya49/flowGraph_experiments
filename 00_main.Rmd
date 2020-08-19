@@ -27,8 +27,8 @@ results are saved in the root `flowtype_metric` folder.
 
 ```{r start_flowGraph, message=FALSE, include=FALSE, echo=FALSE}
 ## load flowGraph package
-rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
-# install.packages("/mnt/f/Brinkman group/current/Alice/flowGraph",repos=NULL, type="source")
+# rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
+install.packages("/mnt/f/Brinkman group/current/Alice/flowGraph",repos=NULL, type="source")
 library(flowGraph)
 
 ## root directory; to put results in
@@ -53,6 +53,7 @@ options(stringsAsFactors=FALSE)
 no_cores = 1#detectCores()-1
 # future::plan(future::multiprocess)
 
+set.seed(1)
 ```
 
 
@@ -219,9 +220,9 @@ for (uc in unique(meta_file$class)) {
 }
 
 ## save files
-fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, class="class",
-               label1="control", 
-               norm_path=paste0(result_dir,"/count_norm"),
+fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file, #class="class",
+               #label1="control", 
+               # norm_path=paste0(result_dir,"/count_norm"),
                calculate_summary=FALSE)
                # path=paste0(result_dir,"/fg"))
 # fg = fg_feat_mean_cls(fg, class="subject", no_cores=no_cores)
@@ -686,7 +687,8 @@ thress5[[markers[2]]] = c(p25,p50,p60)
 
 #paste0("ctrl",c(0:9)),
 #paste0("pos",c(1:30))
-for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
+# for (ds in c(paste0("pos",c(26,15,11,31,35,36,c(1:36)[-c(11,15,26,31,35,36)])))){#,paste0("ctrl",c(0:9)))) {
+for (ds in paste0("pos",c(1:36))) {#,paste0("ctrl",c(0:9)))) {
     start2 = Sys.time()
     
     # ouput directories
@@ -767,10 +769,10 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                 }
                 else if (ds=="pos5") { # A-B+C+ > A+B+C+ x1.5
                     tm = sum(triple)/2
-                    f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # bc
-                    f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # ac
-                    f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # ab
-                    f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # a
+                    f@exprs[sample(which(bp & cp & !ap),tm),1] = p75 # A-B+C+ > A+B+C+
+                    f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # A+B-C+ > A-B-C+
+                    f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # A+B+C- > A-B+C-
+                    f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # A-B-C- > A+B-C-
                 }
                 else if (ds=="pos6") { # A-B+C+ > A+B+C+ x1.5; b+D+c- > b+D+c+ x1.5
                     tm = sum(triple)/2
@@ -785,7 +787,11 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                     f@exprs[sample(which(!bp & !cp & !dp),tm),3] = p75 # a
                 }
                 else if (ds=="pos7") { # A+B+C+D+ > x2
-                    f@exprs = rbind(f@exprs, f@exprs[ap & bp & cp & dp,])
+                    tm = sum(bp & cp & dp & ap)/2
+                    f@exprs[sample(which(bp & cp & dp & !ap),tm),1] = p75 # A-B+C+D+ > A+B+C+D+
+                    f@exprs[sample(which(ap & cp & !bp),tm),1] = p25 # A+B-C+ > A-B-C+
+                    f@exprs[sample(which(ap & bp & !cp),tm),1] = p25 # A+B+C- > A-B+C-
+                    f@exprs[sample(which(!ap & !bp & !cp),tm),1] = p75 # A-B-C- > A+B-C-
                 }
                 else if (ds=="pos8") { # A-B-C-D-E- > x2
                     f@exprs = rbind(f@exprs, f@exprs[!ap & !bp & !cp & !dp,])
@@ -796,18 +802,20 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                         f@exprs[!ap & !bp & !cp & !dp,])
                 }
                 else if (ds=="pos10") { #1.5x A+, B+C+D+
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(ap),sum(ap)/2),],
-                        f@exprs[sample(which(cp & dp & bp),sum(triple)/2),])
+                    inds <- c(sample(which(ap),sum(ap)/2),
+                              sample(which(cp & dp & bp),sum(triple)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 else if (ds=="pos11") { #1.5x A+
                     tm = sum(ap)
                     f@exprs = rbind(f@exprs,f@exprs[sample(which(ap),tm),])
                 }
                 else if (ds=="pos12") { #1.5x A+, B+
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(ap),sum(ap)/2),],
-                        f@exprs[sample(which(bp),sum(bp)/2),])
+                    inds <- c(sample(which(ap),sum(ap)/2),
+                              sample(which(bp),sum(bp)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 else if (ds=="pos13") { #1.5x A+B+
                     tm = sum(double)/2
@@ -815,9 +823,10 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                 }
                 else if (ds=="pos14") { #1.5x A+B+, C+D+
                     tm = sum(double)/2
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(ap & bp),tm),],
-                        f@exprs[sample(which(cp & dp),tm),])
+                    inds <- c(sample(which(ap & bp),tm),
+                              sample(which(cp & dp),tm))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 else if (ds=="pos15") { #1.5x A+B+C+
                     tm = sum(triple)/2
@@ -825,14 +834,16 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                 }
                 else if (ds=="pos16") { #1.5x A+B+C+, B+C+D+
                     tm = sum(triple)/2
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(ap & bp & cp),tm),],
-                        f@exprs[sample(which(bp & cp & dp),tm),])
+                    inds <- c(sample(which(ap & bp & cp),tm),
+                              sample(which(bp & cp & dp),tm))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
-                else if (ds=="pos17") { #1.5x D+, A+B+C+
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(dp), sum(dp)/2),],
-                        f@exprs[sample(which(ap & bp & cp), sum(triple)/2),])
+                else if (ds=="pos17") { #1.5x A+B+C+D+, A+B+C+
+                    inds <- c(sample(which(ap & bp & cp),sum(triple)/2),
+                              sample(which(ap & bp & cp & dp),sum(ap & bp & cp & dp)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 # else if (ds=="pos17") { #1.5x A+B+; decrease other ones accordingly
                 #     tm = .33*nrow(f@exprs) - sum(ap & bp) #sum(double)/3
@@ -841,9 +852,10 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
                 else if (ds=="pos18") { #1.5x A+B+C+, C+D+
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(cp & dp), sum(double)/2),],
-                        f@exprs[sample(which(ap & bp & cp), sum(triple)/2),])
+                    inds <- c(sample(which(ap & bp & cp),sum(triple)/2),
+                              sample(which(cp & dp),sum(double)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 # else if (ds=="pos18") { #1.5x A+B+, C+D+, like above
                 #     tm = sum(double)/2
@@ -851,19 +863,18 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                 #               sample(which(ap & !bp),tm/3) ,
                 #               sample(which(!ap & bp),tm/3)),c(1,2)] = p75
                 # }
-                else if (ds=="pos19") { #1.5x A+, A+B+C+
-                    f@exprs = rbind(
-                        f@exprs,
-                        f@exprs[sample(which(ap),sum(ap)/2),],
-                        f@exprs[sample(which(ap & bp & cp),sum(triple)/2),])
+                else if (ds=="pos19") { #1.5x A+B+, B+C+
+                    inds <- c(sample(which(ap & bp),sum(double)/2),
+                              sample(which(cp & bp),sum(double)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
-                else if (ds=="pos20") { #1.5x A+, A+B+C+
-                    tm = sum(triple)/2
-                    tm2 = sum(ap)/2
-                    f@exprs = rbind(
-                        f@exprs,
-                        f@exprs[sample(which(ap),tm2),],
-                        f@exprs[sample(which(ap & bp & cp),tm),])
+                else if (ds=="pos20") { #1.5x A+B+, C+D+
+                    tm <- sum(double)/2
+                    inds <- c(sample(which(ap & bp),tm),
+                              sample(which(cp & dp),tm))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                 }
                 else if (ds=="pos21") { # 1.5x A+B+ - A-B-
                     tm = sum(double)/2
@@ -898,9 +909,11 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                     # tm = sum(double)/2
                     # tripleind = which(ap & bp)
                     # f@exprs = rbind(f@exprs,f@exprs[sample(tripleind,tm),])
-                    f@exprs = rbind(
-                        f@exprs, f@exprs[sample(which(dp),sum(dp)/2),],
-                        f@exprs[sample(which(ap & bp),sum(double)/2),])
+                    tm = sum(double)/2
+                    inds <- c(sample(which(dp),sum(dp)/2),
+                              sample(which(ap & bp),sum(ap & bp)/2))
+                    inds <- inds[!duplicated(inds)]
+                    f@exprs = rbind(f@exprs, f@exprs[inds,])
                     # tm = sum(double)/2
                     # tind = sample(which(bp & cp),tm)
                     # tind2 = sample(which(ap & bp),tm)
@@ -910,7 +923,7 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
                     tm = sum(triple)/2
                     f@exprs = f@exprs[unique(c(which(ap & bp & cp),sample(which(cp & dp & bp),tm))),]
                 }
-                else if (ds=="pos28") { #1.5x A+, A+B+C+
+                else if (ds=="pos28") { #1.5x - A+, - A+B+C+
                     tm = sum(triple)/2
                     tripleind = which(ap & bp & cp)
                     f@exprs = rbind(f@exprs,f@exprs[-unique(c(sample(which(ap & bp & cp),sum(triple)/2),sample(which(ap),sum(ap)/2))),])
@@ -1002,7 +1015,7 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
     
     if (ds=="pos30") {
         fg0 = flowGraph(ftl, no_cores=no_cores, meta=meta_file, cumsum=TRUE,
-                       calcuate_summary=FALSE)
+                       calculate_summary=FALSE)
         # fg1 = fg_feat_cumsum(fg0, no_cores=no_cores)
         # 
         # fg0 = fg_feat_node_prop(fg0)
@@ -1019,7 +1032,7 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
         
     } else {
         fg = flowGraph(ftl, no_cores=no_cores, meta=meta_file,
-                       calcuate_summary=FALSE)
+                       calculate_summary=FALSE)
                        # path=paste0(result_dir,"/fg"), label1="control")
         save(fg, file=paste0(result_dir,"/fg.Rdata"))
     }
@@ -1027,6 +1040,18 @@ for (ds in c(paste0("pos",c(1:36)))){#,paste0("ctrl",c(0:9)))) {
     time_output(start2, ds)
     cat("\n")
     rm(list=c("ftl","fg")); gc()
+}
+
+result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
+result_dirs <- result_dirs[grepl("pos",result_dirs)]
+for (result_dir in result_dirs) {
+    start1 = Sys.time()
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    fg <- fg_feat_node_specenr(fg, feature="count")
+
+    save(fg, file=paste0(result_dir,"/fg.Rdata"))
+flowGraph:::time_output(start1)
 }
 
 time_output(start)
@@ -1065,10 +1090,12 @@ for (result_dir in result_dirs) {try({
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
     fg <- fg_clear_summary(fg)
-    if ("pchild"%in%names(fg@edge_list)) 
-        names(fg@edge_list)[names(fg@edge_list)=="pchild"] <- "child"
-    if ("pparen"%in%names(fg@edge_list)) 
-        names(fg@edge_list)[names(fg@edge_list)=="pparen"] <- "parent"
+    fg@etc$actualVSexpect <- NULL
+    # if (grepl("pos|flowcap",result_dir)) next
+    # if ("pchild"%in%names(fg@edge_list)) 
+    #     names(fg@edge_list)[names(fg@edge_list)=="pchild"] <- "child"
+    # if ("pparen"%in%names(fg@edge_list)) 
+    #     names(fg@edge_list)[names(fg@edge_list)=="pparen"] <- "parent"
 
     # fnames <- names(fg@feat$node)[grep("MEAN",names(fg@feat$node))]
     # if (length(fnames)>0)
@@ -1079,44 +1106,25 @@ for (result_dir in result_dirs) {try({
     
     # no_cores <- ifelse (grepl("pregnancy|epic|genentech", result_dir), 15, 1)
     
+    # fg <- fg_feat_node_norm(fg, no_cores=1, norm_path=paste0(result_dir,"/norm"))
+    # fg <- fg_feat_node_specenr(fg, feature="count_norm")
+    
     if (grepl("pregnancy|bodenmiller", result_dir)) {
         qt <- function(x,y)
             tryCatch(stats::t.test(x,y, paired=TRUE)$p.value,
                      error=function(e) 1)
         qw <- function(x,y) tryCatch(stats::wilcox.test(x,y, paired=TRUE)$p.value,
                                      error=function(e) 1)
+        # fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+        #                 overwrite=FALSE, 
+        #                 test_name="wilcox_diminish", 
+        #                 test_custom=qw,
+        #                 node_features=c("prop","SpecEnr"), edge_features="NONE")
         fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
                         overwrite=FALSE, 
-                        test_name="wilcox_diminish", adjust_custom="none",
-                        test_custom=qw,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="wilcox_BH_diminish", adjust_custom="BH",
-                        test_custom=qw,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
-                        test_custom=qw,
-                        diminish=TRUE,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="t_diminish", adjust_custom="none",
+                        test_name="t_diminish", 
                         test_custom=qt,
                         node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="t_BH_diminish", adjust_custom="BH",
-                        test_custom=qt,
-                        node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="t_byLayer_diminish",
-                        test_custom=qt,
-                        diminish=TRUE,
-                        node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
-
     } 
     else if (grepl("epic",result_dir)) {
         st <- function(x) tryCatch(stats::shapiro.test(x)$p.value, 
@@ -1126,55 +1134,35 @@ for (result_dir in result_dirs) {try({
                 return(tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
             return(tryCatch(stats::wilcox.test(x,y)$p.value, error=function(e) 1))
         }
-        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_byLayer_diminish",
-                         test_custom=test_custom,
+        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_diminish",
+                         test_custom=test_custom, 
                          label1="control",
-                         node_features=c("cells_ul_blood",
-                                         "SpecEnr_cells_ul_blood"),
-                         edge_features="SpecEnr",
-                         overwrite=FALSE)
-        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt_BH_diminish",
-                         test_custom=test_custom, adjust_custom="BH",
-                         label1="control",
-                         node_features=c("cells_ul_blood",
-                                         "SpecEnr_cells_ul_blood"),
-                         edge_features="SpecEnr",
-                         overwrite=FALSE)
-        fg <- fg_summary(fg, no_cores=no_cores, test_name="wilt",
-                         test_custom=test_custom, adjust_custom="none",
-                         diminish=FALSE, label1="control",
                          node_features=c("cells_ul_blood",
                                          "SpecEnr_cells_ul_blood"),
                          edge_features="SpecEnr",
                          overwrite=FALSE)
     } 
     else {
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="wilcox_diminish", adjust_custom="none",
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, 
-                        test_name="wilcox_BH_diminish", adjust_custom="BH",
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="wilcox_byLayer_diminish",
-                        diminish=TRUE,
-                        node_features=c("prop","SpecEnr"), edge_features="NONE")
-        
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_custom="t",
-                        test_name="t_diminish", adjust_custom="none",
-                        node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_custom="t",
-                        test_name="t_BH_diminish", adjust_custom="BH",
-                        node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
-        fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
-                        overwrite=FALSE, test_name="t_byLayer_diminish",
-                        diminish=TRUE, test_custom="t",
-                        node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
+        # fg = fg_summary(fg, no_cores=no_cores, class="class", label1="control",
+        #                 overwrite=FALSE, 
+        #                 test_name="wilcox_diminish", 
+        #                 node_features=c("prop","SpecEnr"), edge_features="NONE")
+        fg = fg_summary(
+            fg, no_cores=no_cores, class="class", label1="control",
+            overwrite=FALSE, test_custom="t", test_name="t_diminish", 
+            node_features=c("prop","SpecEnr"), edge_features="SpecEnr")
+        if ("SpecEnr_count"%in%names(fg@feat$node)) 
+            fg = fg_summary(
+            fg, no_cores=no_cores, class="class", label1="control",
+            overwrite=FALSE, test_custom="t", test_name="t_diminish", 
+            node_features=c("SpecEnr_count"), edge_features="NONE")
+        if ("pos"%in%result_dir) 
+            fg = fg_summary(
+            fg, no_cores=no_cores, class="class", label1="control",
+            overwrite=FALSE, test_custom="t", test_name="t_diminish", 
+            node_features=c("count"), edge_features="NONE")
 
+        
     }
     
     # if (ncol(fg@summary_desc$node)==4) {
@@ -1312,6 +1300,34 @@ for (result_dir in result_dirs) {
 ```
 
 
+## testing specenr_count
+```{r}
+result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
+for (result_dir in result_dirs) {try({
+    cat(result_dir,"\n")
+    start1 <- Sys.time()
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+    m1p=colMeans(as.matrix(fg@feat$node$prop[1:10,]))
+    m2p=colMeans(as.matrix(fg@feat$node$prop[11:20,]))
+    m1e=colMeans(as.matrix(fg@feat$node$expect_prop[1:10,]))
+    m2e=colMeans(as.matrix(fg@feat$node$expect_prop[11:20,]))
+    m1s=colMeans(as.matrix(fg@feat$node$SpecEnr[1:10,]))
+    m2s=colMeans(as.matrix(fg@feat$node$SpecEnr[11:20,]))
+    m1c=colMeans(as.matrix(fg@feat$node$count[1:10,]))
+    m2c=colMeans(as.matrix(fg@feat$node$count[11:20,]))
+    m1sc=colMeans(as.matrix(fg@feat$node$SpecEnr_count[1:10,]))
+    m2sc=colMeans(as.matrix(fg@feat$node$SpecEnr_count[11:20,]))
+    m1ec=colMeans(as.matrix(fg@feat$node$expect_count[1:10,]))
+    m2ec=colMeans(as.matrix(fg@feat$node$expect_count[11:20,]))
+
+    dta <- data.frame(m1p,m1e,m1c,m1s,m1sc,m1ec,
+                      m2p,m2e,m2c,m2s,m2sc,m2ec)
+    
+    flowGraph::time_output(start1)
+})}
+```
+
 
 # Plots
 
@@ -1319,14 +1335,17 @@ for (result_dir in result_dirs) {
 result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
 p_thres <- .05
 for (result_dir in result_dirs) { try({
+    # if (grepl("pos|flowcap",result_dir)) next
     start1 <- Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    if (grepl("pregnancy|bodenmiller", result_dir)) {
-        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=0, paired=TRUE)
-    } else {
-        fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=0)
-    }
+    # if (grepl("pregnancy|bodenmiller", result_dir)) {
+    #     fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=0, 
+    #                   adjust_custom=adjust_custom, paired=TRUE)
+    # } else {
+    #     fg_save_plots(fg, paste0(result_dir,"/fg/plots"), box_no=0,
+    #                   adjust_custom=adjust_custom)
+    # }
     
     # pparen <- fg@edge_list$parent
     # pchild <- fg@edge_list$child
@@ -1336,149 +1355,287 @@ for (result_dir in result_dirs) { try({
     # + logged qq plots + interactive pVSdiff plot
     type <- "node"
     for (index in seq_len(length(fg@summary[[type]]))) {
-        # if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .1
-        summary_meta <- fg@summary_desc[[type]][index,]
-        plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
-                             paste0(unlist(summary_meta), collapse="_"))
-        dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
-        
-        # fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
-        #                 path=paste0(plot_path_,"/pVSdifference.html"))
-        
-        fg_plot_qq(fg, type="node", index=index, logged=TRUE,
-           path=paste0(plot_path_,"/qq_logged.png"))
-        fg_plot_qq(fg, type="node", index=index, logged=F,
-           path=paste0(plot_path_,"/qq.png"))
-        fg_plot_qq(fg, type="node", index=index, logged=F,
-           path=paste0(plot_path_,"/qq_filtered.png"), filter_adjust0 = .4)
-        fg_plot_qq(fg, type="node", index=index, logged=T,
-           path=paste0(plot_path_,"/qq_logged_filtered.png"), filter_adjust0 = .4)
-
-        fg_plot_pVSdiff(fg, index=index, interactive=F,
+        for (adjust_custom in c("BH","byLayer")) {
+            # if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .1
+            sm <- unlist(fg@summary_desc[[type]][index,])
+            if (!grep("SpecEnr",unlist(sm))) next
+            sm[2] <- paste0(sm[2], "_", ifelse(
+                is.function(adjust_custom),"adjusted",adjust_custom))
+            plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
+                                 paste0(unlist(sm), collapse="_"))
+            dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
+            
+            # fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
+            #                 path=paste0(plot_path_,"/pVSdifference.html"))
+            
+            pp1 <- fg_get_summary(
+                fg, index=index,adjust_custom=adjust_custom,
+                # filter_adjust0=.4, 
+                filter_btwn_tpthres=.05, filter_btwn_es=.5)
+            pp1sig <- pp1$values<.05
+            sort(pp1$values[pp1sig])
+            sum(pp1sig)
+            
+            fg_plot_qq(
+                fg, type="node", index=index, logged=TRUE,
+                adjust_custom=adjust_custom,
+                path=paste0(plot_path_,"/qq_logged.png"))
+            fg_plot_qq(
+                fg, type="node", index=index, logged=F,
+                adjust_custom=adjust_custom,
+                path=paste0(plot_path_,"/qq.png"))
+            
+            fg_plot_pVSdiff(
+                fg, index=index, interactive=F,
+                adjust_custom=adjust_custom,
                 path=paste0(plot_path_,"/pVSdifference.png"))
-        fg_plot_pVSdiff(fg, index=index, interactive=F,
-                path=paste0(plot_path_,"/pVSdifference_filtered.png"), filter_adjust0 = .4)
-        
-        # cell hierarchy plots without number labels
-        try ({
-            ## cell hierarchy plot
-            p <- fg_get_summary(fg, type=type, index=index)$values
-            nlabels <- c("prop", "expect_prop")
-            if (grepl("epichipc",result_dir)) 
-                nlabels <- c("cells_ul_blood", "expect_cells_ul_blood")
-            gr <- fg_plot(
-                fg, type=type, p_thres=.01, index=index,
-                show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
-                path=paste0(plot_path_,"/cell_hierarchy"), interactive=TRUE,
-                node_labels=nlabels)
-            if (is.null(gr)) next
             
-            gr_ <- gr <- fg_plot(
-                fg, type="node", p_thres=p_thres, index=index,
-                show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
-                label_max=15,
-                node_labels="NONE")
-            if (is.null(gr)) next
+            if (grepl("SpecEnr",sm["feat"])) {
+                fg_plot_qq(
+                    fg, type="node", index=index, logged=F,
+                    adjust_custom=adjust_custom,
+                    path=paste0(plot_path_,"/qq_filtered.png"), 
+                    filter_adjust0=.4, filter_btwn_tpthres=.05, filter_btwn_es=.5)
+                fg_plot_qq(
+                    fg, type="node", index=index, logged=T,
+                    adjust_custom=adjust_custom,
+                    path=paste0(plot_path_,"/qq_logged_filtered.png"),
+                    filter_adjust0=.4, filter_btwn_tpthres=.05, filter_btwn_es=.5)
+                
+                fg_plot_pVSdiff(
+                    fg, index=index, interactive=F,
+                    adjust_custom=adjust_custom,
+                    path=paste0(plot_path_,"/pVSdifference_filtered.png"),
+                    filter_adjust0=.4, filter_btwn_tpthres=.05, filter_btwn_es=.5)
+            }
             
-            # sigs <- sigs_allpar <- sig_allchd <- list()
-            # sig_allchd[[1]] <- sigs[[1]] <- sig_phen <- start_phen[p[start_phen]<p_thres]
-            # sigs_allpar[[1]] <- rep(TRUE, length(sigs[[1]]))
-            # while(TRUE) {
-            #     p_layer <- length(sigs)+1
-            #     chld <- unique(unlist(pchild[sig_phen]))
-            #     if (length(chld)==0) break
-            #     # p_parn <- p[sig_phen]
-            #     p_chld <- p[chld]
-            #     
-            #     sig_child <- chld[p_chld<p_thres]
-            #     if (length(sig_child)==0) break
-            #     sigs[[p_layer]] <- sig_child
-            #     
-            #     sigs_allpar[[p_layer]] <- 
-            #         purrr::map_lgl(sig_child, function(x)
-            #             all(pparen[[x]]%in%sig_phen))
-            #     
-            #     sig_allchd[[p_layer]] <-
-            #         unique(unlist(pparen[sig_child[sigs_allpar[[p_layer]]]]))
-            #     
-            #     sig_phen <- sig_child
-            # }
-            # sigs_ <- unlist(purrr::map(seq_len(length(sigs)), function(i)
-            #     sigs[[i]][sigs_allpar[[i]]]))
-            # sig_ind <- gr_$v$phenotype%in%sigs_
-            # 
-            # gr <- fg_plot(
-            #     fg, type=type, p_thres=.01, index=index, show_nodes_edges=sig_ind,
-            #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
-            #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
-            #     node_labels=nlabels)
-            # 
-            # gr <- fg_plot(
-            #     fg, type=type, p_thres=.01, index=index, 
-            #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
-            #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
-            #     node_labels=nlabels)
             
-            # don't label if colour too light, ie too close to 0
-            l_ind <- which(gr$v$label_ind)
-            colmax <- max(abs(gr$v$colour))
-            l_ind_not <- l_ind[abs(gr$v$colour[l_ind]) < colmax*.3]
-            gr$v$label_ind[l_ind_not] <- FALSE
-            
-            gr$v$label <- gr$v$phenotype
-            gp <- plot_gr(gr, show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE))
-            ggsave(plot=gp, filename=paste0(plot_path_,"/cell_hierarchy_.png"),
-                   width=8, height=7)
-            
-            # # plot only one group and their ancestors (cell pops with same markers)
-            # pparen <- fg@edge_list$parent
-            # v_ind <- which(gr$v$v_ind)
-            # show_phen <- gr$v$phenotype[gr$v$v_ind]
-            # show_phen_ <- gsub("[+-]","_",show_phen)
-            # show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
-            # if (length(show_phen_u) < length(show_phen)) {
-            #     path <- paste0(plot_path_,"/cell_hierarchy")
-            #     dir.create(path, showWarnings=FALSE)
-            #     for (phen in show_phen_u) {
-            #         gr_ <- gr
-            #         leaves <- v_ind[show_phen_==phen]
-            #         v_ind_ <- rep(FALSE, nrow(gr$v))
-            #         v_ind_[leaves] <- TRUE
-            #         layer <- gr$v$phenolayer[leaves[1]]
-            #         curr <- gr$v$phenotype[leaves]
-            #         if (layer > 0)
-            #             while (length(curr)>0) {
-            #                 par_phen <- unlist(pparen[curr])
-            #                 par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
-            #                 v_ind_[par_ind] <- TRUE
-            #                 curr <- gr$v$phenotype[par_ind]
-            #             }
-            #         gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
-            #         gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
-            #             gr$e$to%in%gr$v$phenotype[v_ind_]
-            #         gr_$v <- gr_$v[gr_$v$v_ind,]
-            #         gr_$e <- gr_$e[gr_$e$from%in%gr$v$phenotype &
-            #                            gr_$e$to%in%gr$v$phenotype,]
-            #         
-            #         gr_ <- set_layout_graph(gr_)
-            #         # gp <- plot_gr(gr_)
-            #         gp <- plot_gr(gr__, label_coloured=FALSE, interactive=TRUE)
-            #         # ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"),
-            #         #        plot=gp, scale=1, width=9, height=9,
-            #         #        units="in", dpi=500, limitsize=TRUE)
-            #         htmlwidgets::saveWidget(
-            #             gp, file=paste0(path,"/",phen,sum(v_ind_),".html"))
-            #         
-            #     }
-            # }
-            # 
-            # if (sum(p<.01)>30)s
-            #     gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
-            #                   index=index, label_max=20,
-            #                   show_bgedges=TRUE, path=paste0(plot_path_,"/cell_hierarchy_top25"))
-        })
-        # if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .01
+            # cell hierarchy plots without number labels
+            try ({
+                ## cell hierarchy plot
+                # p <- fg_get_summary(fg, type=type, index=index)$values
+                gr <- fg_plot(
+                    fg, type=type, p_thres=.05, index=index,
+                    show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                    path=paste0(plot_path_,"/cell_hierarchy"),
+                    interactive=FALSE,
+                    adjust_custom=adjust_custom,
+                    node_labels="NONE")
+                
+                if (is.null(gr)) next
+                
+                if (grepl("SpecEnr",sm["feat"])) {
+                    feats <- flowGraph:::se_feats(sm["feat"])
+                    
+                    m1 <- fg_get_feature_means(fg, type, feats[2], id=pp1$id1)
+                    m2 <- fg_get_feature_means(fg, type, feats[2], id=pp1$id2)
+                    
+                    gr_ <- gr <- fg_plot(
+                        fg, type=type, p_thres=.05, index=index,
+                        show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                        # mod_layout=TRUE,
+                        # path=paste0(plot_path_,"/cell_hierarchy_filtered"), 
+                        interactive=FALSE,
+                        node_labels="NONE",
+                        # filter_adjust0=.4, 
+                        adjust_custom=adjust_custom, 
+                        filter_btwn_tpthres=.05, filter_btwn_es=.5)
+                    
+                    col_o <- gr$v$colour
+                    col_p <- m2-m1
+                    col_p_ <- log(m2/m1)
 
+                    gr_$v <- gr_$v[gr$v$v_ind,]
+                    gr_$e <- gr$e[gr$e$from%in%gr_$v$phenotype &
+                                      gr$e$to%in%gr_$v$phenotype,]
+                    gr_$v[,c("x","y")] <- 
+                        space_hierarchy(gr_$v[,c("y","x")])[,c(2,1)]
+                    
+                    mfrom <- match(gr_$e$from,gr_$v$phenotype)
+                    mto <- match(gr_$e$to,gr_$v$phenotype)
+                    gr_$e$from.x <- gr_$v$x[mfrom]
+                    gr_$e$from.y <- gr_$v$y[mfrom]
+                    gr_$e$to.x <- gr_$v$x[mto]
+                    gr_$e$to.y <- gr_$v$y[mto]
+
+                    gp <- plot_gr(gr_)
+                    ggplot2::ggsave(
+                        paste0(plot_path_,"/cell_hierarchy_filtered.png"),
+                        plot=gp, scale=1, width=9, height=9,
+                        units="in", dpi=600, limitsize=TRUE)
+                    
+                    gr_$v$colour <- col_p[gr$v$v_ind]
+                    gp <- plot_gr(gr_)
+                    ggplot2::ggsave(
+                        paste0(plot_path_,"/cell_hierarchy_filtered_prop.png"),
+                        plot=gp, scale=1, width=9, height=9,
+                        units="in", dpi=600, limitsize=TRUE)
+                    
+                                        gr_$v$colour <- col_p_[gr$v$v_ind]
+                    gp <- plot_gr(gr_)
+                    ggplot2::ggsave(
+                        paste0(plot_path_,"/cell_hierarchy_filtered_propr.png"),
+                        plot=gp, scale=1, width=9, height=9,
+                        units="in", dpi=600, limitsize=TRUE)
+
+                    gr_$v$colour <- ifelse(col_o[gr$v$v_ind]>0,1,-1)
+                    gp <- plot_gr(gr_, colour_edges=TRUE)
+                    ggplot2::ggsave(
+                        paste0(plot_path_,"/cell_hierarchy_filtered_.png"),
+                        plot=gp, scale=1, width=9, height=9,
+                        units="in", dpi=600, limitsize=TRUE)
+                    
+                    gr_$v$colour <- ifelse(col_p[gr$v$v_ind]>0,1,-1)
+                    gp <- plot_gr(gr_, colour_edges=TRUE)
+                    ggplot2::ggsave(
+                        paste0(plot_path_,"/cell_hierarchy_filtered_prop_.png"),
+                        plot=gp, scale=1, width=9, height=9,
+                        units="in", dpi=600, limitsize=TRUE)
+                    
+
+                    # gr <- fg_plot(
+                    #     fg, type=type, p_thres=.05, index=index,
+                    #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                    #     # path=paste0(plot_path_,"/cell_hierarchy_filtered"), 
+                    #     interactive=TRUE,
+                    #     node_labels="NONE",
+                    #     # filter_adjust0=.4, 
+                    #     adjust_custom=adjust_custom,
+                    #     filter_btwn_tpthres=.05, filter_btwn_es=.5)
+                    # visNetwork::visSave(
+                    #     plot_gr(gr, interactive=TRUE),
+                    #     file=paste0(plot_path_,"/cell_hierarchy_filtered.html"),
+                    #     background="white")
+
+                    
+                    
+                    if (adjust_custom=="BH") {
+                        plot_path_box <- paste0(plot_path_,"/box")
+                        dir.create(plot_path_box, showWarnings=FALSE,
+                                   recursive=TRUE)
+                        cpopis <- which(pp1sig)
+                        cpopis <- cpopis[order(pp1$values[cpopis])]
+                        for (cpopi in seq_len(length(cpopis))) {
+                            cpop <- cpopis[cpopi]
+                            bp <- flowGraph:::fg_plot_box_set(
+                                fg, type="node", index=index, node_edge=cpop,
+                                filter_es=.5, filter_adjust0=.5,
+                                filter_btwn_es=.5, filter_btwn_tpthres=.05,
+                                adjust_custom=adjust_custom,dotplot=F,
+                                path=paste0(
+                                    plot_path_box,"/",
+                                    stringr::str_pad(cpopi,width=3,pad="0"), "_",
+                                    names(pp1$values)[cpop], ".png"))
+                        }
+                    }
+                }
+                
+                # gr_ <- gr <- fg_plot(
+                #     fg, type="node", p_thres=p_thres, index=index,
+                #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                #     label_max=15,
+                #     node_labels="NONE")
+                # if (is.null(gr)) next
+                
+                # sigs <- sigs_allpar <- sig_allchd <- list()
+                # sig_allchd[[1]] <- sigs[[1]] <- sig_phen <- start_phen[p[start_phen]<p_thres]
+                # sigs_allpar[[1]] <- rep(TRUE, length(sigs[[1]]))
+                # while(TRUE) {
+                #     p_layer <- length(sigs)+1
+                #     chld <- unique(unlist(pchild[sig_phen]))
+                #     if (length(chld)==0) break
+                #     # p_parn <- p[sig_phen]
+                #     p_chld <- p[chld]
+                #     
+                #     sig_child <- chld[p_chld<p_thres]
+                #     if (length(sig_child)==0) break
+                #     sigs[[p_layer]] <- sig_child
+                #     
+                #     sigs_allpar[[p_layer]] <- 
+                #         purrr::map_lgl(sig_child, function(x)
+                #             all(pparen[[x]]%in%sig_phen))
+                #     
+                #     sig_allchd[[p_layer]] <-
+                #         unique(unlist(pparen[sig_child[sigs_allpar[[p_layer]]]]))
+                #     
+                #     sig_phen <- sig_child
+                # }
+                # sigs_ <- unlist(purrr::map(seq_len(length(sigs)), function(i)
+                #     sigs[[i]][sigs_allpar[[i]]]))
+                # sig_ind <- gr_$v$phenotype%in%sigs_
+                # 
+                # gr <- fg_plot(
+                #     fg, type=type, p_thres=.01, index=index, show_nodes_edges=sig_ind,
+                #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
+                #     node_labels=nlabels)
+                # 
+                # gr <- fg_plot(
+                #     fg, type=type, p_thres=.01, index=index, 
+                #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+                #     path=paste0(plot_path_,"/cell_hierarchy_strict"), interactive=TRUE,
+                #     node_labels=nlabels)
+                
+                # # don't label if colour too light, ie too close to 0
+                # l_ind <- which(gr$v$label_ind)
+                # colmax <- max(abs(gr$v$colour))
+                # l_ind_not <- l_ind[abs(gr$v$colour[l_ind]) < colmax*.3]
+                # gr$v$label_ind[l_ind_not] <- FALSE
+                # 
+                # gr$v$label <- gr$v$phenotype
+                # gp <- plot_gr(gr, show_bgedges=ifelse(grepl("pos",result_dir),TRUE, FALSE))
+                # ggsave(plot=gp, filename=paste0(plot_path_,"/cell_hierarchy_.png"),
+                #        width=8, height=7)
+                
+                # # plot only one group and their ancestors (cell pops with same markers)
+                # pparen <- fg@edge_list$parent
+                # v_ind <- which(gr$v$v_ind)
+                # show_phen <- gr$v$phenotype[gr$v$v_ind]
+                # show_phen_ <- gsub("[+-]","_",show_phen)
+                # show_phen_u <- unique(show_phen_[duplicated(show_phen_)])
+                # if (length(show_phen_u) < length(show_phen)) {
+                #     path <- paste0(plot_path_,"/cell_hierarchy")
+                #     dir.create(path, showWarnings=FALSE)
+                #     for (phen in show_phen_u) {
+                #         gr_ <- gr
+                #         leaves <- v_ind[show_phen_==phen]
+                #         v_ind_ <- rep(FALSE, nrow(gr$v))
+                #         v_ind_[leaves] <- TRUE
+                #         layer <- gr$v$phenolayer[leaves[1]]
+                #         curr <- gr$v$phenotype[leaves]
+                #         if (layer > 0)
+                #             while (length(curr)>0) {
+                #                 par_phen <- unlist(pparen[curr])
+                #                 par_ind <- gr$v$phenotype%in%par_phen & gr$v$v_ind
+                #                 v_ind_[par_ind] <- TRUE
+                #                 curr <- gr$v$phenotype[par_ind]
+                #             }
+                #         gr_$v$v_ind <- gr_$v$label_ind <- v_ind_
+                #         gr_$e$e_ind <- gr$e$from%in%gr$v$phenotype[v_ind_] &
+                #             gr$e$to%in%gr$v$phenotype[v_ind_]
+                #         gr_$v <- gr_$v[gr_$v$v_ind,]
+                #         gr_$e <- gr_$e[gr_$e$from%in%gr$v$phenotype &
+                #                            gr_$e$to%in%gr$v$phenotype,]
+                #         
+                #         gr_ <- set_layout_graph(gr_)
+                #         # gp <- plot_gr(gr_)
+                #         gp <- plot_gr(gr__, label_coloured=FALSE, interactive=TRUE)
+                #         # ggsave(paste0(path,"/",phen,"_",sum(v_ind_),".png"),
+                #         #        plot=gp, scale=1, width=9, height=9,
+                #         #        units="in", dpi=500, limitsize=TRUE)
+                #         htmlwidgets::saveWidget(
+                #             gp, file=paste0(path,"/",phen,sum(v_ind_),".html"))
+                #         
+                #     }
+                # }
+                # 
+                # if (sum(p<.01)>30)s
+                #     gr <- fg_plot(fg, type="node", p_thres=sort(p)[25],
+                #                   index=index, label_max=20,
+                #                   show_bgedges=TRUE, path=paste0(plot_path_,"/cell_hierarchy_top25"))
+            })
+            # if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .01
+        }
     }
     
     flowGraph:::time_output(start1)
@@ -1486,10 +1643,172 @@ for (result_dir in result_dirs) { try({
 
 ```
 
+
+## plots for pub
+```{r}
+result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
+result_dirs <- result_dirs[grepl("pos11|pos15|pos26|pos31|pos35|pos36|flowcap_6$|pregnancy",result_dirs)]
+p_thres <- .05
+type <- "node"
+adjust_custom <- "byLayer"
+wh <- c(8,6)
+for (result_dir in result_dirs) { try({
+    start1 <- Sys.time()
+    cat(result_dir,"\n")
+    fg = get(load(paste0(result_dir,"/fg.Rdata")))
+    
+    indices <- 1:nrow(fg@summary_desc$node)
+    for (index in indices) {
+        # if (grepl("epic",result_dir) & index%in%c(2,4,10)) p_thres <- .1
+        sm <- unlist(fg@summary_desc[[type]][index,])
+        sm[2] <- paste0(sm[2], "_", ifelse(
+            is.function(adjust_custom),"adjusted",adjust_custom))
+        plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
+                             paste0(unlist(sm), collapse="_"))
+        dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
+        
+        # fg_plot_pVSdiff(fg, index=index, interactive=TRUE,
+        #                 path=paste0(plot_path_,"/pVSdifference.html"))
+        
+        pp1 <- fg_get_summary(
+            fg, index=index,adjust_custom=adjust_custom,
+            # filter_adjust0=.4, 
+            filter_btwn_tpthres=.05, filter_btwn_es=.5)
+        pp1sig <- pp1$values<.05
+        sort(pp1$values[pp1sig])
+        sum(pp1sig)
+        
+        gr <- fg_plot(
+            fg, type=type, p_thres=.05, index=index,
+            show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+            # path=paste0(plot_path_,"/cell_hierarchy"),
+            interactive=FALSE, 
+            adjust_custom=adjust_custom,
+            filter_btwn_tpthres=.05, filter_btwn_es=.5,
+            node_labels="NONE")
+        gr$v$label <- gr$v$phenotype
+        
+        gr$v$label_ind <- FALSE
+        if (grepl("pos[13]1",result_dir))
+            truepos <- c("A+","A-")
+        if (grepl("pos[13]5",result_dir))
+            truepos <- c("A+B+C+","A+B+","A+C+","B+C+","A+","B+","C+")
+        if (grepl("pos[23]6",result_dir))
+            truepos <- c("A+","B+","D+","A+B+","A+B+D+")
+        if (grepl("flowcap",result_dir))
+            truepos <- c("FS-","SS-","HLA+","CD38+",
+                         "FS-CD34+","SS-CD34+",
+                         "HLA+CD117-CD45+CD34+",
+                         "FS-SS+CD45-","FS-SS+CD117+CD45-")
+        if (grepl("pregnancy",result_dir))
+            truepos <- c("CD3+","CD45RA+","CD16+",
+                         "CD3+CD45RA+CD56-Tbet-",
+                         "CD3+CD45RA+CD56-CD8-Tbet-TCRgd-",
+                         "CD3+CD45RA+CD56-CD7+CD8-Tbet-",
+                         "CD3+CD45+CD45RA+CD56-CD8-Tbet-",
+                         "CD3+CD45RA+CD45-CD8-Tbet-",
+                         "CD7+CD8+","CD7+CD8+Tbet+",
+                         "CD16+CD56-CD7-TCRgd-"
+                         )
+        gr$v$label_ind[gr$v$phenotype%in%truepos] <- TRUE
+        gr_ <- gr
+        
+        col_o <- gr$v$colour
+        # gr_$colour <- col_o
+        gp <- plot_gr(gr_, label_coloured=FALSE)
+        ggplot2::ggsave(
+            paste0(plot_path_,"/cell_hierarchy_filtered_PUB.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+
+        gr_size <- gr_$v$size
+        gr_$v$size <- 1
+        gr_$colour <- col_o
+        gp <- plot_gr(gr_, label_coloured=FALSE)
+        ggplot2::ggsave(
+            paste0(plot_path_,"/cell_hierarchy_filtered_PUB_.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+        gr_$v$size <- gr_size
+
+        gr_$v$colour <- ifelse(col_o>0,1,-1)
+        gp <- plot_gr(gr_, colour_edges=TRUE)
+        ggplot2::ggsave(
+            paste0(plot_path_,"/cell_hierarchy_filtered_.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+
+        if (grepl("SpecEnr",sm["feat"])) {
+            feats <- flowGraph:::se_feats(sm["feat"])
+            
+            m1 <- fg_get_feature_means(fg, type, feats[2], id=pp1$id1)
+            m2 <- fg_get_feature_means(fg, type, feats[2], id=pp1$id2)
+
+            gr_$v$v_ind[(m2>m1 & gr$v$colour<0) | (m2<m1 & gr$v$colour>0)] <- F
+
+            col_p <- m2-m1
+            
+            m1m2 <- cbind(gr$v$phenotype,pp1$values,col_o,col_p)
+            colnames(m1m2) <- c("phenotype",paste0("p_",adjust_custom),
+                                "SpecEnr_diff","prop_diff")
+            m1m2_ <- m1m2 <- m1m2[pp1sig,]
+            write.csv(m1m2,file=paste0(plot_path_,".csv"), row.names=FALSE)
+            m1m2_ <- m1m2_[(m1m2_[,3]>0 & m1m2_[,4]>0) | 
+                               (m1m2_[,3]<0 & m1m2_[,4]<0),]
+            write.csv(m1m2_,file=paste0(plot_path_,"_.csv"), row.names=FALSE)
+            
+            # gr_$v <- gr_$v[gr$v$v_ind,]
+            # gr_$e <- gr$e[gr$e$from%in%gr_$v$phenotype &
+            #                   gr$e$to%in%gr_$v$phenotype,]
+            # gr_$v[,c("x","y")] <-
+            #     space_hierarchy(gr_$v[,c("y","x")])[,c(2,1)]
+            # mfrom <- match(gr_$e$from,gr_$v$phenotype)
+            # mto <- match(gr_$e$to,gr_$v$phenotype)
+            # gr_$e$from.x <- gr_$v$x[mfrom]
+            # gr_$e$from.y <- gr_$v$y[mfrom]
+            # gr_$e$to.x <- gr_$v$x[mto]
+            # gr_$e$to.y <- gr_$v$y[mto]
+
+            gr_$v$colour <- col_p#[gr$v$v_ind]
+            gp <- plot_gr(gr_, label_coloured=FALSE)
+            ggplot2::ggsave(
+                paste0(plot_path_,"/cell_hierarchy_filtered_prop_PUB.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+            
+            gr_size <- gr_$v$size
+            gr_$v$size <- 1
+            gr_$v$colour <- col_p#[gr$v$v_ind]
+            gp <- plot_gr(gr_, label_coloured=FALSE)
+            ggplot2::ggsave(
+                paste0(plot_path_,"/cell_hierarchy_filtered_prop_PUB_.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+            gr_$v$size <- gr_size
+
+            gr_$v$colour <- ifelse(col_p>0,1,-1)
+            gp <- plot_gr(gr_, colour_edges=TRUE)
+            ggplot2::ggsave(
+                paste0(plot_path_,"/cell_hierarchy_filtered_prop__.png"),
+                plot=gp, scale=1, width=wh[1], height=wh[2],
+            units="in", limitsize=TRUE)#, dpi=600)
+            
+        }
+
+
+        
+        flowGraph:::time_output(start1)
+    }
+})}
+
+```
+
+
+
 ### trying stuff out
 
 ```{r}
-p_thres <- .01
+p_thres <- .05
 
 result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
 for (result_dir in result_dirs[c(1,13:53)]) { try({
@@ -1603,9 +1922,14 @@ for (result_dir in result_dirs) {
 interactive <- FALSE
 p_t1 <- p_t2 <- .05
 cd_t1 <- .5 # cohen's d: |d|<0.2 "negligible", |d|<0.5 "small", |d|<0.8 "medium", otherwise "large"
-filter_es <- 1
+filter_es <- 0
 filter_adjust0 <- 1
 med_count_thres <- 50
+type="node"
+adjust_custom="BH"
+absolute <- FALSE
+logged <- TRUE
+
 
 start1 = Sys.time()
 result_dirs = list.dirs(paste0(root,"/results"), recursive=FALSE)
@@ -1614,119 +1938,37 @@ for (result_dir in result_dirs) {
     start1 = Sys.time()
     cat(result_dir,"\n")
     fg = get(load(paste0(result_dir,"/fg.Rdata")))
-    
+    fg@etc$actualVSexpect <- list()
+    fg@etc$actualVSexpect$node <- fg@etc$actualVSexpect$edge <- list()
+
     # features to compare
-    compare_feats <- c("SpecEnr", "prop")
+    compare_feats_ <- compare_feats <- c("SpecEnr", "prop")
     if (grepl("epichipc",result_dir))
         compare_feats <- c("SpecEnr_cells_ul_blood", "cells_ul_blood")
+    se_inds <- which(fg@summary_desc$node$feat==compare_feats[1] &
+                         grepl("t_",fg@summary_desc$node$test_name))
     
-    # which summary statistic inds involve SpecEnr feature
-    se_inds <- which(fg@summary_desc$node$feat==compare_feats[1])
-    if (length(se_inds)==0) next
-    pp1 <- fg_get_summary(fg, index=se_inds[1])
-    
-    # indices to turn cell populations into edges from and to
-    ifrom <- match(fg@graph$e$from, fg@graph$v$phenotype)
-    ito <- match(fg@graph$e$to, fg@graph$v$phenotype)
-    
-    # whether specenr should be significant based on how different actual
-    # and expected raw values are; sigcands are those that are significantly different
-    if (is.null(fg@etc$actualVSexpect)) 
-        fg@etc$actualVSexpect <- list(node=list(), edge=list())
-    mp <- fg_get_feature(fg, type="node", feature=compare_feats[2])
-    mep <- fg_get_feature(fg, type="node", feature=paste0("expect_",compare_feats[2]))
-    
-    pp3v1_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id1,ci], mep[pp1$id1,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pp3v2_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id2,ci], mep[pp1$id2,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pp3v1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id1,ci], mep[pp1$id1,ci])$p.value,
-                 error=function(e) 1) )
-    pp3v2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id2,ci], mep[pp1$id2,ci])$p.value,
-                 error=function(e) 1) )
-    
-    pw3v1_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id1,ci], mep[pp1$id1,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pw3v2_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id2,ci], mep[pp1$id2,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pw3v1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id1,ci], mep[pp1$id1,ci])$p.value,
-                 error=function(e) 1) )
-    pw3v2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id2,ci], mep[pp1$id2,ci])$p.value,
-                 error=function(e) 1) )
-    
-    pp3v1_[is.na(pp3v1_)] <- pp3v2_[is.na(pp3v2_)] <- pp3v1[is.na(pp3v1)] <- pp3v2[is.na(pp3v2)] <- pw3v1_[is.na(pw3v1_)] <- pw3v2_[is.na(pw3v2_)] <- pw3v1[is.na(pw3v1)] <- pw3v2[is.na(pw3v2)] <- 1
-    
-    pp3c1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        effsize::cohen.d(mp[pp1$id1,ci], mep[pp1$id1,ci])$estimate )
-    pp3c2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        effsize::cohen.d(mp[pp1$id2,ci], mep[pp1$id2,ci])$estimate )
-    pp3c1[is.na(pp3c1)] <- pp3c2[is.na(pp3c2)] <- 0
-    # |d|<0.2 "negligible", |d|<0.5 "small", |d|<0.8 "medium", otherwise "large"
-    names(pp3c1) <- names(pp3c2) <- names(pp3v1) <- names(pp3v2) <- names(pp3v1_) <- names(pp3v2_) <- fg@graph$v$phenotype
-    
-    df_ps <- data.frame(
-        phenotype=fg@graph$v$phenotype,
-        tpv1_paired=pp3v1_, tpv2_paired=pp3v2_,
-        tpv1=pp3v1, tpv2=pp3v2,
-        cd1=pp3c1, cd2=pp3c2
-    )
-    fg@etc$actualVSexpect$node[[compare_feats[1]]] <- df_ps
-    
-    # edge version of above
-    mp <- fg_get_feature(fg, type="edge", feature="prop")
-    mep <- fg_get_feature(fg, type="edge", feature="expect_prop")
-    
-    pp3v1_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id1,ci], mep[pp1$id1,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pp3v2_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id2,ci], mep[pp1$id2,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pp3v1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id1,ci], mep[pp1$id1,ci])$p.value,
-                 error=function(e) 1) )
-    pp3v2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::t.test(mp[pp1$id2,ci], mep[pp1$id2,ci])$p.value,
-                 error=function(e) 1) )
-    
-    pw3v1_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id1,ci], mep[pp1$id1,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pw3v2_ <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id2,ci], mep[pp1$id2,ci], paired=TRUE)$p.value,
-                 error=function(e) 1) )
-    pw3v1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id1,ci], mep[pp1$id1,ci])$p.value,
-                 error=function(e) 1) )
-    pw3v2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        tryCatch(stats::wilcox.test(mp[pp1$id2,ci], mep[pp1$id2,ci])$p.value,
-                 error=function(e) 1) )
-    
-    pp3v1_[is.na(pp3v1_)] <- pp3v2_[is.na(pp3v2_)] <- pp3v1[is.na(pp3v1)] <- pp3v2[is.na(pp3v2)] <- pw3v1_[is.na(pw3v1_)] <- pw3v2_[is.na(pw3v2_)] <- pw3v1[is.na(pw3v1)] <- pw3v2[is.na(pw3v2)] <- 1
-    
-    pp3c1 <- sapply(seq_len(ncol(mp)), function(ci) 
-        effsize::cohen.d(mp[pp1$id1,ci], mep[pp1$id1,ci])$estimate )
-    pp3c2 <- sapply(seq_len(ncol(mp)), function(ci) 
-        effsize::cohen.d(mp[pp1$id2,ci], mep[pp1$id2,ci])$estimate )
-    pp3c1[is.na(pp3c1)] <- pp3c2[is.na(pp3c2)] <- 0
-    # |d|<0.2 "negligible", |d|<0.5 "small", |d|<0.8 "medium", otherwise "large"
-    names(pp3c1) <- names(pp3c2) <- names(pp3v1) <- names(pp3v2) <- names(pp3v1_) <- names(pp3v2_) <- colnames(mp)
-    
-    df_ps_ <- data.frame(
-        phenotype=colnames(mp),
-        tpv1_paired=pp3v1_, tpv2_paired=pp3v2_,
-        tpv1=pp3v1, tpv2=pp3v2,
-        cd1=pp3c1, cd2=pp3c2
-    )
-    fg@etc$actualVSexpect$edge$SpecEnr <- df_ps_
+    for (se_ind in se_inds) {
+        sm_name <- paste0(unlist(fg@summary_desc$node[se_ind,-2]), collapse="_")
+        sm_name_ <- append("SpecEnr",fg@summary_desc$node[se_ind,c(3:5)])
+        pp <- fg_get_summary(fg, index=se_ind)
+        features <- flowGraph:::se_feats(compare_feats[1])
+        features_ <- c("SpecEnr","prop","expect_prop")
+        
+        # fg@etc$actualVSexpect[["node"]][[sm_name]] <- flowGraph:::fg_btwn_(
+        #     id1=pp$id1, id2=pp$id2, 
+        #     mp=as.matrix(fg@feat$node[[features[2]]]),
+        #     mep=as.matrix(fg@feat$node[[features[3]]]),
+        #     btwn_test_custom=function(x,y)
+        #         tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
+        fg@etc$actualVSexpect[["edge"]][[paste0(unlist(sm_name_), collapse="_")]] <- flowGraph:::fg_btwn_(
+            id1=pp$id1, id2=pp$id2, 
+            mp=as.matrix(fg@feat$node[[features_[2]]]),
+            mep=as.matrix(fg@feat$node[[features_[3]]]),
+            btwn_test_custom=function(x,y)
+                tryCatch(stats::t.test(x,y)$p.value, error=function(e) 1))
+
+    }
     
     save(fg, file=paste0(result_dir,"/fg.Rdata"))
     flowGraph:::time_output(start1)
@@ -1743,52 +1985,160 @@ for (result_dir in result_dirs) {
         compare_feats <- c("SpecEnr_cells_ul_blood", "cells_ul_blood")
     
     # which summary statistic inds involve SpecEnr feature
-    se_inds <- which(fg@summary_desc$node$feat==compare_feats[1])
+    se_inds <- which(fg@summary_desc$node$feat==compare_feats[1] &
+                         grepl("t_",fg@summary_desc$node$test_name))
     if (length(se_inds)==0) next
-    pp1 <- fg_get_summary(fg, index=se_inds[1])
-    
+
     # indices to turn cell populations into edges from and to
     ifrom <- match(fg@graph$e$from, fg@graph$v$phenotype)
     ito <- match(fg@graph$e$to, fg@graph$v$phenotype)
-    
-    # whether specenr should be significant based on how different actual
-    # and expected raw values are; sigcands are those that are significantly different
-    df_ps <- fg@etc$actualVSexpect$node[[compare_feats[1]]]
-
-    sig1 <- df_ps$tpv1_paired<p_t1 & df_ps$tpv1<p_t1 & abs(df_ps$cd1)>=cd_t1
-    sig2 <- df_ps$tpv2_paired<p_t1 & df_ps$tpv2<p_t1 & abs(df_ps$cd2)>=cd_t1
-    sigcands <- sig1 | sig2
-    
-    # edge version of above
-    df_ps_ <- fg@etc$actualVSexpect$edge$SpecEnr
-    
-    sig1_ <- df_ps_$tpv1_paired<p_t1 & df_ps_$tpv1<p_t1 & abs(df_ps_$cd1)>=cd_t1
-    sig2_ <- df_ps_$tpv2_paired<p_t1 & df_ps_$tpv2<p_t1 & abs(df_ps_$cd2)>=cd_t1
-    sigcands_ <- sig1_ | sig2_
     
 
     
     # boxplot(mp[pp1$id1,"HLA+CD117-CD45-"],mep[pp1$id1,"HLA+CD117-CD45-"])
     
     for (se_ind in se_inds) { try({
-        summary_meta <- fg@summary_desc[[type]][se_ind,]
+        summary_meta <- unlist(fg@summary_desc$node[se_ind,])
+        sm_name <- paste0(summary_meta[-2], collapse="_")
+        sm_name_ <- paste0("SpecEnr",paste0(summary_meta[-c(1:2)], collapse="_"))
+        se_ind_ <- flowGraph:::fg_get_summary_index(
+            fg, type="edge", summary_meta=append("SpecEnr",summary_meta[-1]))
+        
+        
+        summary_meta <- fg@summary_desc$node[se_ind,]
+        summary_meta["test_name"] <- paste0(unlist(summary_meta["test_name"]),
+                                            "_",adjust_custom)
         plot_path_ <- paste0(result_dir,"/fg/plots/", type, "/",
                              paste0(unlist(summary_meta), collapse="_"))
         dir.create(plot_path_, recursive=TRUE, showWarnings=FALSE)
         
+        ## expore
+        df_ <- fg@etc$actualVSexpect$node$SpecEnr_class_control_aml
+        # df_ <- fg@etc$actualVSexpect$node$SpecEnr_class_control_exp
+
+        # cpop <- "FS-SS-HLA+CD117+CD45-CD34-CD38+"
+        # df_[df_$phenotype==cpop,]
+        # bp <- fg_plot_box_set(
+        #     fg, index=se_ind, node_edge=cpop,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     adjust_custom=adjust_custom,
+        #     dotplot=FALSE, outlier=FALSE)
+        # plot(bp)
+        
+        
+        
+        
         pp0 <- fg_get_summary(
             fg, type="edge", summary_meta=unlist(append(
-                "SpecEnr", fg@summary_desc$node[se_ind,-1])))
-        pp0$values[(!sigcands_ | as.numeric(pp0$effect_size)>=filter_es | 
-                        pp0$adjust>filter_adjust0) & pp0$values<p_t1] <- p_t1
+                "SpecEnr", fg@summary_desc$node[se_ind,-1])),
+            filter_es=filter_es, filter_adjust0=filter_adjust0,
+            filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+            adjust_custom=adjust_custom)
         pp0sig <- pp0$values<p_t1
         
-        pp1 <- fg_get_summary(fg, index=se_ind)
-        pp1$values[(!sigcands | as.numeric(pp1$effect_size)>=filter_es | 
-                        pp1$adjust>filter_adjust0) & pp1$values<p_t1] <- p_t1
+        # split up so clearer
+        pp1 <- fg_get_summary(
+            fg, index=se_ind, filter_es=filter_es, filter_adjust0=filter_adjust0,
+            filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+            adjust_custom=adjust_custom, default_p_thres=.05)
         pp1sig <- pp1$values<p_t1
         
-        pp2 <- fg_get_summary(fg, summary_meta=unlist(append(compare_feats[2], fg@summary_desc$node[se_ind,-1]))) # error if not found
+        pp1_ <- fg_get_summary(fg, index=se_ind, adjust_custom=adjust_custom)
+        pp1sig_ <- pp1_$values<p_t1
+        
+        filt_nonsig <- !pp1sig & pp1sig_
+        
+        # plot_path_box <- paste0(plot_path_,"/box")
+        # dir.create(plot_path_box, showWarnings=FALSE, recursive=TRUE)
+        # cpopis <- which(pp1sig)
+        # cpopis <- cpopis[order(pp1$values[cpopis])]
+        # for (cpopi in seq_len(length(cpopis))) {
+        #     cpop <- cpopis[cpopi]
+        #     bp <- flowGraph:::fg_plot_box_set(
+        #         fg, type="node", index=se_ind, node_edge=cpop,
+        #         filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #         filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #         adjust_custom=adjust_custom,dotplot=F,
+        #         path=paste0(plot_path_box,"/",
+        #                     stringr::str_pad(cpopi,width=3,pad="0"), "_",
+        #                     names(pp1$values)[cpop], ".png"))
+        #     bp <- flowGraph:::fg_plot_box_set(
+        #         fg, type="node", index=se_ind, node_edge=cpop,
+        #         filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #         filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #         adjust_custom=adjust_custom,dotplot=F, outlier=FALSE,
+        #         path=paste0(plot_path_box,"/",
+        #                     stringr::str_pad(cpopi,width=3,pad="0"), "_",
+        #                     names(pp1$values)[cpop], "_.png"))
+        # 
+        # }
+        
+        # gr <- fg_plot(
+        #     fg, type="node", index=se_ind,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+        #     path=paste0(plot_path_,"/cell_hierarchy_edge.html"), interactive=TRUE,
+        #     node_labels="NONE",
+        #     adjust_custom=adjust_custom)
+        # gr$v$v_ind <- pp1sig
+        #     gp <- plot_gr(gr, interactive=TRUE)
+        #     visNetwork::visSave(
+        #         gp, file=paste0(plot_path_,"/cell_hierarchy_edge.html"),
+        #         background="white")
+        # 
+        # gr <- fg_plot(
+        #     fg, type="node", index=se_ind,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE), label_max=5,
+        #     path=paste0(plot_path_,"/cell_hierarchy_edge.png"), interactive=FALSE,
+        #     node_labels=compare_feats,
+        #     adjust_custom=adjust_custom)
+        # fg_plot_pVSdiff(
+        #     fg, type="node", index=se_ind,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     path=paste0(plot_path_,"/pVSdifference_edge.png"), interactive=FALSE,
+        #     adjust_custom=adjust_custom)
+        # fg_plot_qq(
+        #     fg, type="node", index=se_ind,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     logged=TRUE,
+        #     path=paste0(plot_path_,"/qq_logged_edge.png"), interactive=FALSE,
+        #     adjust_custom=adjust_custom)
+        # fg_plot_qq(
+        #     fg, type="node", index=se_ind,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     logged=FALSE,
+        #     path=paste0(plot_path_,"/qq_edge.png"), interactive=FALSE,
+        #     adjust_custom=adjust_custom)
+        # 
+        # try({
+        #     gr <- fg_plot(
+        #         fg, type="edge", index=se_ind_, show_nodes_edges=pp0sig,
+        #         show_bgedges=ifelse(grepl("pos",result_dir), TRUE, FALSE),
+        #         label_max=5,
+        #         path=paste0(plot_path_,"/cell_hierarchy_edge_.png"),
+        #         interactive=FALSE, node_labels=compare_feats,
+        #         adjust_custom=adjust_custom)
+        # })
+        
+        # bp <- flowGraph:::fg_plot_box_set(
+        #     fg, type="node", index=se_ind, node_edge=858,
+        #     filter_es=filter_es, filter_adjust0=filter_adjust0,
+        #     filter_btwn_es=cd_t1, filter_btwn_tpthres=p_t1,
+        #     adjust_custom=adjust_custom)
+        
+        
+        
+        pp2 <- fg_get_summary(
+            fg, summary_meta=unlist(
+                append(compare_feats[2], fg@summary_desc$node[se_ind,-1])),
+            adjust_custom=adjust_custom) # error if not found
         pp2sig <- pp2$values<p_t2
         
         # get counts
@@ -1798,7 +2148,107 @@ for (result_dir in result_dirs) {
         good_count <- mc_med > med_count_thres
         good_count_ <- good_count[ito] & good_count[ifrom]
         
+        dfa <- fg@graph$v
+        dfa$xp <- log(pp1$values,10)
+        dfa$yp <- log(pp2$values,10)
+        dfa$xcd <- pp1$cohensd
+        dfa$ycd <- pp2$cohensd
+        dfa$med_count <- mc_med
+        dfa$sig <- "insig"
+        dfa$sig[pp1sig & pp2sig] <- "sig"
+        dfa$sig[pp1sig & !pp2sig] <- "sig_SpecEnr"
+        dfa$sig[!pp1sig & pp2sig] <- "sig_raw"
+        # dfa$sig <- as.factor(dfa$sig)
+        dfa$label_long <- paste0(
+            dfa$phenotype,"\n- SpecEnr: ", 
+            signif(dfa$xcd,3), ", ", signif(dfa$xp,3),
+            "\n- raw: ", signif(dfa$ycd,3), ", ", signif(dfa$yp,3))
+        dfa$sig_label <- as.factor(paste0(
+            ifelse(filt_nonsig,"filt.",""), 
+            ifelse(pp1sig,"","in"), "sig/",
+            ifelse(pp2sig,"","in"),"sig"))
 
+        qp <- ggplot2::ggplot(dfa[good_count,], ggplot2::aes(
+            x=xcd,y=ycd, colour=phenolayer,
+            size=med_count)) +
+            ggplot2::scale_shape_manual(values=1:nlevels(dfa$sig_label))+
+            ggplot2::geom_abline(intercept=0, slope=1) +
+            ggplot2::ggtitle(paste0(
+                "(", sum(good_count),
+                ") comparing cohen's d ",
+                "-log10 ","p-values")) +
+            ggplot2::labs(
+                x="SpecEnr cohen's d",
+                y="raw cohen's d",
+                col="layer",
+                size="count med") +
+            ggplot2::scale_colour_gradientn(
+                colours=c('blue','cyan','yellow','red'))
+        
+        if (interactive) {
+            qp <- qp +
+                ggiraph::geom_point_interactive(
+                    ggplot2::aes(
+                        tooltip=label_long, alpha=.1,stroke=1, shape=1))
+            htmlwidgets::saveWidget(
+                ggiraph::girafe(ggobj=qp),
+                paste0(plot_path_,"/SpecEnrVSrawCOHENSD", 
+                       ifelse(absolute,"_abs",""), 
+                       ifelse(logged,"_log10",""),".html"))
+        } else {
+            qp <- qp +
+                ggplot2::geom_point(
+                    stroke=1, ggplot2::aes(shape=sig))
+            ggplot2::ggsave(
+                paste0(plot_path_,"/SpecEnrVSrawCOHENSD", 
+                       ifelse(absolute,"_abs",""), 
+                       ifelse(logged,"_log10",""),".png"), 
+                plot=qp, scale=1, width=5, height=5,
+                units="in", dpi=500, limitsize=TRUE)
+        }
+        
+        qp <- ggplot2::ggplot(dfa[good_count,], ggplot2::aes(
+            x=log(xp,10),y=log(yp,10), colour=phenolayer, size=med_count)) +
+            ggplot2::scale_shape_manual(values=1:nlevels(dfa$sig_label))+
+            ggplot2::geom_abline(intercept=0, slope=1) +
+            ggplot2::ggtitle(paste0(
+                "(", sum(good_count),
+                ") comparing p-values ",
+                "-log10 ","p-values")) +
+            ggplot2::labs(
+                x="SpecEnr p-value",
+                y="raw p-value",
+                col="layer",
+                size="count med") +
+            ggplot2::scale_colour_gradientn(
+                colours=c('blue','cyan','yellow','red'))
+        
+        if (interactive) {
+            qp <- qp +
+                ggiraph::geom_point_interactive(
+                    ggplot2::aes(
+                        tooltip=label_long, alpha=.1,stroke=1, shape=sig_label))
+            htmlwidgets::saveWidget(
+                ggiraph::girafe(ggobj=qp),
+                paste0(plot_path_,"/SpecEnrVSrawPVALUE", 
+                       ifelse(absolute,"_abs",""), 
+                       ifelse(logged,"_log10",""),".html"))
+        } else {
+            qp <- qp +
+                ggplot2::geom_point(
+                    stroke=1, ggplot2::aes(shape=sig_label))
+            ggplot2::ggsave(
+                paste0(plot_path_,"/SpecEnrVSrawPVALUE", 
+                       ifelse(absolute,"_abs",""), 
+                       ifelse(logged,"_log10",""),".png"), 
+                plot=qp, scale=1, width=5, height=5,
+                units="in", dpi=500, limitsize=TRUE)
+        }
+        
+        
+        
+        
+        #### EDDGE ####
         df <- data.frame(
             phenotype=paste0(fg@graph$e$from,"_",fg@graph$e$to),
             phenolayer=fg@graph$v$phenolayer[ito],
@@ -1806,17 +2256,24 @@ for (result_dir in result_dirs) {
                 colMeans(as.matrix(fg@feat$edge$prop[pp1$id1,])) -
                     colMeans(as.matrix(fg@feat$edge$prop[pp1$id2,]))),
             mean_count=colMeans(as.matrix(fg@feat$node$count))[ito],
+            med_count=mc_med[ito],
             xpfrom=pp1$values[ifrom],
             xpto=pp1$values[ito],
             ypfrom=pp2$values[ifrom],
-            ypto=pp2$values[ito]
+            ypto=pp2$values[ito],
+            xpfrom_=pp1_$values[ifrom],
+            xpto_=pp1_$values[ito]
         )
         df$label_long <- paste0(
             df$phenotype,"\n- SpecEnr: ", df$xpfrom, " > ", df$xpto,
             "\n- raw: ", df$ypfrom, " > ", df$ypto)
-        
-        # absolute <- FALSE
-        # logged <- TRUE
+        df$sig_label <- as.factor(paste0(
+            ifelse(filt_nonsig[ifrom],"filt.",""), 
+            ifelse(df$xpfrom<p_t1,"","in"),"sig>",
+            ifelse(filt_nonsig[ito],"filt.",""), 
+            ifelse(df$xpto<p_t1,"","in"),"sig / ",
+            ifelse(df$ypfrom<p_t2,"","in"),"sig>",
+            ifelse(df$ypto<p_t2,"","in"),"sig"))
         
         # for (absolute in c(TRUE, FALSE)) {
         #     for (logged in c(TRUE, FALSE)) {
@@ -1824,6 +2281,7 @@ for (result_dir in result_dirs) {
         
         # if (logged) {
         df$x <- log(df$xpto,10) - log(df$xpfrom,10)
+        df$x_ <- log(df$xpto_,10) - log(df$xpfrom_,10)
         df$y <- log(df$ypto,10) - log(df$ypfrom,10)
         df$z <- log(pp0$values,10)
         # } else {
@@ -1835,203 +2293,275 @@ for (result_dir in result_dirs) {
         #     dfa$y <- abs(dfa$y)
         # }
         
-
-        for (lyrs in list(c(0,0), c(1,1),c(2,2),c(3,3),c(4,4), c(1,4))) {
-            l2 <- lyrs[2]
-            l1 <- lyrs[1]
-            l_inds <- df$phenolayer >= l1 & df$phenolayer <= l2
-            if (sum(lyrs)==0)
-                l_inds <- good_count_
+        
+        #for (lyrs in list(c(0,0), c(1,1),c(2,2),c(3,3),c(4,4), c(1,4))) {
+        lyrs = c(0,0)    
+        l2 <- lyrs[2]
+        l1 <- lyrs[1]
+        l_inds <- df$phenolayer >= l1 & df$phenolayer <= l2
+        if (sum(lyrs)==0) l_inds <- good_count_
+        
+        qp <- ggplot2::ggplot(df[l_inds,], ggplot2::aes(
+            x=x,y=eprop_change, colour=phenolayer,
+            size=mean_count, alpha=.3, stroke=1, shape=sig_label)) +
+            ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
+            ggplot2::geom_abline(intercept=0, slope=1) +
+            ggplot2::ggtitle(paste0(ifelse(
+                absolute,"absolute ",""),
+                "difference between child and parent ",
+                ifelse(logged,"-log10 ",""),"p-values")) +
+            ggplot2::labs(
+                x="SpecEnr p-value difference on edges",
+                y="layer",
+                col="layer",
+                size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
+            ggplot2::geom_point(ggplot2::aes(shape=sig_label)) +
+            ggplot2::scale_colour_gradientn(
+                colours=c('blue','cyan','yellow','red'))
+        
+        ggplot2::ggsave(paste0(
+            plot_path_,"/SpecEnrVSpropdiff", 
+            ifelse(absolute,"_abs",""), 
+            ifelse(logged,"_log10",""), 
+            "_fromLayer", l2,"-to-",l1,".png"), 
+            plot=qp, scale=1, width=5, height=5,
+            units="in", dpi=500, limitsize=TRUE)
+        
+        qp <- ggplot2::ggplot(df[l_inds,], ggplot2::aes(
+            x=y,y=eprop_change, colour=phenolayer,
+            size=mean_count, alpha=.3,stroke=1)) +
+            ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
+            ggplot2::geom_abline(intercept=0, slope=1) +
+            ggplot2::ggtitle(paste0(ifelse(
+                absolute,"absolute ",""),
+                "difference between child and parent ",
+                ifelse(logged,"-log10 ",""),"p-values")) +
+            ggplot2::labs(
+                x="raw p-value difference on edges",
+                y="layer",
+                col="layer",
+                size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
+            ggplot2::geom_point(ggplot2::aes(shape=sig_label)) +
+            ggplot2::scale_colour_gradientn(
+                colours=c('blue','cyan','yellow','red'))
+        
+        ggplot2::ggsave(paste0(
+            plot_path_,"/rawVSpropdiff", 
+            ifelse(absolute,"_abs",""), 
+            ifelse(logged,"_log10",""), 
+            "_fromLayer", l2,"-to-",l1,".png"), 
+            plot=qp, scale=1, width=5, height=5,
+            units="in", dpi=500, limitsize=TRUE)
+        
+        sigv <- c("all","insig","sig")
+        sig_combos_ <- rbind(c(0,0),expand.grid(c(1,2), c(1,2)))
+        zero_combos <- matrix(0,ncol=2,nrow=nrow(sig_combos_))
+        sg1 <- cbind(sig_combos_,zero_combos)
+        sg2 <- cbind(zero_combos[-1,],sig_combos_[-1,])
+        sig_combos <- rbind(as.matrix(sg1),as.matrix(sg2))
+        # sig_combos <- expand.grid(c(0,1,2), c(0,1,2), c(0,1,2), c(0,1,2))
+        paths_ <-  apply(sig_combos, 1, function(sg) {
+            sg <- unlist(sg)
+            paste0(
+                plot_path_,"/SpecEnrVSraw", 
+                ifelse(absolute,"_abs",""), 
+                ifelse(logged,"_log10",""), 
+                "_fromLayer", l2,"-to-",l1,
+                "_SpecEnr-",sigv[sg[1]+1], "FROM-",sigv[sg[2]+1], 
+                "TO_raw-", sigv[sg[3]+1], "FROM-",sigv[sg[4]+1], 
+                "TO.png")
+        })
+        inds_ <- apply(sig_combos, 1, function(sg) {
+            # pp1 and pp2, from and to: 
+            # 0 means any, 1 means insig, 2 means sig
+            sg <- unlist(sg)
+            f_inds <- l_inds
+            if (sg[1]==1) f_inds <- !pp1sig[ifrom] & f_inds
+            if (sg[1]==2) f_inds <- pp1sig[ifrom] & f_inds
+            if (sg[2]==1) f_inds <- !pp1sig[ito] & f_inds
+            if (sg[2]==2) f_inds <- pp1sig[ito] & f_inds
+            if (sg[3]==1) f_inds <- !pp2sig[ifrom] & f_inds
+            if (sg[3]==2) f_inds <- pp2sig[ifrom] & f_inds
+            if (sg[4]==1) f_inds <- !pp2sig[ito] & f_inds
+            if (sg[4]==2) f_inds <- pp2sig[ito] & f_inds
+            return(f_inds)
             
-            qp <- ggplot2::ggplot(df[l_inds,], ggplot2::aes(
-                x=x,y=eprop_change, colour=eprop_change,
-                size=mean_count, alpha=.3,stroke=1)) +
+            
+            a <- df[f_inds,]
+            qp <- ggplot2::ggplot(a) + 
+                ggiraph::geom_point_interactive(ggplot2::aes(
+                    x=x,y=y, colour=phenolayer, size=mean_count,
+                    alpha=.3,stroke=1, tooltip=label_long)) +
+                ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
                 ggplot2::geom_abline(intercept=0, slope=1) +
-                ggplot2::ggtitle(paste0(ifelse(
+                ggplot2::ggtitle(paste0("(",sum(f_inds),")", ifelse(
                     absolute,"absolute ",""),
                     "difference between child and parent ",
                     ifelse(logged,"-log10 ",""),"p-values")) +
                 ggplot2::labs(
                     x="SpecEnr p-value difference on edges",
-                    y="mean child/parent prop diff",
-                    col="mean child/parent prop diff",
-                    size="count mean (to)") +
-                ggplot2::geom_point(shape=1) +
+                    y="cells_ul_blood/prop p-value difference on edges",
+                    col="layer",
+                    size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
                 ggplot2::scale_colour_gradientn(
                     colours=c('blue','cyan','yellow','red'))
             
-            ggplot2::ggsave(paste0(
-                plot_path_,"/SpecEnrVSpropdiff", 
-                ifelse(absolute,"_abs",""), 
-                ifelse(logged,"_log10",""), 
-                "_fromLayer", l2,"-to-",l1,".png"), 
-                plot=qp, scale=1, width=5, height=5,
-                units="in", dpi=500, limitsize=TRUE)
-            
-            qp <- ggplot2::ggplot(df[l_inds,], ggplot2::aes(
-                x=y,y=eprop_change, colour=eprop_change,
-                size=mean_count, alpha=.3,stroke=1)) +
-                ggplot2::geom_abline(intercept=0, slope=1) +
-                ggplot2::ggtitle(paste0(ifelse(
-                    absolute,"absolute ",""),
-                    "difference between child and parent ",
-                    ifelse(logged,"-log10 ",""),"p-values")) +
-                ggplot2::labs(
-                    x="raw p-value difference on edges",
-                    y="mean child/parent prop diff",
-                    col="mean child/parent prop diff",
-                    size="count mean (to)") +
-                ggplot2::geom_point(shape=1) +
-                ggplot2::scale_colour_gradientn(
-                    colours=c('blue','cyan','yellow','red'))
-            
-            ggplot2::ggsave(paste0(
-                plot_path_,"/rawVSpropdiff", 
-                ifelse(absolute,"_abs",""), 
-                ifelse(logged,"_log10",""), 
-                "_fromLayer", l2,"-to-",l1,".png"), 
-                plot=qp, scale=1, width=5, height=5,
-                units="in", dpi=500, limitsize=TRUE)
-            
-            
-            sigv <- c("all","insig","sig")
-            sig_combos <- expand.grid(c(0,1,2), c(0,1,2), c(0,1,2), c(0,1,2))
-            # sig_combos <- expand.grid(c(0,1,2), c(0,1,2), c(0,1,2), c(0,1,2))
-            paths_ <-  apply(sig_combos, 1, function(sg) {
-                sg <- unlist(sg)
-                paste0(
-                    plot_path_,"/SpecEnrVSraw", 
-                    ifelse(absolute,"_abs",""), 
-                    ifelse(logged,"_log10",""), 
-                    "_fromLayer", l2,"-to-",l1,
-                    "_SpecEnr-",sigv[sg[1]+1], "FROM-",sigv[sg[2]+1], 
-                    "TO_raw-", sigv[sg[3]+1], "FROM-",sigv[sg[4]+1], 
-                    "TO.png")
-            })
-            inds_ <- apply(sig_combos, 1, function(sg) {
-                # pp1 and pp2, from and to: 
-                # 0 means any, 1 means insig, 2 means sig
-                sg <- unlist(sg)
-                f_inds <- l_inds
-                if (sg[1]==1) f_inds <- !pp1sig[ifrom] & f_inds
-                if (sg[1]==2) f_inds <- pp1sig[ifrom] & f_inds
-                if (sg[2]==1) f_inds <- !pp1sig[ito] & f_inds
-                if (sg[2]==2) f_inds <- pp1sig[ito] & f_inds
-                if (sg[3]==1) f_inds <- !pp2sig[ifrom] & f_inds
-                if (sg[3]==2) f_inds <- pp2sig[ifrom] & f_inds
-                if (sg[4]==1) f_inds <- !pp2sig[ito] & f_inds
-                if (sg[4]==2) f_inds <- pp2sig[ito] & f_inds
-                return(f_inds)
-                
-                a <- df[f_inds,]
-                qp <- ggplot2::ggplot(a) + 
-                    ggiraph::geom_point_interactive(ggplot2::aes(
-                        x=x,y=y, colour=eprop_change, size=mean_count,
-                        alpha=.3,stroke=1, tooltip=label_long)) +
+            ggiraph::girafe(ggobj=qp)
+        })
+        inds_bad <- apply(inds_, 2, sum)==0
+        inds_istr <- apply(inds_[,!inds_bad], 2, paste, collapse="")
+        inds_i_ <- union(which(inds_bad),
+                         which(!inds_bad)[duplicated(inds_istr)])
+        # a <- sapply(paths_[inds_i_], file.remove)
+        
+        inds_good <- setdiff(seq_len(ncol(inds_)),inds_i_)
+        inds_z <- apply(sig_combos, 1, function(sg) {
+            # pp1 and pp2, from and to: 
+            # 0 means any, 1 means insig, 2 means sig
+            sg <- unlist(sg)
+            f_inds <- l_inds
+            if (sg[1]==1) f_inds <- !pp0sig & f_inds
+            if (sg[1]==2) f_inds <- pp0sig & f_inds
+            if (sg[2]==1) f_inds <- !pp0sig & f_inds
+            if (sg[2]==2) f_inds <- pp0sig & f_inds
+            if (sg[3]==1) f_inds <- !pp2sig[ifrom] & f_inds
+            if (sg[3]==2) f_inds <- pp2sig[ifrom] & f_inds
+            if (sg[4]==1) f_inds <- !pp2sig[ito] & f_inds
+            if (sg[4]==2) f_inds <- pp2sig[ito] & f_inds
+            return(f_inds)
+        })
+        
+        # if (length(inds_good)>0)
+        a <- sapply(1:nrow(sig_combos), function(i) {
+            if (sum(inds_[,i])>0) {
+                qp <- ggplot2::ggplot(df[inds_[,i],], ggplot2::aes(
+                    x=x,y=y, colour=phenolayer,
+                    size=mean_count)) +
+                    ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
                     ggplot2::geom_abline(intercept=0, slope=1) +
-                    ggplot2::ggtitle(paste0("(",sum(f_inds),")", ifelse(
+                    ggplot2::ggtitle(paste0("(",sum(inds_[,i]),")", ifelse(
                         absolute,"absolute ",""),
                         "difference between child and parent ",
                         ifelse(logged,"-log10 ",""),"p-values")) +
                     ggplot2::labs(
                         x="SpecEnr p-value difference on edges",
                         y="cells_ul_blood/prop p-value difference on edges",
-                        col="mean child/parent prop diff",
-                        size="count mean (to)") +
+                        col="layer",
+                        size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
                     ggplot2::scale_colour_gradientn(
                         colours=c('blue','cyan','yellow','red'))
                 
-                ggiraph::girafe(ggobj=qp)
-            })
-            inds_bad <- apply(inds_, 2, sum)==0
-            inds_istr <- apply(inds_[,!inds_bad], 2, paste, collapse="")
-            inds_i_ <- union(which(inds_bad),
-                             which(!inds_bad)[duplicated(inds_istr)])
-            # a <- sapply(paths_[inds_i_], file.remove)
+                if (interactive) {
+                    qp <- qp +
+                        ggiraph::geom_point_interactive(
+                            ggplot2::aes(
+                                tooltip=label_long, alpha=.1, stroke=1))
+                    htmlwidgets::saveWidget(
+                        ggiraph::girafe(ggobj=qp),
+                        gsub("png","html",paths_[i]))
+                    # ggiraph::girafe(ggobj=qp)
+                } else {
+                    qp <- qp +
+                        ggplot2::geom_point(
+                            stroke=1, ggplot2::aes(shape=sig_label))
+                    ggplot2::ggsave(
+                        paths_[i], plot=qp, scale=1, width=8, height=6,
+                        units="in", dpi=500, limitsize=TRUE)
+                }
+                
+                qp <- ggplot2::ggplot(df[inds_[,i],], ggplot2::aes(
+                    x=x_,y=y, colour=phenolayer,
+                    size=mean_count)) +
+                    ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
+                    ggplot2::geom_abline(intercept=0, slope=1) +
+                    ggplot2::ggtitle(paste0("(",sum(inds_[,i]),")", ifelse(
+                        absolute,"absolute ",""),
+                        "difference between child and parent ",
+                        ifelse(logged,"-log10 ",""),"p-values")) +
+                    ggplot2::labs(
+                        x="SpecEnr p-value difference on edges",
+                        y="cells_ul_blood/prop p-value difference on edges",
+                        col="layer",
+                        size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
+                    ggplot2::scale_colour_gradientn(
+                        colours=c('blue','cyan','yellow','red'))
+                
+                if (interactive) {
+                    qp <- qp +
+                        ggiraph::geom_point_interactive(
+                            ggplot2::aes(
+                                tooltip=label_long, alpha=.1, stroke=1,
+                                shape=sig_label))
+                    htmlwidgets::saveWidget(
+                        ggiraph::girafe(ggobj=qp),
+                        gsub("[.]png","_.html",paths_[i]))
+                } else {
+                    qp <- qp +
+                        ggplot2::geom_point(
+                            stroke=1, ggplot2::aes(shape=sig_label))
+                    ggplot2::ggsave(
+                        gsub("[.]png","_.png",paths_[i]), 
+                        plot=qp, scale=1, width=8, height=6,
+                        units="in", dpi=500, limitsize=TRUE)
+                }
+
+            }
             
-            inds_good <- setdiff(seq_len(ncol(inds_)),inds_i_)
+            if (sum(inds_z[,i])>0 & sig_combos[i,2]==0) {
+                # edge comparison
+                qp <- ggplot2::ggplot(df[inds_z[,i],], ggplot2::aes(
+                    x=z,y=y, colour=phenolayer,
+                    size=mean_count)) +
+                    ggplot2::scale_shape_manual(values=1:nlevels(df$sig_label))+
+                    ggplot2::geom_abline(intercept=0, slope=1) +
+                    ggplot2::ggtitle(paste0(
+                        "(",sum(inds_[,i]),")", ifelse(
+                            absolute,"absolute ",""),
+                        "difference between child and parent ",
+                        ifelse(logged,"-log10 ",""),"p-values")) +
+                    ggplot2::labs(
+                        x="SpecEnr p-value on edges",
+                        y="cells_ul_blood/prop p-value difference on edges",
+                        col="layer",
+                        size="count mean (to)",
+                shape="significance (SpecEnr/raw)") +
+                    ggplot2::scale_colour_gradientn(
+                        colours=c('blue','cyan','yellow','red'))
+                
+                if (interactive) {
+                    qp <- qp +
+                        ggiraph::geom_point_interactive(
+                            ggplot2::aes(
+                                tooltip=label_long, alpha=.1,
+                                stroke=1, shape=sig_label))
+                    htmlwidgets::saveWidget(
+                        ggiraph::girafe(ggobj=qp),
+                        gsub("[.]png","_edge.html",paths_[i]))
+                } else {
+                    qp <- qp +
+                        ggplot2::geom_point(
+                            stroke=1, ggplot2::aes(shape=sig_label))
+                    ggplot2::ggsave(
+                        gsub("[.]png","_edge.png",paths_[i]), 
+                        plot=qp, scale=1, width=8, height=6,
+                        units="in", dpi=500, limitsize=TRUE)
+                }
+                
+            }
             
-            if (length(inds_good)>0)
-                a <- sapply(inds_good, function(i) {
-                    if (sum(inds_[,i])>0) {
-                        qp <- ggplot2::ggplot(df[inds_[,i],], ggplot2::aes(
-                            x=x,y=y, colour=eprop_change,
-                            size=mean_count)) +
-                            ggplot2::geom_abline(intercept=0, slope=1) +
-                            ggplot2::ggtitle(paste0("(",sum(inds_[,i]),")", ifelse(
-                                absolute,"absolute ",""),
-                                "difference between child and parent ",
-                                ifelse(logged,"-log10 ",""),"p-values")) +
-                            ggplot2::labs(
-                                x="SpecEnr p-value difference on edges",
-                                y="cells_ul_blood/prop p-value difference on edges",
-                                col="mean child/parent prop diff",
-                                size="count mean (to)") +
-                            ggplot2::scale_colour_gradientn(
-                                colours=c('blue','cyan','yellow','red'))
-                    
-                        if (interactive) {
-                            qp <- qp +
-                                ggiraph::geom_point_interactive(
-                                    ggplot2::aes(tooltip=label_long,
-                                                 alpha=.1,stroke=1))
-                            htmlwidgets::saveWidget(
-                                ggiraph::girafe(ggobj=qp),
-                                gsub("png","html",paths_[i]))
-                        } else {
-                            qp <- qp +
-                                ggplot2::geom_point(shape=1,stroke=1)
-                            ggplot2::ggsave(
-                                paths_[i], plot=qp, scale=1, width=5, height=5,
-                                units="in", dpi=500, limitsize=TRUE)
-                        }
-                        
-                        # edge comparison
-                        if (sum(sig_combos[i,c(1,2)])==0) {
-                            qp <- ggplot2::ggplot(df[inds_[,i],], ggplot2::aes(
-                                x=z,y=y, colour=eprop_change,
-                                size=mean_count)) +
-                                ggplot2::geom_abline(intercept=0, slope=1) +
-                                ggplot2::ggtitle(paste0("(",sum(inds_[,i]),")", ifelse(
-                                    absolute,"absolute ",""),
-                                    "difference between child and parent ",
-                                    ifelse(logged,"-log10 ",""),"p-values")) +
-                                ggplot2::labs(
-                                    x="SpecEnr p-value on edges",
-                                    y="cells_ul_blood/prop p-value difference on edges",
-                                    col="mean child/parent prop diff",
-                                    size="count mean (to)") +
-                                ggplot2::scale_colour_gradientn(
-                                    colours=c('blue','cyan','yellow','red'))
-                            
-                            if (interactive) {
-                                qp <- qp +
-                                    ggiraph::geom_point_interactive(
-                                        ggplot2::aes(tooltip=label_long,
-                                                     alpha=.1,stroke=1))
-                                htmlwidgets::saveWidget(
-                                    ggiraph::girafe(ggobj=qp),
-                                    gsub("[.]png","_edge.html",paths_[i]))
-                            } else {
-                                qp <- qp +
-                                    ggplot2::geom_point(shape=1,stroke=1)
-                                ggplot2::ggsave(
-                                    gsub("[.]png","_edge.png",paths_[i]), 
-                                    plot=qp, scale=1, width=5, height=5,
-                                    units="in", dpi=500, limitsize=TRUE)
-                            }
-                            
-                        }
-                    }
-                    
-                    
-                })
-        }
+            
+        })
+        #}
         #     }
         # }
     }) }
+    flowGraph:::time_output(start1)
 }
-flowGraph:::time_output(start1)
 ```
 
 

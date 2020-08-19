@@ -92,7 +92,25 @@ body <- shinydashboard::dashboardBody(
                             inputId="adjust0",
                             label="(SpecEnr only) max % of 0's allowed",
                             min=.1, max=1, step=.1, value=.4
+                        ),
+                        shiny::sliderInput(
+                            inputId="p_thres_b",
+                            label="p-value threshold (between classes)",
+                            min=.01, max=1, step=.01, value=.05),
+                        shiny::selectInput(
+                            inputId="effect_size_b",
+                            label="minimum effect size (between classes)",
+                            choices=c("negligible", "small", "medium", "large"),
+                            selected="medium"
+                        ),
+                        shiny::selectInput(
+                            inputId="adjust_custom",
+                            label="p-value adjustment method",
+                            choices=c("byLayer", "holm", "hochberg", "hommel",
+                                      "bonferroni", "BH", "BY", "fdr", "none"),
+                            selected="byLayer"
                         )
+
                     ),
                     style="border-bottom: solid silver 1px; padding: 10px"
                 ),

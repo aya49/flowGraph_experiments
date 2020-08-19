@@ -1,0 +1,250 @@
+---
+title: "Plots for publication"
+output: html_document
+  html_document:
+    theme: paper
+    highlight: zenburn
+    number_sections: true
+    toc: true
+    toc_float: 
+      collapsed: true
+      smooth_scroll: true
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This R markdown file creates the plots for our paper on SpecEnr.
+
+flowGraph takes flowType Phenotypes cell populations as input and outputs SpecEnr values for each cell populations nodes (immunophenotypes), within a flow cytometry sample, based on their expected proportion. In this way, SpecEnr accounts for relations between cell populations to produce cell population quantification whose changes are not induced by neighbouring cell populations but represent real differential abundance behaviour.
+
+## Citation
+
+The theory, proof, and algorithm behind the SpecEnr statistic used in the flowGraph package can be found in the following [paper](https://www.biorxiv.org/content/10.1101/837765v3.abstract). Please consider citing if you found it helpful.
+
+bibtex:
+```
+@article{yue2019identifying,
+  title={Identifying differential cell populations in flow cytometry data accounting for marker frequency},
+  author={Yue, Alice and Chauve, Cedric and Libbrecht, Maxwell and Brinkman, Ryan},
+  journal={BioRxiv},
+  pages={837765},
+  year={2019},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
+
+## Data, working directory, & packages
+
+Extract the .Rdata files coupled packaged with this script into the working directory of this R markdown file.
+
+```{r}
+# load packages
+# install flowGraph using devtools if not already installed
+# library(devtools)
+# devtools::install_github("aya49/flowGraph")
+library(flowGraph)
+library(lattice)
+
+# set working directory if not done already
+root <- "/mnt/f/Brinkman group/current/Alice/flowtype_metric/pub" 
+setwd(root)
+```
+
+# Statistic robustness plots
+
+Negative control ctrl data set: T-test -ln(p-value) qq plot.
+
+```{r}
+load("data/ctrl.Rdata")
+
+# raw cell count
+fg_plot_qq(fg, index=1, adjust_custom="none", logged=TRUE)
+
+# proportion
+fg_plot_qq(fg, index=3, adjust_custom="none", logged=TRUE)
+
+# SpecEnr
+fg_plot_qq(fg, index=2, adjust_custom="none", logged=TRUE)
+```
+
+Negative control ctrl data set: proportion of significant T-test p-value <.05.
+
+```{r}
+pp <- fg_get_summary(fg, index=1, adjust_custom="none")
+
+# total number of cell populations
+cpopl <- length(pp$values)
+
+# proportion of significant cell populations
+sig_count <- sum(pp$values<.05)
+pp <- fg_get_summary(fg, index=3, adjust_custom="none")
+sig_prop <- sum(pp$values<.05)
+pp <- fg_get_summary(fg, index=2, adjust_custom="none")
+sig_se <- sum(pp$values<.05)
+
+(cpopl)
+(sig_count)
+(sig_prop)
+(sig_se)
+```
+
+Positive control pos1 data set: F-measure related statistics measuring consistency of p-values between replicates of pos1
+
+```{r}
+load("data/pos11.Rdata")
+
+# calculate p-values
+p_adjust <- function(X, inds) {
+    p <- apply(as.matrix(X), 2, function(x)
+        tryCatch(t.test(x[inds[[1]]],x[inds[[2]]])$p.value, error=function(e)1))
+    p[is.na(p)] <- 1
+    return(p.adjust(p, method="bonferroni"))
+}
+
+inds1 <- list(c(1:5), c(11:15))
+inds2 <- list(c(6:10), c(16:20))
+p_se1 <- p_adjust(fg@feat$node$SpecEnr, inds=inds1)
+p_se2 <- p_adjust(fg@feat$node$SpecEnr, inds=inds2)
+p_count1 <- p_adjust(fg@feat$node$count, inds=inds1)
+p_count2 <- p_adjust(fg@feat$node$count, inds=inds2)
+p_prop1 <- p_adjust(fg@feat$node$prop, inds=inds1)
+p_prop2 <- p_adjust(fg@feat$node$prop, inds=inds2)
+
+# calculate statistics
+p_stats <- function(p1, p2, pthres=.05) {
+    p1w <- which(p1<pthres)
+    p2w <- which(p2<pthres)
+    p12w <- intersect(p1w, p2w)
+    
+    prec <- length(p12w) / length(p1w)
+    reca <- length(p12w) / length(p2w)
+    
+    p_stats <- list(precision=prec, recall=reca,
+                f1=2*prec*reca/(prec+reca))
+    return(unlist(p_stats))
+}
+
+sbs <- data.frame(score=c(p_stats(p_se1, p_se2), 
+                          p_stats(p_count1, p_count2), 
+                          p_stats(p_prop1, p_prop2)),
+                  feature=rep(c("SpecEnr","count","prop"),each=3),
+                  metric=rep(c("precision","recall","f1"),times=3))
+
+# plot barplot
+pl = lattice::barchart(score~feature, sbs, groups=metric, las=1, ylim=c(0,1),
+                       auto.key = list(space = "top"),
+                       scales=list(x=list(rot=45)), 
+                       cex.lab=2, cex.main=2, cex.sub=2, cex.axis=1.5)
+print(pl)
+```
+
+# Cell hierarchy plots (SpecEnr vs prop q-values)
+
+All coloured nodes have a significant q-value.
+
+Only a limited number of labels are displayed to reduce clutter.
+
+```{r}
+ch_plot <- function(fg, index, adjust_custom="byLayer", pthres=.05,
+                    show_bgedges=TRUE, truepos=c()) {
+    # sm <- unlist(fg@summary_desc$node[index,])
+    # pp1 <- fg_get_summary(
+    #     fg, index=index,adjust_custom=adjust_custom,
+    #     filter_btwn_tpthres=.05, filter_btwn_es=.5)
+    # pp1sig <- pp1$values<pthres
+    # sort(pp1$values[pp1sig])
+    # sum(pp1sig)
+    
+    gr <- fg_plot(
+        fg, p_thres=pthres, index=index,
+        show_bgedges=show_bgedges,
+        interactive=FALSE, 
+        adjust_custom=adjust_custom,
+        filter_btwn_tpthres=.05, filter_btwn_es=.5,
+        node_labels="NONE")
+    gr$v$label <- gr$v$phenotype
+    
+    
+    gr$v$label_ind <- FALSE
+    gr$v$label_ind[gr$v$phenotype%in%truepos] <- TRUE
+    gr_ <- gr
+    
+    gp <- plot_gr(gr_, label_coloured=FALSE)
+    return(gp)
+}
+```
+
+## Data set: pos1 (artificially increased/decreased); SpecEnr vs prop
+
+```{r}
+truepos <- c("A+","A-")
+
+load("data/pos11.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+load("data/pos31.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+```
+
+## Data set: pos2 (artificially increased/decreased); SpecEnr vs prop
+
+```{r}
+truepos <- c("A+B+C+","A+B+","A+C+","B+C+","A+","B+","C+")
+
+load("data/pos15.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+load("data/pos35.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+```
+
+## Data set: pos3 (artificially increased/decreased); SpecEnr vs prop
+
+```{r}
+truepos <- c("A+","B+","D+","A+B+","A+B+D+")
+
+load("data/pos26.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+load("data/pos36.Rdata")
+plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=1, truepos=truepos))
+```
+
+## Data set: flowcap compares AML vs healthy samples; SpecEnr vs prop
+
+```{r}
+truepos <- c("FS-","SS-","HLA+","CD38+",
+             "FS-CD34+","SS-CD34+",
+             "HLA+CD117-CD45+CD34+",
+             "FS-SS+CD45-","FS-SS+CD117+CD45-")
+
+load("data/flowcap.Rdata")
+plot(ch_plot(fg, index=3, truepos=truepos, show_bgedges=FALSE))
+plot(ch_plot(fg, index=1, truepos=truepos, show_bgedges=FALSE))
+```
+
+## Data set: pregnancy compares late-term pregnancy vs post-partum blood samples; SpecEnr vs prop
+
+```{r}
+truepos <- c("CD3+","CD45RA+","CD16+",
+             "CD3+CD45RA+CD56-Tbet-",
+             "CD3+CD45RA+CD56-CD8-Tbet-TCRgd-",
+             "CD3+CD45RA+CD56-CD7+CD8-Tbet-",
+             "CD3+CD45+CD45RA+CD56-CD8-Tbet-",
+             "CD3+CD45RA+CD45-CD8-Tbet-",
+             "CD7+CD8+","CD7+CD8+Tbet+",
+             "CD16+CD56-CD7-TCRgd-")
+
+load("data/pregnancy.Rdata")
+plot(ch_plot(fg, index=6, truepos=truepos, show_bgedges=FALSE))
+plot(ch_plot(fg, index=3, truepos=truepos, show_bgedges=FALSE))
+```

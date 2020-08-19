@@ -64,17 +64,34 @@ body <- shinydashboard::dashboardBody(
                         shiny::sliderInput(
                             inputId="p_thres",
                             label="p-value threshold",
-                            min=.01, max=1, step=.01, value=.01),
+                            min=.01, max=1, step=.01, value=.05),
                         shiny::selectInput(
                             inputId="effect_size",
                             label="minimum effect size",
                             choices=c("negligible", "small", "medium", "large"),
-                            selected="medium"
+                            selected="negligible"
                         ),
                         shiny::sliderInput(
                             inputId="adjust0",
                             label="(SpecEnr only) max % of 0's allowed",
-                            min=.1, max=1, step=.1, value=.4
+                            min=.1, max=1, step=.1, value=1
+                        ),
+                        shiny::sliderInput(
+                            inputId="p_thres_b",
+                            label="p-value threshold (between classes)",
+                            min=.01, max=1, step=.01, value=.05),
+                        shiny::selectInput(
+                            inputId="effect_size_b",
+                            label="minimum effect size (between classes)",
+                            choices=c("negligible", "small", "medium", "large"),
+                            selected="medium"
+                        ),
+                        shiny::selectInput(
+                            inputId="adjust_custom",
+                            label="p-value adjustment method",
+                            choices=c("byLayer", "holm", "hochberg", "hommel",
+                                      "bonferroni", "BH", "BY", "fdr", "none"),
+                            selected="BH"
                         )
                     ),
                     # fg data frame
@@ -125,7 +142,7 @@ body <- shinydashboard::dashboardBody(
     ),
     shiny::fluidRow(
         shiny::column(
-            8,
+            7,
             shinydashboard::box(
                 title="cell hierarchy network",
                 status="primary",
@@ -137,7 +154,7 @@ body <- shinydashboard::dashboardBody(
             )
         ),
         shiny::column(
-            4,
+            5,
             shinydashboard::box(
                 width=NULL, status="primary",
                 shiny::uiOutput('vn_slider_ui')

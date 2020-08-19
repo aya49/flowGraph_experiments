@@ -28,8 +28,30 @@ body <- shinydashboard::dashboardBody(
                             accept=c("Rdata/RDS", "Rdata/RDS", "*")
                         ),
                         shiny::uiOutput("fg_descript_ui"),
-                        shiny::fluidRow(
-                        )
+                            shiny::selectInput(
+                                inputId="xsigfrom",
+                                label="SpecEnr sig (from)",
+                                choices=c("all", "insig", "sig"),
+                                selected="all"
+                            ),
+                            shiny::selectInput(
+                                inputId="xsigto",
+                                label="SpecEnr sig (to)",
+                                choices=c("all", "insig", "sig"),
+                                selected="all"
+                            ),
+                            shiny::selectInput(
+                                inputId="ysigfrom",
+                                label="raw sig (from)",
+                                choices=c("all", "insig", "sig"),
+                                selected="all"
+                            ),
+                            shiny::selectInput(
+                                inputId="ysigto",
+                                label="raw sig (to)",
+                                choices=c("all", "insig", "sig"),
+                                selected="all"
+                            )
                     ),
                     shiny::column(
                         width=6,
@@ -108,21 +130,89 @@ body <- shinydashboard::dashboardBody(
         )
     ),
     shiny::fluidRow(
-        shiny::column(
-            6,
-            shinydashboard::box(
-                title="cell hierarchy network",
-                status="primary",
-                width=NULL,
-                actionButton("reset", label = "Reset selection"),
-                shiny::plotOutput(
-                    "plot_SpecEnrVSraw", width="100%", height="500px") %>%
+        shinydashboard::box(
+            title="SpecEnr vs raw p-value difference on edge",
+            status="primary",
+            width=12,
+                shiny::column(
+                    6,
+                    actionButton("reset", label = "Reset selection"),
+                    ggiraph::ggiraphOutput(
+                        "plot_SpecEnrVSraw", width="100%", height="700px") %>%
+                        shinycssloaders::withSpinner(
+                            type=6, size=.5, proxy.height="250px")
+                ),
+                shiny::column(
+                    6,
+                    shiny::tableOutput("datatab")
+                )
+        ),
+        shinydashboard::tabBox(
+            title="SpecEnr filtered ^",
+            # status="primary",
+            width=6,
+            shiny::tabPanel(
+                "sig>sig",
+                    ggiraph::ggiraphOutput(
+                        "plot_SpecEnrVSraw1", width="100%", height="700px") %>%
+                        shinycssloaders::withSpinner(
+                            type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "sig>insig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw2", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "insig>sig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw3", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "insig>insig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw4", width="100%", height="700px") %>%
                     shinycssloaders::withSpinner(
                         type=6, size=.5, proxy.height="250px")
             )
         ),
-        shiny::column(
-            6, shiny::tableOutput("datatab")
+        shinydashboard::tabBox(
+            title="raw filtered ^",
+            # status="primary",
+            width=6,
+            shiny::tabPanel(
+                "sig>sig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw5", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "sig>insig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw6", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "insig>sig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw7", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            ),
+            shiny::tabPanel(
+                "insig>insig",
+                ggiraph::ggiraphOutput(
+                    "plot_SpecEnrVSraw8", width="100%", height="700px") %>%
+                    shinycssloaders::withSpinner(
+                        type=6, size=.5, proxy.height="250px")
+            )
+
         )
     ),
     shiny::fluidRow(
@@ -145,7 +235,7 @@ body <- shinydashboard::dashboardBody(
                     shiny::column(
                         width=12,
                         shiny::actionButton(inputId='go_cpop', label="go"),
-                        style="text-align: center; padding-bottom: 10px" # padding-top: 100px;
+                        style="text-align: center"
                     ),
                     shiny::column(
                         width=12,
@@ -164,28 +254,29 @@ body <- shinydashboard::dashboardBody(
                 # collapsible=TRUE,
                 width=NULL,
                 shiny::fluidRow(
-                shiny::uiOutput("box_opts_ui")
-                # shiny::uiOutput("box_plots_ui")
-                # bsplus::bs_carousel(id="box_carosel", use_indicators=TRUE) %>%
-                #     bsplus::bs_append(shiny::plotOutput(outputId="plot_box")) %>%
-                #     bsplus::bs_append(shiny::plotOutput(outputId="plot_box1")) %>%
-                #     bsplus::bs_append(shiny::plotOutput(outputId="plot_box2"))
-
-                # ,
+                    shiny::column(
+                        4, shiny::checkboxInput(
+                            inputId="dotplot", value=TRUE, label="dotplot")),
+                    shiny::column(
+                        4, shiny::checkboxInput(
+                            inputId="outlier", value=TRUE, label="outliers")),
+                    shiny::column(
+                        4, shiny::checkboxInput(
+                            inputId="paired", value=FALSE, label="pair samples"))
                 ),
                 shiny::fluidRow(
-                shiny::column(
-                    width=3,
-                    shiny::plotOutput("plot_box")
-                ),
-                shiny::column(
-                    width=3,
-                    shiny::plotOutput("plot_box1")
-                ),
-                shiny::column(
-                    width=3,
-                    shiny::plotOutput("plot_box2")
-                )
+                    shiny::column(
+                        width=4,
+                        shiny::plotOutput("plot_box")
+                    ),
+                    shiny::column(
+                        width=4,
+                        shiny::plotOutput("plot_box1")
+                    ),
+                    shiny::column(
+                        width=4,
+                        shiny::plotOutput("plot_box2")
+                    )
                 )
             )
         )

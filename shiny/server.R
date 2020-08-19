@@ -51,10 +51,16 @@ server <- function(input, output, session) {
 
     #### data table ####
     ip_p_thres <- reactive({ input$p_thres })
+    ip_p_thres_b <- reactive({ input$p_thres_b })
     ip_filter_adjust0 <- reactive({ input$adjust0 })
     ip_filter_es <- reactive({
-        switch(input$effect_size, negligible=1, small=2, medium=3, large=4)
+        switch(input$effect_size, negligible=0, small=.2, medium=.5, large=.8)
+    }) # |d|<0.2 "negligible", |d|<0.5 "small", |d|<0.8 "medium", else "large"
+
+    ip_filter_es_b <- reactive({
+        switch(input$effect_size_b, negligible=0, small=.2, medium=.5, large=.8)
     })
+    ip_adjust <- reactive({ input$adjust_custom })
 
     # number of significant cell pops in each summary statistic
     dt_signo <- reactive({
@@ -63,13 +69,23 @@ server <- function(input, output, session) {
         filter_adjust0 <- ip_filter_adjust0()
         filter_es <- ip_filter_es()
         p_thres <- ip_p_thres()
+        p_thres_b <- ip_p_thres_b()
+        filter_es_b <- ip_filter_es_b()
+        adjust_custom <- ip_adjust()
+        print(paste0("data cands: ",p_thres,", ", filter_adjust0,", ",
+                     filter_es,", ",p_thres_b,", ",filter_es_b))
 
         sdt <- fg@summary_desc$node
         signo <- purrr::map_int(seq_len(nrow(sdt)), function(x) {
-            pp <- fg_get_summary(fg, index=x, filter_adjust0=filter_adjust0,
-                                 filter_es=filter_es)
+            pp <- fg_get_summary(
+                fg, index=x, filter_es=filter_es, filter_adjust0=filter_adjust0,
+                filter_btwn_es=filter_es_b, filter_btwn_tpthres=p_thres_b,
+                adjust_custom=adjust_custom, default_p_thres=p_thres)
+            print(sum(pp$values<p_thres))
             sum(pp$values<p_thres)
         })
+        print(paste0("significants: ", paste0(signo, collapse=", ")))
+        return(signo)
     })
 
     # summary statistics with >0 sig cell pops
@@ -125,14 +141,18 @@ server <- function(input, output, session) {
         values$go <- TRUE
 
         # values$fg <- fg <- fg_obj()
-        values$p_thres <- ip_p_thres()
+        values$p_thres <- p_thres <- ip_p_thres()
         values$filter_adjust0 <- filter_adjust0 <- ip_filter_adjust0()
         values$filter_es <- filter_es <- ip_filter_es()
+        values$p_thres_b <- p_thres_b <- ip_p_thres_b()
+        values$filter_es_b <- filter_es_b <- ip_filter_es_b()
+        values$adjust <- adjust_custom <- ip_adjust()
 
         values$index <- index <- dt_indices()[tail(dt_ind(),1)]
         values$pp <- pp <- fg_get_summary(
-            fg, index=index,
-            filter_adjust0=filter_adjust0, filter_es=filter_es)
+            fg, index=index, filter_es=filter_es, filter_adjust0=filter_adjust0,
+            filter_btwn_es=filter_es_b, filter_btwn_tpthres=p_thres_b,
+            adjust_custom=adjust_custom, default_p_thres=p_thres)
 
         values$max_nodes_sig <- dt_signo()[index]
 
@@ -140,14 +160,7 @@ server <- function(input, output, session) {
         # else it is the actual and expected feature names
         nl <- "NONE"
         feat_ <- unlist(fg@summary_desc$node$feat[index])
-        if (grepl("SpecEnr", feat_)) {
-            if (feat_=="SpecEnr") {
-                nl <- c("prop","expect_prop")
-            } else {
-                nl1 <- gsub("SpecEnr_", "", feat_)
-                nl <- c(nl1, paste0("expect_", nl1))
-            }
-        }
+        nl <- flowGraph:::se_feats(feat_)
         values$node_labels <- nl
 
         root_ <- input$root_name
@@ -185,7 +198,7 @@ server <- function(input, output, session) {
         print("qq options ui")
         # shiny::req(values$cpop) # my way of not using conditionalPanel
         tags$div(
-            shiny::checkboxInput(inputId="logged", value=FALSE, label="logged")
+            shiny::checkboxInput(inputId="logged", value=TRUE, label="logged")
         )
     })
     output$plot_qq <- shiny::renderPlot({
@@ -194,11 +207,16 @@ server <- function(input, output, session) {
         index <- values$index
         filter_adjust0 <- values$filter_adjust0
         filter_es <- values$filter_es
+        p_thres <- values$p_thres
+        p_thres_b <- values$p_thres_b
+        filter_es_b <- values$filter_es_b
         logged <- input$logged; if (length(logged)==0) logged <- FALSE
         print(paste("qq: ", index, filter_adjust0, filter_es, logged))
 
-        plot(fg_plot_qq(fg, index=index, main="", logged=logged,
-                        filter_adjust0=filter_adjust0, filter_es=filter_es)) #shiny_plot=TRUE,
+        plot(fg_plot_qq(
+            fg, index=index, main="", logged=logged, p_thres=p_thres,
+            filter_adjust0=filter_adjust0, filter_es=filter_es,
+            filter_btwn_tpthres=p_thres_b, filter_btwn_es=filter_es_b)) #shiny_plot=TRUE,
     })
 
 
@@ -210,11 +228,16 @@ server <- function(input, output, session) {
         index <- values$index
         filter_adjust0 <- values$filter_adjust0
         filter_es <- values$filter_es
+        p_thres <- values$p_thres
+        p_thres_b <- values$p_thres_b
+        filter_es_b <- values$filter_es_b
+        logged <- input$logged; if (length(logged)==0) logged <- FALSE
         print(paste("pvd: ", index, filter_adjust0, filter_es))
 
         plot(fg_plot_pVSdiff(
-            fg, index=index, main="", label_max=0,
-            filter_adjust0=filter_adjust0, filter_es=filter_es)) #shiny_plot=TRUE, nodes_max=Inf)
+            fg, index=index, main="", label_max=0, p_thres=p_thres,
+            filter_adjust0=filter_adjust0, filter_es=filter_es, logged=logged,
+            filter_btwn_tpthres=p_thres_b, filter_btwn_es=filter_es_b)) #shiny_plot=TRUE, nodes_max=Inf)
     })
 
 
@@ -237,27 +260,32 @@ server <- function(input, output, session) {
         max_nodes_plot <- ip_max_nodes()
         # fg <- values$fg
         index <- values$index
+        pp <- values$pp
         p_thres <- values$p_thres
         filter_adjust0 <- values$filter_adjust0
         filter_es <- values$filter_es
+        p_thres_b <- values$p_thres_b
+        filter_es_b <- values$filter_es_b
         node_labels <- values$node_labels
         root <- values$root
         print(paste("gr: ", index, max_nodes_plot, p_thres, root, paste0(node_labels, collapse="/"), filter_adjust0, filter_es))
 
-        gr <- fg_plot(fg, index=index, p_thres=p_thres,
-                      label_max=max_nodes_plot, node_labels=node_labels,
-                      filter_adjust0=filter_adjust0, filter_es=filter_es)
-        gr$v$v_ind <- gr$v$label_ind
+        gr <- fg_plot(
+            fg, index=index, p_thres=p_thres,
+            # label_max=max_nodes_plot,
+            node_labels=node_labels,
+            filter_adjust0=filter_adjust0, filter_es=filter_es,
+            filter_btwn_tpthres=p_thres_b, filter_btwn_es=filter_es_b)
+        gr$v$v_ind <- gr$v$phenotype %in% names(sort(pp$values))[1:max_nodes_plot]
+        # gr$v$label <- paste0(gr$v$phenotype, " (", signif(pp$values, 3), ")")
         gr$v$phenotype[gr$v$phenotype==""] <- gr$e$from[gr$e$from==""] <- root
 
-        print(paste("gr again: ", sum(gr$v$label_ind), max_nodes_plot))
+        print(paste("gr again: ", sum(gr$v$v_ind), max_nodes_plot))
         gr
     })
     output$graph <- visNetwork::renderVisNetwork({
         shiny::req(dt_graph())
-        gr <- dt_graph()
-
-        plot_gr(gr, shiny_plot=TRUE)
+        plot_gr(dt_graph(), shiny_plot=TRUE)
     })
 
 
@@ -412,68 +440,25 @@ server <- function(input, output, session) {
         print(paste("box: ", cpop, paired, dotplot, outlier, show_boxes()))
         head(show(fg))
 
-        fg_plot_box(fg, type="node", index=index, node_edge=cpop,
-                    paired=paired, outlier=outlier, dotplot=dotplot)
-    })
-
-    output$plot_box1 <- shiny::renderPlot({
-        shiny::req(values$cpop)
-        if (!show_boxes()) return(NULL)
-        # fg <- values$fg
-        index <- values$index
-        cpop <- values$cpop
-        paired <- ip_paired()
-        dotplot <- ip_dotplot()
-        outlier <- ip_outlier()
-        node_labels <- values$node_labels
-        print(paste("box1: ", cpop, paired, dotplot, outlier, node_labels[1]))
-
-        fg_plot_box(
+        plot(flowGraph:::fg_plot_box_set(
             fg, type="node", index=index, node_edge=cpop,
-            paired=paired, outlier=outlier, dotplot=dotplot,
-            feature=node_labels[1])
+            paired=paired, outlier=outlier, dotplot=dotplot))
     })
 
-    output$plot_box2 <- shiny::renderPlot({
-        shiny::req(values$cpop)
-        if (!show_boxes()) return(NULL)
-        # fg <- values$fg
-        index <- values$index
-        cpop <- values$cpop
-        paired <- ip_paired()
-        dotplot <- ip_dotplot()
-        outlier <- ip_outlier()
-        node_labels <- values$node_labels
-        print(paste("box2: ", cpop, paired, dotplot, outlier, node_labels[2]))
-
-        fg_plot_box(
-            fg, type="node", index=index, node_edge=cpop,
-            paired=paired, outlier=outlier, dotplot=dotplot,
-            feature=node_labels[2])
-    })
 
     output$box_plots_ui <- shiny::renderUI({
         shiny::req(values$cpop)
-        plist <- list(shiny::plotOutput(outputId="plot_box"),
-                      shiny::plotOutput(outputId="plot_box1"),
-                      shiny::plotOutput(outputId="plot_box2"))
-        print(paste("boxplot carosel: ", show_boxes(), length(plist), plist[[1]], plist[[2]], plist[[3]]))
-        if (show_boxes()) {
-            car <- bsplus::bs_carousel(id="box_carosel", use_indicators=TRUE) %>%
-                bsplus::bs_append(shiny::plotOutput(outputId="plot_box")) %>%
-                bsplus::bs_append(shiny::plotOutput(outputId="plot_box1")) %>%
-                bsplus::bs_append(shiny::plotOutput(outputId="plot_box2"))
-            return(car)
-        } else {
-            return(shiny::plotOutput(outputId="plot_box"))
-        }
+        index <- values$index
+        if (grepl("SpecEnr",fg@summary_desc$node$feat[index]))
+            return(shiny::plotOutput(outputId="plot_box", height=800))
+        return(shiny::plotOutput(outputId="plot_box"))
     })
-    output$box_click_ui <- shiny::renderUI({
-        shiny::req(show_boxes())
-        shiny::div(
-            shiny::actionButton(inputId="click_box", label="show all boxplots")
-        )
-    })
+    # output$box_click_ui <- shiny::renderUI({
+    #     shiny::req(show_boxes())
+    #     shiny::div(
+    #         shiny::actionButton(inputId="click_box", label="show all boxplots")
+    #     )
+    # })
     # shiny::observeEvent(input$click_box, {
     #     shiny::req(values$cpop)
     #     shinyWidgets::sendSweetAlert(
