@@ -28,11 +28,11 @@ results are saved in the root `flowtype_metric` folder.
 ```{r start_flowGraph, message=FALSE, include=FALSE, echo=FALSE}
 ## load flowGraph package
 # rstudioapi::openProject("/mnt/f/Brinkman group/current/Alice/flowGraph") # CHANGE THIS
-install.packages("/mnt/f/Brinkman group/current/Alice/flowGraph",repos=NULL, type="source")
+install.packages("/mnt/FCS_local3/backup/Brinkman group/current/Alice/flowGraph",repos=NULL, type="source")
 library(flowGraph)
 
 ## root directory; to put results in
-root = "/mnt/f/Brinkman group/current/Alice/flowtype_metric" # CHANGE THIS
+root = "/mnt/FCS_local3/backup/Brinkman group/current/Alice/flowtype_metric" # CHANGE THIS
 # root = "A:/school/grad/projects/flowtype_metric"
 # setwd(root)
 

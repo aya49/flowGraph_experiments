@@ -49,7 +49,6 @@ Extract the .Rdata files coupled packaged with this script into the working dire
 # library(devtools)
 # devtools::install_github("aya49/flowGraph")
 library(flowGraph)
-library(lattice)
 
 # set working directory if not done already
 root <- "/mnt/f/Brinkman group/current/Alice/flowtype_metric/pub" 
@@ -186,7 +185,7 @@ ch_plot <- function(fg, index, adjust_custom="byLayer", pthres=.05,
 truepos <- c("A+","A-")
 
 load("data/pos11.Rdata")
-plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=3, truepos=truepos))
 plot(ch_plot(fg, index=1, truepos=truepos))
 load("data/pos31.Rdata")
 plot(ch_plot(fg, index=2, truepos=truepos))
@@ -199,10 +198,10 @@ plot(ch_plot(fg, index=1, truepos=truepos))
 truepos <- c("A+B+C+","A+B+","A+C+","B+C+","A+","B+","C+")
 
 load("data/pos15.Rdata")
-plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=3, truepos=truepos))
 plot(ch_plot(fg, index=1, truepos=truepos))
 load("data/pos35.Rdata")
-plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=3, truepos=truepos))
 plot(ch_plot(fg, index=1, truepos=truepos))
 ```
 
@@ -212,10 +211,10 @@ plot(ch_plot(fg, index=1, truepos=truepos))
 truepos <- c("A+","B+","D+","A+B+","A+B+D+")
 
 load("data/pos26.Rdata")
-plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=3, truepos=truepos))
 plot(ch_plot(fg, index=1, truepos=truepos))
 load("data/pos36.Rdata")
-plot(ch_plot(fg, index=2, truepos=truepos))
+plot(ch_plot(fg, index=3, truepos=truepos))
 plot(ch_plot(fg, index=1, truepos=truepos))
 ```
 
