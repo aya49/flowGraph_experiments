@@ -446,7 +446,7 @@ markers = get(load(markers_dir))
 # fg0 = flowGraph(m00, no_cores=no_cores, meta=meta_file0, normalize=FALSE, specenr=FALSE)
 
 ## that
-fg0 = flowGraph(ft_dirs, no_cores=no_cores, meta=meta_file0, normalize=FALSE, specenr=TRUE, calculate_summary=FALSE)
+fg0 = flowGraph(ft_dirs, no_cores=no_cores, meta=meta_file0, specenr=TRUE, calculate_summary=FALSE)
 
 ## split by tube, add a mix class, and make a control only data set
 randomindp = randomindc = NULL
